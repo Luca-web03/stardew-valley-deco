@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{Cursor, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -14,11 +15,33 @@ pub fn normalize(path: &str) -> String {
     p
 }
 
+/// A readable, seekable byte stream (an open content file).
+pub trait ReadSeek: Read + Seek + Send {}
+impl<T: Read + Seek + Send> ReadSeek for T {}
+
 /// Something that can produce the raw bytes of a content file.
 pub trait ContentSource: Send + Sync {
     /// `path` is a normalized relative path including extension.
     fn read(&self, path: &str) -> Option<Vec<u8>>;
+    /// Open a file for incremental reads, for large files such as audio
+    /// wave banks. The default loads the whole file into memory.
+    fn open(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        self.read(path).map(|b| Box::new(Cursor::new(b)) as Box<dyn ReadSeek>)
+    }
     fn describe(&self) -> String;
+}
+
+/// Shared sources (e.g. a [`crate::ContentManager`]'s source reused by audio).
+impl<T: ContentSource + ?Sized> ContentSource for std::sync::Arc<T> {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        (**self).read(path)
+    }
+    fn open(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        (**self).open(path)
+    }
+    fn describe(&self) -> String {
+        (**self).describe()
+    }
 }
 
 /// A directory on disk. Lookups are case-insensitive so data written for
@@ -56,15 +79,27 @@ impl DirSource {
     }
 }
 
-impl ContentSource for DirSource {
-    fn read(&self, path: &str) -> Option<Vec<u8>> {
+impl DirSource {
+    /// Resolve a relative path to a file on disk (case-insensitively).
+    pub fn locate(&self, path: &str) -> Option<PathBuf> {
         let direct = self.root.join(path);
-        if let Ok(b) = std::fs::read(&direct) {
-            return Some(b);
+        if direct.is_file() {
+            return Some(direct);
         }
         let mut idx = self.index.lock().ok()?;
         let map = idx.get_or_insert_with(|| Self::build_index(&self.root));
-        map.get(&path.to_lowercase()).and_then(|p| std::fs::read(p).ok())
+        map.get(&path.to_lowercase()).cloned()
+    }
+}
+
+impl ContentSource for DirSource {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        std::fs::read(self.locate(path)?).ok()
+    }
+
+    fn open(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        let f = std::fs::File::open(self.locate(path)?).ok()?;
+        Some(Box::new(std::io::BufReader::new(f)))
     }
 
     fn describe(&self) -> String {
@@ -118,6 +153,9 @@ impl LayeredSource {
 impl ContentSource for LayeredSource {
     fn read(&self, path: &str) -> Option<Vec<u8>> {
         self.layers.iter().find_map(|l| l.read(path))
+    }
+    fn open(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        self.layers.iter().find_map(|l| l.open(path))
     }
     fn describe(&self) -> String {
         self.layers.iter().map(|l| l.describe()).collect::<Vec<_>>().join(" > ")

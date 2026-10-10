@@ -26,6 +26,12 @@ were not available; these are isolated constants that can be tuned.
 - [x] Menus: title, new game, load, inventory (items/skills/social/options), shop,
       dialogue, questions, day-end summary; autosave each night
 - [x] Desktop window (macroquad) + headless scripted runner
+- [x] Audio: XACT wave banks (PCM 8/16-bit, MS-ADPCM), best-effort sound bank
+      cue mapping + `Audio/cues.json` override, loose `.wav`/`.ogg`, software
+      mixer (pitch, volume, looping crossfaded music), cpal (Windows/macOS) /
+      runtime-loaded ALSA (Linux) output with silent fallback, original
+      synthesized placeholder cues and music loops, music selection by
+      location/season/weather/time
 
 ## Next
 
@@ -38,6 +44,7 @@ were not available; these are isolated constants that can be tuned.
 - [ ] Cooking, recipes, buffs
 - [ ] Mail (Data/mail), quests, help-wanted board
 - [ ] Events/cutscenes script interpreter, festivals
-- [ ] Audio (wave banks) and music
+- [ ] Audio follow-ups: xWMA decoding, XSB volume/pitch/categories, footsteps,
+      ambient sounds, volume options in the menu
 - [ ] Real-content farmer sprite composition, real tree/building layouts
 - [ ] Bundles, museum, professions, marriage, multiplayer (out of scope for now)

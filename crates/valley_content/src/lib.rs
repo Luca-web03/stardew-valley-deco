@@ -8,7 +8,11 @@
 //! When no game folder is configured, an original placeholder pack
 //! ([`dev`]) is served through exactly the same code paths, so the engine is
 //! fully runnable and testable on its own.
+//!
+//! [`audio`] reads XACT wave/sound banks and loose audio files the same way,
+//! with original synthesized placeholder sounds as the fallback.
 
+pub mod audio;
 pub mod data;
 pub mod dev;
 pub mod manager;
@@ -23,4 +27,4 @@ pub mod xnb;
 pub use manager::ContentManager;
 pub use map::{AnimatedTile, Layer, Map, Tile, TileSheet};
 pub use props::{PropValue, Props};
-pub use source::{ContentSource, DirSource, LayeredSource, MemSource};
+pub use source::{ContentSource, DirSource, LayeredSource, MemSource, ReadSeek};

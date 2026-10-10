@@ -22,6 +22,12 @@ valley_app ──► engine::ModuleHost ──► [GameModule] valley_game ─�
   used for headless screenshots and tests) both consume it.
 * `InputState` (held/pressed/released, mouse, wheel, text), `AudioQueue`,
   deterministic `Rng`, built-in bitmap font.
+* Audio: games push `SoundCmd`s (cue name + volume/pitch, music track) to
+  `ctx.audio`. `engine::mixer` (PCM `SoundBuffer`, `Mixer` with resampling,
+  looping crossfaded music, clipping) and `engine::synth` (procedural
+  oscillators/noise) are generic; `valley_content::audio` resolves names to
+  buffers (XACT banks, loose files, placeholders) and `valley_app::audio`
+  drains the queue each frame into a mixer on the platform output.
 
 ### Merging another game
 

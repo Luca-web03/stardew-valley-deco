@@ -7,6 +7,7 @@ Options:
   --new <name>        Skip the title screen and start a new game.
   --seed <n>          World seed for new games.
   --size WxH          Logical screen size (default 1280x720).
+  --mute              Do not open an audio device (or env VALLEY_MUTE=1).
   --headless          Run without a window (uses the software renderer).
   --script "<steps>"  Headless input script, steps separated by spaces:
                         wait:N          advance N ticks (60 per second)
@@ -17,3 +18,9 @@ Options:
                         type:TEXT       type text (use _ for spaces)
                         shot:FILE.png   save a screenshot now
   --screenshot <png>  Save a screenshot after the script finishes.
+
+Audio tools (use the --content folder like the game does):
+  --audio-info               Show wave/sound banks found and how cues resolve.
+  --audio-test [c1,c2,...]   Play cues on the sound device (default: all
+                             cues the game uses), to check that sound works.
+  --export-cue CUE OUT.wav   Decode one cue or music track to a WAV file.

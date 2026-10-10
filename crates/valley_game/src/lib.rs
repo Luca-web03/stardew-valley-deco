@@ -3,6 +3,7 @@
 pub mod hud;
 pub mod input_map;
 pub mod menus;
+pub mod music;
 pub mod saves;
 
 use std::path::PathBuf;
@@ -58,6 +59,8 @@ pub struct ValleyGame {
     pub new_game_seed: Option<u64>,
     cursor_tile: Option<TilePos>,
     pub last_save: Option<PathBuf>,
+    /// Music track last requested from the engine ("" = silence).
+    music: Option<String>,
 }
 
 impl ValleyGame {
@@ -75,6 +78,7 @@ impl ValleyGame {
             new_game_seed: None,
             cursor_tile: None,
             last_save: None,
+            music: None,
         }
     }
 
@@ -117,6 +121,25 @@ impl ValleyGame {
             Ok(p) => self.last_save = Some(p),
             Err(e) => self.toast(format!("Save failed: {e}")),
         }
+    }
+
+    /// Ask the engine for the right music track when it changes.
+    fn update_music(&mut self, ctx: &mut EngineCtx) {
+        let want = match (&self.screen, &self.world) {
+            (Screen::Playing, Some(w)) => music::track_for_world(w, self.music.as_deref()),
+            (Screen::Playing, None) => None,
+            _ => Some(music::TITLE_MUSIC.to_string()),
+        };
+        let Some(track) = want else { return };
+        if self.music.as_deref() == Some(track.as_str()) {
+            return;
+        }
+        if track.is_empty() {
+            ctx.audio.stop_music();
+        } else {
+            ctx.audio.music(&track);
+        }
+        self.music = Some(track);
     }
 
     fn camera(&self, ctx: &EngineCtx) -> Option<Camera> {
@@ -1090,6 +1113,12 @@ impl GameModule for ValleyGame {
             Screen::Create { .. } => self.update_create(ctx),
             Screen::Playing => self.update_playing(ctx),
         }
+        self.update_music(ctx);
+    }
+
+    fn suspend(&mut self, ctx: &mut EngineCtx) {
+        ctx.audio.stop_music();
+        self.music = None;
     }
 
     fn draw(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {

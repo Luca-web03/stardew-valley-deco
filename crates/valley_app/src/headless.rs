@@ -106,6 +106,8 @@ pub fn run_script(host: &mut ModuleHost, script: &str) -> Result<(), String> {
             ["shot", path] => screenshot(host, path)?,
             _ => return Err(format!("bad script step {step}")),
         }
+        // Headless runs never open an audio device; discard sound requests.
+        host.ctx.audio.drain();
         if host.ctx.quit_requested {
             break;
         }
