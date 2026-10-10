@@ -9,36 +9,120 @@ pub const SLOT_KEYS: [Key; 12] = [
     Key::Num7, Key::Num8, Key::Num9, Key::Num0, Key::Minus, Key::Equal,
 ];
 
+/// Rebindable actions (two keys each; mouse buttons are fixed).
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct Bindings {
+    pub up: Vec<Key>,
+    pub down: Vec<Key>,
+    pub left: Vec<Key>,
+    pub right: Vec<Key>,
+    pub use_tool: Vec<Key>,
+    pub action: Vec<Key>,
+    pub menu: Vec<Key>,
+    pub journal: Vec<Key>,
+    pub walk: Vec<Key>,
+}
+
+impl Default for Bindings {
+    fn default() -> Self {
+        Self {
+            up: vec![Key::W, Key::Up],
+            down: vec![Key::S, Key::Down],
+            left: vec![Key::A, Key::Left],
+            right: vec![Key::D, Key::Right],
+            use_tool: vec![Key::C],
+            action: vec![Key::X],
+            menu: vec![Key::E, Key::I],
+            journal: vec![Key::F],
+            walk: vec![Key::LeftShift, Key::RightShift],
+        }
+    }
+}
+
+pub const BINDING_NAMES: [&str; 9] = ["Move up", "Move down", "Move left", "Move right", "Use tool", "Check / act", "Menu", "Journal", "Walk"];
+
+impl Bindings {
+    pub fn get_mut(&mut self, i: usize) -> &mut Vec<Key> {
+        match i {
+            0 => &mut self.up,
+            1 => &mut self.down,
+            2 => &mut self.left,
+            3 => &mut self.right,
+            4 => &mut self.use_tool,
+            5 => &mut self.action,
+            6 => &mut self.menu,
+            7 => &mut self.journal,
+            _ => &mut self.walk,
+        }
+    }
+    pub fn get(&self, i: usize) -> &Vec<Key> {
+        match i {
+            0 => &self.up,
+            1 => &self.down,
+            2 => &self.left,
+            3 => &self.right,
+            4 => &self.use_tool,
+            5 => &self.action,
+            6 => &self.menu,
+            7 => &self.journal,
+            _ => &self.walk,
+        }
+    }
+}
+
+thread_local! {
+    static BINDINGS: std::cell::RefCell<Bindings> = std::cell::RefCell::new(Bindings::default());
+}
+
+/// Install the active bindings (from the options).
+pub fn set_bindings(b: &Bindings) {
+    BINDINGS.with(|x| *x.borrow_mut() = b.clone());
+}
+
+fn held_any(i: &InputState, keys: &[Key]) -> bool {
+    keys.iter().any(|k| i.held(*k))
+}
+
+fn pressed_any(i: &InputState, keys: &[Key]) -> bool {
+    keys.iter().any(|k| i.pressed(*k))
+}
+
 pub fn menu_pressed(i: &InputState) -> bool {
-    i.pressed(Key::E) || i.pressed(Key::Escape) || i.pressed(Key::I)
+    i.pressed(Key::Escape) || BINDINGS.with(|b| pressed_any(i, &b.borrow().menu))
 }
 
 pub fn confirm_pressed(i: &InputState) -> bool {
-    i.pressed(Key::Enter) || i.pressed(Key::Space) || i.pressed(Key::X) || i.pressed(Key::C) || i.mouse_pressed(MouseButton::Left) || i.mouse_pressed(MouseButton::Right)
+    i.pressed(Key::Enter)
+        || i.pressed(Key::Space)
+        || BINDINGS.with(|b| pressed_any(i, &b.borrow().action) || pressed_any(i, &b.borrow().use_tool))
+        || i.mouse_pressed(MouseButton::Left)
+        || i.mouse_pressed(MouseButton::Right)
 }
 
 pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput {
+    let b = BINDINGS.with(|b| b.borrow().clone());
     let mut p = PlayerInput::default();
-    if i.held(Key::A) || i.held(Key::Left) {
+    if held_any(i, &b.left) {
         p.move_x -= 1;
     }
-    if i.held(Key::D) || i.held(Key::Right) {
+    if held_any(i, &b.right) {
         p.move_x += 1;
     }
-    if i.held(Key::W) || i.held(Key::Up) {
+    if held_any(i, &b.up) {
         p.move_y -= 1;
     }
-    if i.held(Key::S) || i.held(Key::Down) {
+    if held_any(i, &b.down) {
         p.move_y += 1;
     }
-    p.use_tool = i.pressed(Key::C) || i.mouse_pressed(MouseButton::Left);
-    p.use_held = i.held(Key::C) || i.mouse_held(MouseButton::Left);
-    p.action = i.pressed(Key::X) || i.mouse_pressed(MouseButton::Right);
+    p.use_tool = pressed_any(i, &b.use_tool) || i.mouse_pressed(MouseButton::Left);
+    p.use_held = held_any(i, &b.use_tool) || i.mouse_held(MouseButton::Left);
+    p.action = pressed_any(i, &b.action) || i.mouse_pressed(MouseButton::Right);
     // Mouse targets the clicked tile; keyboard uses the faced tile.
     if i.mouse_pressed(MouseButton::Left) || i.mouse_pressed(MouseButton::Right) {
         p.cursor_tile = cursor_tile;
     }
-    p.walk = i.held(Key::LeftShift) || i.held(Key::RightShift);
+    p.walk = held_any(i, &b.walk);
     for (n, k) in SLOT_KEYS.iter().enumerate() {
         if i.pressed(*k) {
             p.select_slot = Some(n);
@@ -53,5 +137,5 @@ pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput
 }
 
 pub fn journal_pressed(i: &InputState) -> bool {
-    i.pressed(Key::F)
+    BINDINGS.with(|b| pressed_any(i, &b.borrow().journal))
 }

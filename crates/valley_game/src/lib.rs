@@ -59,16 +59,28 @@ pub struct Options {
     pub zoom: f32,
     pub music_volume: f32,
     pub sound_volume: f32,
+    pub bindings: input_map::Bindings,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Self { zoom: 1.0, music_volume: 0.75, sound_volume: 1.0 }
+        Self { zoom: 1.0, music_volume: 0.75, sound_volume: 1.0, bindings: Default::default() }
     }
+}
+
+/// In-game console (F1).
+#[derive(Default)]
+struct Console {
+    line: String,
+    history: Vec<String>,
 }
 
 pub struct ValleyGame {
     pub options: Options,
+    console: Option<Console>,
+    debug_overlay: bool,
+    /// Binding row waiting for a key press.
+    rebinding: Option<usize>,
     placement: Option<Placement>,
     pub cm: ContentManager,
     pub world: Option<World>,
@@ -90,8 +102,13 @@ pub struct ValleyGame {
 impl ValleyGame {
     pub fn new(cm: ContentManager, save_dir: PathBuf) -> Self {
         let options = std::fs::read_to_string(save_dir.join("..").join("options.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let options: Options = options;
+        input_map::set_bindings(&options.bindings);
         Self {
             options,
+            console: None,
+            debug_overlay: false,
+            rebinding: None,
             placement: None,
             cm,
             world: None,
@@ -368,7 +385,50 @@ impl ValleyGame {
         }
     }
 
+    fn update_console(&mut self, ctx: &mut EngineCtx) -> bool {
+        if ctx.input.pressed(Key::F1) {
+            self.console = if self.console.is_some() { None } else { Some(Console::default()) };
+            return true;
+        }
+        if ctx.input.pressed(Key::F3) {
+            self.debug_overlay = !self.debug_overlay;
+        }
+        let Some(c) = self.console.as_mut() else { return false };
+        for ch in ctx.input.text.chars() {
+            if (ch.is_ascii_graphic() || ch == ' ') && c.line.len() < 80 {
+                c.line.push(ch);
+            }
+        }
+        if ctx.input.pressed(Key::Backspace) {
+            c.line.pop();
+        }
+        if ctx.input.pressed(Key::Escape) {
+            self.console = None;
+            return true;
+        }
+        if ctx.input.pressed(Key::Enter) {
+            let cmd = std::mem::take(&mut c.line);
+            let out = self.run_command(&cmd);
+            let c = self.console.as_mut().unwrap();
+            c.history.push(format!("> {cmd}"));
+            c.history.push(out);
+            if c.history.len() > 40 {
+                c.history.drain(..c.history.len() - 40);
+            }
+            self.handle_world_events(ctx);
+        }
+        // The console eats input; keep the world animating.
+        if let Some(w) = self.world.as_mut() {
+            w.paused = true;
+            w.update(&Default::default());
+        }
+        true
+    }
+
     fn update_playing(&mut self, ctx: &mut EngineCtx) {
+        if self.update_console(ctx) {
+            return;
+        }
         if self.placement.is_some() {
             self.update_placement(ctx);
             if let Some(w) = self.world.as_mut() {
@@ -705,7 +765,29 @@ impl ValleyGame {
                     }
                     InvTab::Options => {
                         let b = options_buttons(sw, sh);
+                        if let Some(row) = self.rebinding {
+                            let keys = ctx.input.pressed_keys();
+                            if let Some(&k) = keys.iter().find(|k| **k != Key::Escape) {
+                                let o = &mut self.options;
+                                let slot = o.bindings.get_mut(row);
+                                if !slot.contains(&k) {
+                                    slot.insert(0, k);
+                                    slot.truncate(2);
+                                }
+                                input_map::set_bindings(&o.bindings);
+                                self.rebinding = None;
+                                self.save_options();
+                                return;
+                            }
+                            if ctx.input.pressed(Key::Escape) {
+                                self.rebinding = None;
+                                return;
+                            }
+                        }
                         if ctx.input.mouse_pressed(MouseButton::Left) {
+                            if let Some(row) = binding_rects(sw, sh).iter().position(|r| r.contains(ctx.input.mouse)) {
+                                self.rebinding = Some(row);
+                            }
                             let adj = option_adjust_rects(sw, sh);
                             for (row, (minus, plus)) in adj.iter().enumerate() {
                                 let delta = if minus.contains(ctx.input.mouse) { -1.0 } else if plus.contains(ctx.input.mouse) { 1.0 } else { 0.0 };
@@ -1178,6 +1260,50 @@ impl ValleyGame {
             draw_menu(&mut rc, &mut ui, w, m, sw, sh);
             ui.depth += 0.1;
         }
+        if self.debug_overlay {
+            ui.depth = DEPTH_HUD + 5.0;
+            let z = self.options.zoom;
+            let loc = w.location();
+            let (x0, y0, x1, y1) = cam.tile_range(TILE_F, 0);
+            for y in y0.max(0)..=y1.min(loc.height() - 1) {
+                for x in x0.max(0)..=x1.min(loc.width() - 1) {
+                    let t = TilePos::new(x, y);
+                    let p = cam.to_screen(Vec2::new(x as f32 * TILE_F, y as f32 * TILE_F)) * z;
+                    let r = FRect::new(p.x + 1.0, p.y + 1.0, TILE_F * z - 2.0, TILE_F * z - 2.0);
+                    if !valley_sim::collision::tile_passable(loc, t) {
+                        ui.out.fill(r, Color::rgba(220, 40, 40, 60), ui.depth);
+                    }
+                    if loc.action_at(t).is_some() {
+                        ui.out.outline(r, 3.0, Color::rgba(250, 220, 60, 200), ui.depth + 0.001);
+                    }
+                }
+            }
+            for wp in &loc.warps {
+                let p = cam.to_screen(Vec2::new(wp.from.x as f32 * TILE_F, wp.from.y as f32 * TILE_F)) * z;
+                ui.out.fill(FRect::new(p.x, p.y, TILE_F * z, TILE_F * z), Color::rgba(60, 120, 250, 110), ui.depth + 0.001);
+            }
+            let ft = w.farmer.tile();
+            let tt = w.target_tile(self.cursor_tile);
+            let info = format!(
+                "{}  tile {},{}  target {},{}  {}  t{}  npcs {}  monsters {}  zoom {:.2}",
+                w.current, ft.x, ft.y, tt.x, tt.y, w.time_string(), w.clock.time, w.npcs_here().count(), w.monsters.iter().filter(|m| m.location == w.current).count(), z
+            );
+            let m = ui.measure(&info, 2.0);
+            ui.out.fill(FRect::new(8.0, sh - 220.0, m.x + 16.0, 30.0), Color::rgba(0, 0, 0, 170), ui.depth + 0.002);
+            ui.text(&info, Vec2::new(16.0, sh - 212.0), 2.0, ui::TEXT_LIGHT);
+        }
+        if let Some(c) = &self.console {
+            ui.depth = DEPTH_HUD + 6.0;
+            let lines = 12usize;
+            let h = 40.0 + lines as f32 * 22.0;
+            ui.out.fill(FRect::new(0.0, 0.0, sw, h), Color::rgba(10, 10, 20, 220), ui.depth);
+            let start = c.history.len().saturating_sub(lines);
+            for (i, l) in c.history[start..].iter().enumerate() {
+                ui.text(l, Vec2::new(12.0, 8.0 + i as f32 * 22.0), 2.0, Color::rgb(200, 230, 200));
+            }
+            let caret = if (ctx.tick / 30) % 2 == 0 { "_" } else { " " };
+            ui.text(&format!("] {}{caret}", c.line), Vec2::new(12.0, h - 28.0), 2.0, Color::rgb(255, 255, 160));
+        }
     }
 }
 
@@ -1346,6 +1472,12 @@ fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
 fn options_buttons(sw: f32, sh: f32) -> [FRect; 2] {
     let f = menu_frame(sw, sh);
     [FRect::new(f.x + 80.0, f.y + 40.0, 360.0, 64.0), FRect::new(f.x + 80.0, f.y + 120.0, 360.0, 64.0)]
+}
+
+/// Rows of the key binding list in the options tab.
+fn binding_rects(sw: f32, sh: f32) -> Vec<FRect> {
+    let f = menu_frame(sw, sh);
+    (0..input_map::BINDING_NAMES.len()).map(|i| FRect::new(f.x + 48.0 + (i / 5) as f32 * 430.0, f.y + 260.0 + (i % 5) as f32 * 52.0, 410.0, 44.0)).collect()
 }
 
 /// (minus, plus) buttons for zoom, music and sound rows.
@@ -1552,8 +1684,14 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                         let m = ui.measure(label, 2.0);
                         ui.text(label, Vec2::new(minus.x + minus.w + (plus.x - minus.x - minus.w - m.x) / 2.0, minus.y + 20.0), 2.0, ui::TEXT);
                     }
-                    ui.text("Controls: WASD move, C/left click use tool, X/right click act,", Vec2::new(f.x + 48.0, f.y + 320.0), 2.0, ui::TEXT);
-                    ui.text("1-0,-,= toolbar, E/Esc menu, Shift walk, Ctrl+Tab switch game.", Vec2::new(f.x + 48.0, f.y + 348.0), 2.0, ui::TEXT);
+                    ui.text("Key bindings (click a row, then press a key):", Vec2::new(f.x + 48.0, f.y + 226.0), 2.0, ui::TEXT);
+                    let (binds, waiting) = binds_snapshot();
+                    for (i, r) in binding_rects(sw, sh).iter().enumerate() {
+                        ui.slot(*r, waiting == Some(i));
+                        let keys = if waiting == Some(i) { "press a key...".to_string() } else { binds.get(i).map(|k| k.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>().join(" / ")).unwrap_or_default() };
+                        ui.text(&format!("{}: {keys}", input_map::BINDING_NAMES[i]), Vec2::new(r.x + 12.0, r.y + 14.0), 2.0, ui::TEXT);
+                    }
+                    ui.text("Mouse: left = use, right = act. F1 console, F3 debug, Ctrl+Tab switch game.", Vec2::new(f.x + 48.0, f.y + f.h - 36.0), 2.0, ui::TEXT);
                 }
             }
         }
@@ -1942,6 +2080,11 @@ fn draw_recipe_tooltip(rc: &mut RenderCtx, ui: &mut Ui, w: &World, r: &valley_si
 thread_local! {
     static MOUSE: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((0.0, 0.0)) };
     static OPTS: std::cell::Cell<(f32, f32, f32)> = const { std::cell::Cell::new((1.0, 0.75, 1.0)) };
+    static BINDS: std::cell::RefCell<(Vec<Vec<Key>>, Option<usize>)> = const { std::cell::RefCell::new((Vec::new(), None)) };
+}
+
+fn binds_snapshot() -> (Vec<Vec<Key>>, Option<usize>) {
+    BINDS.with(|b| b.borrow().clone())
 }
 
 /// (zoom, music, sound) for drawing the options tab.
@@ -2018,6 +2161,7 @@ impl GameModule for ValleyGame {
     fn update(&mut self, ctx: &mut EngineCtx) {
         MOUSE.with(|m| m.set((ctx.input.mouse.x, ctx.input.mouse.y)));
         OPTS.with(|o| o.set((self.options.zoom, self.options.music_volume, self.options.sound_volume)));
+        BINDS.with(|b| *b.borrow_mut() = ((0..input_map::BINDING_NAMES.len()).map(|i| self.options.bindings.get(i).clone()).collect(), self.rebinding));
         self.fade.alpha += (self.fade.target - self.fade.alpha).clamp(-0.05, 0.05);
         if self.fade.target >= 1.0 && self.fade.alpha >= 1.0 {
             self.fade.target = 0.0;

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::math::Vec2;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum Key {
     W, A, S, D, E, F, I, M, J, Q, R, T, X, C, Y, N, P, Tab,
     Up, Down, Left, Right,
@@ -75,6 +75,13 @@ impl InputState {
     pub fn mouse_released(&self, b: MouseButton) -> bool {
         self.mouse_released.contains(&b)
     }
+    /// Keys pressed this tick (for "press a key" prompts).
+    pub fn pressed_keys(&self) -> Vec<Key> {
+        let mut v: Vec<Key> = self.pressed.iter().copied().collect();
+        v.sort();
+        v
+    }
+
     pub fn any_pressed(&self) -> bool {
         !self.pressed.is_empty() || !self.mouse_pressed.is_empty()
     }
