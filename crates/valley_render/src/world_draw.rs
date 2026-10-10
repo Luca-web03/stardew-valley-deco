@@ -1,0 +1,325 @@
+use engine::{Color, DrawList, FRect, IRect, Sprite, TextureStore, Vec2};
+use valley_content::ContentManager;
+use valley_sim::item::{Item, ToolKind};
+use valley_sim::location::{seasonal_image, GameLocation};
+use valley_sim::objects::ObjKind;
+use valley_sim::terrain::TerrainFeature;
+use valley_sim::world::World;
+use valley_sim::{Dir, TilePos, TILE, TILE_F, ZOOM};
+
+use crate::assets::Assets;
+use crate::camera::Camera;
+use crate::*;
+
+/// Frame layout for 16x32 character sheets: rows down, right, up, left;
+/// four walk frames per row.
+pub fn character_src(facing: Dir, frame: i32) -> IRect {
+    let row = match facing {
+        Dir::Down => 0,
+        Dir::Right => 1,
+        Dir::Up => 2,
+        Dir::Left => 3,
+    };
+    IRect::new((frame % 4) * 16, row * 32, 16, 32)
+}
+
+fn walk_frame(moving: bool, walk_ms: u32, frame_ms: u32) -> i32 {
+    if moving {
+        ((walk_ms / frame_ms) % 4) as i32
+    } else {
+        0
+    }
+}
+
+pub struct RenderCtx<'a> {
+    pub cm: &'a mut ContentManager,
+    pub textures: &'a mut TextureStore,
+    pub assets: &'a mut Assets,
+}
+
+fn sort_depth(world_y: f32, map_h_px: f32) -> f32 {
+    let t = (world_y / map_h_px.max(1.0)).clamp(0.0, 1.0);
+    DEPTH_SORT_MIN + t * (DEPTH_SORT_MAX - DEPTH_SORT_MIN - 0.001)
+}
+
+/// Draw one map layer.
+fn draw_layer(rc: &mut RenderCtx, out: &mut DrawList, cam: &Camera, loc: &GameLocation, layer: &str, depth: f32, season: &str, ms: u64) {
+    let Some(l) = loc.map.layer(layer) else { return };
+    if !l.visible {
+        return;
+    }
+    let sheet_tex: Vec<_> = loc
+        .map
+        .sheets
+        .iter()
+        .map(|s| {
+            let img = if loc.outdoors { seasonal_image(&s.image, season) } else { s.image.clone() };
+            rc.assets.map_sheet(rc.cm, rc.textures, &img)
+        })
+        .collect();
+    let (x0, y0, x1, y1) = cam.tile_range(TILE_F, 1);
+    for y in y0.max(0)..=y1.min(l.height - 1) {
+        for x in x0.max(0)..=x1.min(l.width - 1) {
+            let Some(t) = l.get(x, y) else { continue };
+            let (si, idx) = t.frame_at(ms);
+            let Some(sheet) = loc.map.sheets.get(si as usize) else { continue };
+            let (sx, sy, sw, sh) = sheet.src(idx);
+            let p = cam.to_screen(Vec2::new((x * TILE) as f32, (y * TILE) as f32));
+            // Slight per-row offset keeps rows ordered within a layer.
+            out.draw(sheet_tex[si as usize], IRect::new(sx, sy, sw, sh), p, ZOOM, depth + y as f32 * 1e-6);
+        }
+    }
+}
+
+pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera) {
+    let loc = w.location();
+    let season = w.clock.season.key();
+    let ms = w.game_ms;
+    let map_h = (loc.height() * TILE) as f32;
+
+    draw_layer(rc, out, cam, loc, "Back", DEPTH_BACK, season, ms);
+    draw_layer(rc, out, cam, loc, "Buildings", DEPTH_BUILDINGS, season, ms);
+
+    // Tilled soil.
+    let dirt_tex = rc.assets.tex(rc.cm, rc.textures, "TerrainFeatures/hoeDirt");
+    let crops_tex = rc.assets.tex(rc.cm, rc.textures, "TileSheets/crops");
+    for (p, t) in &loc.state.terrain {
+        let TerrainFeature::HoeDirt(d) = t else { continue };
+        let is_dirt = |q: TilePos| matches!(loc.terrain(q), Some(TerrainFeature::HoeDirt(_)));
+        let mut mask = 0;
+        if is_dirt(p.offset(Dir::Up)) {
+            mask |= 1;
+        }
+        if is_dirt(p.offset(Dir::Right)) {
+            mask |= 2;
+        }
+        if is_dirt(p.offset(Dir::Down)) {
+            mask |= 4;
+        }
+        if is_dirt(p.offset(Dir::Left)) {
+            mask |= 8;
+        }
+        let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        let src = IRect::new((mask % 4) * 16, (mask / 4) * 16, 16, 16);
+        out.draw(dirt_tex, src, pos, ZOOM, DEPTH_GROUND);
+        if d.watered {
+            out.draw(dirt_tex, IRect::new(64 + src.x, src.y, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.001);
+        }
+        if let Some(c) = &d.crop {
+            let Some(data) = w.items.crops.get(&c.seed_id) else { continue };
+            let frame = c.sprite_frame(data);
+            let tex = if data.texture.is_empty() { crops_tex } else { rc.assets.tex(rc.cm, rc.textures, &data.texture) };
+            let src = IRect::new((data.sprite_index % 2) * 128 + frame * 16, (data.sprite_index / 2) * 32, 16, 32);
+            let mut s = Sprite::new(
+                tex,
+                src,
+                FRect::new(pos.x, pos.y - TILE_F, TILE_F, TILE_F * 2.0),
+                sort_depth((p.y * TILE + TILE - 8) as f32, map_h),
+            );
+            s.flip_x = c.flip;
+            if c.dead {
+                s.tint = Color::rgb(150, 120, 80);
+            }
+            out.sprite(s);
+        }
+    }
+
+    // Placed objects (debris, forage).
+    let shake_off = |shake: i32| if shake > 0 { ((shake as f32) * 1.3).sin() * 3.0 } else { 0.0 };
+    for (p, o) in &loc.state.objects {
+        let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        let (tex, src) = object_sprite(rc, w, &o.item_id);
+        let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y, TILE_F, TILE_F), sort_depth((p.y * TILE + TILE - 4) as f32, map_h));
+        s.flip_x = o.flip;
+        out.sprite(s);
+        if matches!(o.kind, ObjKind::Forage) {
+            continue;
+        }
+    }
+
+    // Trees.
+    for (p, t) in &loc.state.terrain {
+        let TerrainFeature::Tree(tree) = t else { continue };
+        let tex = tree_texture(rc, &tree.kind, season);
+        let base = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        let depth = sort_depth((p.y * TILE + TILE - 2) as f32, map_h);
+        let shadow = rc.assets.shadow(rc.textures);
+        out.draw_tinted(shadow, IRect::new(0, 0, 16, 6), Vec2::new(base.x, base.y + TILE_F - 20.0), ZOOM, Color::WHITE, depth - 0.0005);
+        if tree.stump || tree.falling > 0 {
+            out.draw(tex, IRect::new(0, 48, 16, 16), base, ZOOM, depth);
+            if tree.falling > 0 {
+                // Canopy tipping over.
+                let mut s = Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x - TILE_F, base.y - TILE_F * 5.0, TILE_F * 3.0, TILE_F * 6.0), depth + 0.0001);
+                s.origin = Vec2::new(TILE_F * 1.5, TILE_F * 6.0);
+                let dir = if tree.flip { -1.0 } else { 1.0 };
+                s.rotation = dir * (tree.falling as f32 / 60.0).powi(2) * std::f32::consts::FRAC_PI_2;
+                s.tint = Color::WHITE.with_alpha(1.0 - tree.falling as f32 / 70.0);
+                out.sprite(s);
+            }
+        } else if tree.mature() {
+            let shake = shake_off(tree.shake);
+            let mut s = Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x - TILE_F + shake, base.y - TILE_F * 5.0, TILE_F * 3.0, TILE_F * 6.0), depth);
+            s.flip_x = tree.flip;
+            out.sprite(s);
+        } else {
+            // Saplings: scaled-down canopy.
+            let scale = 0.25 + tree.stage as f32 * 0.15;
+            let w_px = TILE_F * 3.0 * scale;
+            let h_px = TILE_F * 6.0 * scale;
+            out.sprite(Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x + TILE_F / 2.0 - w_px / 2.0, base.y + TILE_F - h_px, w_px, h_px), depth));
+        }
+    }
+
+    // NPCs.
+    let shadow = rc.assets.shadow(rc.textures);
+    for npc in w.npcs_here() {
+        let tex = rc.assets.tex(rc.cm, rc.textures, &npc.texture);
+        let frame = walk_frame(npc.moving, npc.walk_ms, 200);
+        let p = cam.to_screen(npc.pos);
+        let depth = sort_depth(npc.pos.y + TILE_F, map_h);
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
+        out.draw(tex, character_src(npc.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+    }
+
+    // Farmer.
+    draw_farmer(rc, out, w, cam, map_h);
+
+    // Dropped items.
+    for d in &w.dropped {
+        if d.location != w.current {
+            continue;
+        }
+        let (tex, src) = item_sprite(rc, w, &d.item);
+        let bob = ((w.game_ms as f32 / 300.0) + d.pos.x).sin() * 2.0;
+        let p = cam.to_screen(d.pos);
+        let size = TILE_F * 0.75;
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x - 20.0, p.y + 8.0), 2.5, sort_depth(d.pos.y, map_h));
+        out.sprite(Sprite::new(tex, src, FRect::new(p.x - size / 2.0, p.y - size / 2.0 - d.z * 4.0 + bob - 8.0, size, size), sort_depth(d.pos.y + 1.0, map_h)));
+    }
+
+    draw_layer(rc, out, cam, loc, "Front", DEPTH_FRONT, season, ms);
+    draw_layer(rc, out, cam, loc, "AlwaysFront", DEPTH_ALWAYS_FRONT, season, ms);
+
+    draw_lighting(rc, out, w, cam);
+}
+
+fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
+    let f = &w.farmer;
+    let tex = rc.assets.tex(rc.cm, rc.textures, "Characters/Farmer/dev_farmer");
+    let shadow = rc.assets.shadow(rc.textures);
+    let p = cam.to_screen(f.pos);
+    let depth = sort_depth(f.pos.y + TILE_F, map_h);
+    let mut frame = walk_frame(f.moving, f.walk_ms, 120);
+    if let Some(u) = &f.tool_use {
+        frame = if u.elapsed_ms < 150 { 1 } else { 3 };
+    }
+    out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
+    out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+
+    // Tool swing.
+    if let Some(u) = &f.tool_use {
+        let item = f.inventory.get(u.slot);
+        if let Some(item) = item {
+            let (ttex, src) = item_sprite(rc, w, item);
+            let t = (u.elapsed_ms as f32 / valley_sim::farmer::TOOL_TOTAL_MS as f32).clamp(0.0, 1.0);
+            let hand = Vec2::new(p.x + TILE_F / 2.0, p.y + 8.0);
+            let (start, end, behind) = match f.facing {
+                Dir::Right => (-1.6f32, 0.6f32, false),
+                Dir::Left => (1.6f32, -0.6f32, false),
+                Dir::Up => (-0.6f32, 0.6f32, true),
+                Dir::Down => (-0.9f32, 0.9f32, false),
+            };
+            let ang = if u.kind == ToolKind::WateringCan { 0.4 * (1.0 - t) } else { start + (end - start) * t.min(0.6) / 0.6 };
+            let mut s = Sprite::new(ttex, src, FRect::new(hand.x - TILE_F / 2.0, hand.y - TILE_F, TILE_F, TILE_F), if behind { depth - 0.0002 } else { depth + 0.0002 });
+            s.origin = Vec2::new(TILE_F / 2.0, TILE_F);
+            s.rotation = ang;
+            s.flip_x = f.facing == Dir::Left;
+            if u.kind == ToolKind::WateringCan {
+                let (dx, _) = f.facing.delta();
+                s.dst.x += dx as f32 * 24.0;
+            }
+            out.sprite(s);
+            if u.kind == ToolKind::WateringCan && u.applied {
+                let white = rc.assets.white(rc.textures);
+                let tp = cam.to_screen(Vec2::new((u.target.x * TILE) as f32, (u.target.y * TILE) as f32));
+                for i in 0..6 {
+                    let fx = tp.x + 12.0 + (i * 9 % 40) as f32;
+                    let fy = tp.y + 10.0 + ((u.elapsed_ms as i32 / 20 + i * 7) % 40) as f32;
+                    out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(fx, fy), 4.0, Color::rgba(140, 190, 255, 200), depth + 0.0003);
+                }
+            }
+        }
+    }
+}
+
+/// Darken outdoors at night and during rain; draw rain streaks.
+fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera) {
+    let loc = w.location();
+    let full = FRect::new(0.0, 0.0, cam.screen_w, cam.screen_h);
+    let time = w.clock.time;
+    // Approximate seasonal dusk.
+    let dusk = match w.clock.season {
+        valley_sim::time::Season::Winter => 1700,
+        valley_sim::time::Season::Fall => 1800,
+        _ => 1900,
+    };
+    let mut darkness = 0.0f32;
+    if loc.outdoors && time >= dusk {
+        let mins = valley_sim::time::Clock::minutes_between(dusk, time) as f32;
+        let total = valley_sim::time::Clock::minutes_between(dusk, 2400) as f32;
+        darkness = (mins / total).clamp(0.0, 1.0) * 0.75;
+    }
+    if loc.outdoors && w.weather.is_raining() {
+        darkness = darkness.max(0.25);
+    }
+    if darkness > 0.0 {
+        out.fill(full, Color::rgba(10, 10, 60, (darkness * 255.0) as u8), DEPTH_OVERLAY);
+    }
+    if loc.outdoors && w.weather.is_raining() {
+        let white = rc.assets.white(rc.textures);
+        let t = w.game_ms as f32;
+        for i in 0..90 {
+            let seed = (i * 7919) as f32;
+            let x = (seed * 13.37 + t * 0.6).rem_euclid(cam.screen_w + 40.0) - 20.0;
+            let y = (seed * 3.1 + t * 1.4).rem_euclid(cam.screen_h + 40.0) - 20.0;
+            let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(x, y, 2.0, 18.0), DEPTH_OVERLAY + 0.001);
+            s.tint = Color::rgba(170, 190, 255, 150);
+            s.rotation = 0.3;
+            out.sprite(s);
+        }
+    }
+}
+
+fn tree_texture(rc: &mut RenderCtx, kind: &str, season: &str) -> engine::TexId {
+    let _ = kind;
+    rc.assets.tex(rc.cm, rc.textures, &format!("TerrainFeatures/dev_tree_{season}"))
+}
+
+/// Texture + source rect of an object id's icon.
+pub fn object_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId, IRect) {
+    let (tex_name, idx) = match w.items.object(id) {
+        Some(o) => (o.texture(), o.data.sprite_index),
+        None => ("Maps/springobjects".to_string(), 0),
+    };
+    let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+    let (tw, _) = rc.textures.size(tex);
+    let cols = (tw / 16).max(1) as i32;
+    (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+}
+
+/// Texture + source rect of any item's 16x16 icon.
+pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId, IRect) {
+    match item {
+        Item::Object { id, .. } => object_sprite(rc, w, id),
+        Item::Tool(t) => {
+            let (tex_name, idx) = match w.items.tools.get(t.kind.data_key()) {
+                Some(d) => (if d.texture.is_empty() { "TileSheets/tools".to_string() } else { d.texture.replace('\\', "/") }, d.menu_sprite_index),
+                None => ("TileSheets/tools".to_string(), 0),
+            };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let (tw, _) = rc.textures.size(tex);
+            let cols = (tw / 16).max(1) as i32;
+            (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
+    }
+}

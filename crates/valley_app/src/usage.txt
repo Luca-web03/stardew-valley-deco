@@ -1,0 +1,19 @@
+valley - clean-room farming game engine
+
+Options:
+  --content <dir>     Unpacked game Content folder (or env VALLEY_CONTENT).
+                      Without it, the built-in placeholder content is used.
+  --saves <dir>       Save folder (default: ~/.local/share/valley-rs/saves).
+  --new <name>        Skip the title screen and start a new game.
+  --seed <n>          World seed for new games.
+  --size WxH          Logical screen size (default 1280x720).
+  --headless          Run without a window (uses the software renderer).
+  --script "<steps>"  Headless input script, steps separated by spaces:
+                        wait:N          advance N ticks (60 per second)
+                        hold:KEY:N      hold KEY for N ticks
+                        tap:KEY         press KEY for one tick
+                        click:X:Y       left click at screen X,Y
+                        rclick:X:Y      right click at screen X,Y
+                        type:TEXT       type text (use _ for spaces)
+                        shot:FILE.png   save a screenshot now
+  --screenshot <png>  Save a screenshot after the script finishes.

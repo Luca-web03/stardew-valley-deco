@@ -1,8 +1,12 @@
 [package]
 name = "valley_render"
+description = "Draws the simulation (maps, characters, crops, UI primitives) into engine draw lists."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [dependencies]
+engine.workspace = true
+valley_content.workspace = true
+valley_sim.workspace = true

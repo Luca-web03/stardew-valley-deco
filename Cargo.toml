@@ -5,6 +5,7 @@ members = [
     "crates/valley_content",
     "crates/valley_sim",
     "crates/valley_render",
+    "crates/valley_game",
     "crates/valley_app",
 ]
 
@@ -19,6 +20,7 @@ engine = { path = "crates/engine" }
 valley_content = { path = "crates/valley_content" }
 valley_sim = { path = "crates/valley_sim" }
 valley_render = { path = "crates/valley_render" }
+valley_game = { path = "crates/valley_game" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 png = "0.17"

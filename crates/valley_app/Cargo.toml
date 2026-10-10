@@ -1,8 +1,18 @@
 [package]
 name = "valley_app"
+description = "Desktop window (macroquad) and headless runner for the engine and its game modules."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "valley"
+path = "src/main.rs"
+
 [dependencies]
+engine.workspace = true
+valley_content.workspace = true
+valley_game.workspace = true
+valley_sim.workspace = true
+macroquad.workspace = true
