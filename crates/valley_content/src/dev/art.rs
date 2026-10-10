@@ -322,6 +322,9 @@ pub const ICON_GOO: i32 = 31;
 pub const ICON_DUST: i32 = 32;
 pub const ICON_SALAD: i32 = 33;
 pub const ICON_STEW: i32 = 34;
+pub const ICON_EGG: i32 = 35;
+pub const ICON_MILK: i32 = 36;
+pub const ICON_HAY: i32 = 37;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -514,6 +517,29 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_EGG, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 4.0, 5.5, Color::rgb(240, 225, 200));
+        c.px(6, 6, Color::WHITE);
+        c.px(9, 11, Color::rgb(200, 170, 140));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_MILK, OBJ_COLS, 16, 16);
+        c.rect(5, 3, 6, 2, Color::rgb(170, 120, 80));
+        c.rect(4, 5, 8, 10, Color::rgb(245, 245, 245));
+        c.rect(4, 9, 8, 2, Color::rgb(120, 170, 220));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_HAY, OBJ_COLS, 16, 16);
+        c.rect(2, 6, 12, 8, Color::rgb(220, 190, 90));
+        for x in (3..14).step_by(3) {
+            c.rect(x, 6, 1, 8, Color::rgb(190, 160, 70));
+        }
+        c.rect(2, 9, 12, 1, Color::rgb(150, 100, 50));
+        c.auto_outline(OUTLINE);
+    }
+    {
         let mut c = Cell::at(&mut img, ICON_SALAD, OBJ_COLS, 16, 16);
         c.ellipse(8.0, 11.0, 6.5, 3.5, Color::rgb(235, 235, 240));
         c.ellipse(8.0, 9.0, 5.0, 2.5, Color::rgb(90, 180, 70));
@@ -691,6 +717,15 @@ pub fn tools() -> Image {
             c.rect(2 + i, 14 - i, 1, 1, handle);
         }
         c.rect(14, 2, 1, 12, Color::rgb(220, 220, 220));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 6, 8, 16, 16);
+        c.rect(4, 6, 8, 9, Color::rgb(180, 185, 195));
+        c.rect(3, 5, 10, 2, Color::rgb(150, 155, 165));
+        c.rect(4, 2, 1, 4, Color::rgb(120, 120, 130));
+        c.rect(11, 2, 1, 4, Color::rgb(120, 120, 130));
+        c.rect(4, 2, 8, 1, Color::rgb(120, 120, 130));
         c.auto_outline(OUTLINE);
     }
     img
@@ -922,6 +957,105 @@ pub fn weapons() -> Image {
     c.rect(3, 10, 5, 2, Color::rgb(120, 80, 40));
     c.rect(4, 9, 2, 5, Color::rgb(120, 80, 40));
     c.rect(2, 13, 2, 2, Color::rgb(150, 100, 50));
+    c.auto_outline(OUTLINE);
+    img
+}
+
+/// Speckled hen: 4x4 frames of 16x16 (rows down, right, up, left). Original design.
+pub fn hen() -> Image {
+    let mut img = Image::new(64, 64);
+    let body = Color::rgb(235, 225, 205);
+    let speck = Color::rgb(150, 110, 80);
+    for row in 0..4 {
+        for f in 0..4 {
+            let mut c = Cell { ox: f * 16, oy: row * 16, w: 16, h: 16, img: &mut img };
+            let bob = if f % 2 == 1 { 1 } else { 0 };
+            c.ellipse(8.0, 10.0 + bob as f32, 5.0, 4.0, body);
+            let (hx, hy) = match row {
+                1 => (12, 5),
+                3 => (4, 5),
+                _ => (8, 5),
+            };
+            c.ellipse(hx as f32, hy as f32 + bob as f32, 2.5, 2.5, body);
+            c.px(hx, hy - 2 + bob, Color::rgb(210, 60, 50));
+            if row != 2 {
+                let bx = match row {
+                    1 => hx + 2,
+                    3 => hx - 2,
+                    _ => hx,
+                };
+                c.px(bx, hy + 1 + bob, Color::rgb(240, 170, 50));
+            }
+            for (x, y) in [(6, 9), (9, 11), (10, 8), (7, 12)] {
+                c.px(x, y + bob, speck);
+            }
+            c.rect(6, 14, 1, 2, Color::rgb(240, 170, 50));
+            c.rect(9, 14 - (f % 2), 1, 2, Color::rgb(240, 170, 50));
+            c.auto_outline(OUTLINE);
+        }
+    }
+    img
+}
+
+/// Goat: 4x4 frames of 32x32 (rows down, right, up, left). Original design.
+pub fn goat() -> Image {
+    let mut img = Image::new(128, 128);
+    let fur = Color::rgb(205, 195, 175);
+    let dark = Color::rgb(120, 100, 80);
+    for row in 0..4 {
+        for f in 0..4 {
+            let mut c = Cell { ox: f * 32, oy: row * 32, w: 32, h: 32, img: &mut img };
+            let step = if f % 2 == 1 { 1 } else { 0 };
+            let side = row == 1 || row == 3;
+            if side {
+                c.ellipse(16.0, 18.0, 10.0, 6.0, fur);
+                let hx = if row == 1 { 26 } else { 6 };
+                c.ellipse(hx as f32, 12.0, 4.0, 4.0, fur);
+                c.rect(hx - 1, 6, 1, 3, dark);
+                c.rect(hx + 1, 6, 1, 3, dark);
+                c.px(if row == 1 { hx + 2 } else { hx - 2 }, 12, OUTLINE);
+                for (lx, off) in [(9, step), (13, 0), (19, step), (23, 0)] {
+                    c.rect(lx, 23, 2, 6 - off, dark);
+                }
+            } else {
+                c.ellipse(16.0, 19.0, 7.0, 8.0, fur);
+                c.ellipse(16.0, 9.0, 5.0, 5.0, fur);
+                c.rect(12, 3, 1, 4, dark);
+                c.rect(19, 3, 1, 4, dark);
+                if row == 0 {
+                    c.px(14, 9, OUTLINE);
+                    c.px(18, 9, OUTLINE);
+                    c.rect(15, 13, 3, 3, Color::rgb(230, 225, 215));
+                }
+                c.rect(12, 25, 2, 5 - step, dark);
+                c.rect(18, 25, 2, 5, dark);
+            }
+            c.auto_outline(OUTLINE);
+        }
+    }
+    img
+}
+
+/// A small shed exterior (width x height tiles of 16px) with a door.
+pub fn shed(w: i32, h: i32, wall: Color, roof: Color) -> Image {
+    let mut img = Image::new((w * 16) as u32, (h * 16) as u32);
+    let (pw, ph) = (w * 16, h * 16);
+    let mut c = Cell { ox: 0, oy: 0, w: pw, h: ph, img: &mut img };
+    let roof_h = ph / 2;
+    for y in 0..roof_h {
+        let inset = (roof_h - y) / 3;
+        c.rect(inset, y, pw - inset * 2, 1, if y % 4 == 0 { shade(roof, -30) } else { roof });
+    }
+    c.rect(2, roof_h, pw - 4, ph - roof_h, wall);
+    for x in (2..pw - 2).step_by(6) {
+        c.rect(x, roof_h, 1, ph - roof_h, shade(wall, -25));
+    }
+    // Door at the bottom middle tile.
+    let dx = (w / 2) * 16 + 3;
+    c.rect(dx, ph - 14, 10, 14, Color::rgb(90, 60, 40));
+    c.px(dx + 8, ph - 7, Color::YELLOW);
+    // Small animal hatch on the left.
+    c.rect(6, ph - 9, 8, 9, Color::rgb(60, 40, 30));
     c.auto_outline(OUTLINE);
     img
 }

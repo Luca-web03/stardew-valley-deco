@@ -435,3 +435,115 @@ impl Default for WeaponData {
         }
     }
 }
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingMaterial {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub amount: i32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingData {
+    pub name: String,
+    pub description: String,
+    pub texture: String,
+    pub size: Point,
+    pub source_rect: Option<Rect>,
+    pub build_cost: i32,
+    pub build_materials: Vec<BuildingMaterial>,
+    pub build_days: i32,
+    pub builder: Option<String>,
+    pub human_door: Point,
+    pub animal_door: Option<Rect>,
+    pub indoor_map: Option<String>,
+    pub max_occupants: i32,
+    pub valid_occupant_types: Vec<String>,
+    pub build_condition: Option<String>,
+}
+
+impl Default for BuildingData {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            description: String::new(),
+            texture: String::new(),
+            size: Point { x: 1, y: 1 },
+            source_rect: None,
+            build_cost: 0,
+            build_materials: vec![],
+            build_days: 0,
+            builder: Some("Robin".into()),
+            human_door: Point { x: -1, y: -1 },
+            animal_door: None,
+            indoor_map: None,
+            max_occupants: 0,
+            valid_occupant_types: vec![],
+            build_condition: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct AnimalProduce {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub minimum_friendship: i32,
+    pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct FarmAnimalData {
+    pub display_name: String,
+    pub house: String,
+    pub purchase_price: i32,
+    pub sell_price: i32,
+    pub texture: String,
+    pub baby_texture: Option<String>,
+    pub sprite_width: i32,
+    pub sprite_height: i32,
+    pub days_to_mature: i32,
+    pub days_to_produce: i32,
+    pub produce_item_ids: Vec<AnimalProduce>,
+    pub deluxe_produce_item_ids: Vec<AnimalProduce>,
+    pub harvest_type: String,
+    pub harvest_tool: Option<String>,
+    pub sound: Option<String>,
+    pub can_get_pregnant: bool,
+}
+
+impl Default for FarmAnimalData {
+    fn default() -> Self {
+        Self {
+            display_name: String::new(),
+            house: "Coop".into(),
+            purchase_price: -1,
+            sell_price: 0,
+            texture: String::new(),
+            baby_texture: None,
+            sprite_width: 16,
+            sprite_height: 16,
+            days_to_mature: 1,
+            days_to_produce: 1,
+            produce_item_ids: vec![],
+            deluxe_produce_item_ids: vec![],
+            harvest_type: "DropOvernight".into(),
+            harvest_tool: None,
+            sound: None,
+            can_get_pregnant: false,
+        }
+    }
+}

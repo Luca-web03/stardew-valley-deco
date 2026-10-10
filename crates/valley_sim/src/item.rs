@@ -70,6 +70,8 @@ pub enum ToolKind {
     Pickaxe,
     Scythe,
     FishingRod,
+    MilkPail,
+    Shears,
 }
 
 impl ToolKind {
@@ -81,6 +83,8 @@ impl ToolKind {
             ToolKind::Pickaxe => "Pickaxe",
             ToolKind::Scythe => "Scythe",
             ToolKind::FishingRod => "FishingRod",
+            ToolKind::MilkPail => "MilkPail",
+            ToolKind::Shears => "Shears",
         }
     }
     pub fn from_key(s: &str) -> Option<ToolKind> {
@@ -91,6 +95,8 @@ impl ToolKind {
             "Pickaxe" => ToolKind::Pickaxe,
             "Scythe" => ToolKind::Scythe,
             "FishingRod" => ToolKind::FishingRod,
+            "MilkPail" | "Milk Pail" => ToolKind::MilkPail,
+            "Shears" => ToolKind::Shears,
             _ => return None,
         })
     }

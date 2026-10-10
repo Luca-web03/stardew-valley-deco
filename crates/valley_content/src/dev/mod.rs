@@ -32,6 +32,10 @@ pub fn build() -> MemSource {
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
+    m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
+    m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
+    m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
+    m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
     let farmer = art::Look {
         skin: Color::rgb(236, 190, 150),
@@ -102,6 +106,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_IronNode": obj("Stone", "Litter", 0, 0, ICON_IRON_NODE, -300),
         "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
+        "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
+        "Dev_Milk": obj("Goat Milk", "Basic", -6, 120, ICON_MILK, 15),
+        "Dev_Hay": obj("Hay", "Basic", 0, 25, ICON_HAY, -300),
         "Dev_Salad": {
             "Name": "Garden Salad", "DisplayName": "Garden Salad", "Description": "Crunchy and light. Makes you a little quicker.",
             "Type": "Cooking", "Category": -7, "Price": 90, "SpriteIndex": ICON_SALAD, "Edibility": 30,
@@ -173,6 +180,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Coal_Name": "Coal", "Coal_Description": "Burns hot.",
         "MudGoo_Name": "Mud Goo", "MudGoo_Description": "Left behind by a mud blob.",
         "WingDust_Name": "Wing Dust", "WingDust_Description": "Shimmering scales from a cave moth.",
+        "Egg_Name": "Egg", "Egg_Description": "Fresh from the henhouse.",
+        "GoatMilk_Name": "Goat Milk", "GoatMilk_Description": "Rich and creamy.",
+        "Hay_Name": "Hay", "Hay_Description": "Dried grass for animal feed.",
         "Driftwood_Name": "Driftwood", "Driftwood_Description": "Soggy and useless.",
         "WildBerry_Name": "Wild Berry", "WildBerry_Description": "Found growing wild.",
         "Weeds_Name": "Weeds", "Weeds_Description": "", "Twig_Name": "Twig", "Twig_Description": ""
@@ -199,8 +209,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Pickaxe": tool("Pickaxe", "Pickaxe", 3, 0),
         "Scythe": tool("MeleeWeapon", "Scythe", 4, 0),
         "FishingRod": tool("FishingRod", "Fishing Rod", 5, 0),
+        "MilkPail": tool("MilkPail", "Milk Pail", 6, 0),
     });
     let shops = json!({
+        "AnimalShop": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "hay", "ItemId": "(O)Dev_Hay", "Price": 50 },
+                { "Id": "pail", "ItemId": "(T)MilkPail", "Price": 500 }
+            ]
+        },
         "SeedShop": {
             "Owners": [{ "Name": "Tobin" }],
             "Items": [
@@ -298,6 +316,36 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Quests", json!({
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
             "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
+        })),
+        ("Data/Buildings", json!({
+            "Coop": {
+                "Name": "Henhouse", "Description": "Houses up to four hens.", "Texture": "Buildings\\Dev_Coop",
+                "Size": { "X": 4, "Y": 3 }, "BuildCost": 1000, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 100 }, { "ItemId": "(O)390", "Amount": 50 }],
+                "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
+                "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"]
+            },
+            "Barn": {
+                "Name": "Goat Barn", "Description": "Houses up to four goats.", "Texture": "Buildings\\Dev_Barn",
+                "Size": { "X": 6, "Y": 4 }, "BuildCost": 2500, "BuildDays": 2,
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 150 }, { "ItemId": "(O)390", "Amount": 100 }],
+                "HumanDoor": { "X": 3, "Y": 3 }, "AnimalDoor": { "X": 0, "Y": 3, "Width": 1, "Height": 1 },
+                "IndoorMap": "Barn", "MaxOccupants": 4, "ValidOccupantTypes": ["Barn"]
+            }
+        })),
+        ("Data/FarmAnimals", json!({
+            "Dev_Hen": {
+                "DisplayName": "Speckled Hen", "House": "Coop", "PurchasePrice": 400, "SellPrice": 200,
+                "Texture": "Animals\\Dev_Hen", "SpriteWidth": 16, "SpriteHeight": 16,
+                "DaysToMature": 2, "DaysToProduce": 1, "HarvestType": "DropOvernight",
+                "ProduceItemIds": [{ "ItemId": "(O)Dev_Egg" }], "Sound": "cluck"
+            },
+            "Dev_Goat": {
+                "DisplayName": "Goat", "House": "Barn", "PurchasePrice": 1200, "SellPrice": 600,
+                "Texture": "Animals\\Dev_Goat", "SpriteWidth": 32, "SpriteHeight": 32,
+                "DaysToMature": 3, "DaysToProduce": 2, "HarvestType": "HarvestWithTool", "HarvestTool": "Milk Pail",
+                "ProduceItemIds": [{ "ItemId": "(O)Dev_Milk" }], "Sound": "goat"
+            }
         })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",

@@ -70,6 +70,8 @@ pub struct GameLocation {
     pub outdoors: bool,
     pub is_farm: bool,
     pub display_name: String,
+    /// Tiles blocked at runtime (building footprints).
+    pub blocked: std::collections::HashSet<TilePos>,
 }
 
 impl GameLocation {
@@ -87,6 +89,7 @@ impl GameLocation {
             warps,
             outdoors,
             display_name: name.to_string(),
+            blocked: Default::default(),
         }
     }
 
@@ -146,7 +149,8 @@ impl GameLocation {
 
     /// Free for placing something (no object, terrain feature, building tile, water).
     pub fn is_clear(&self, p: TilePos) -> bool {
-        self.in_bounds(p)
+        !self.blocked.contains(&p)
+            && self.in_bounds(p)
             && self.has_tile("Back", p)
             && !self.has_tile("Buildings", p)
             && !self.is_water(p)

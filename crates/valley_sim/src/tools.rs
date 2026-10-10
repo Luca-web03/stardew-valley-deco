@@ -25,6 +25,7 @@ pub fn governing_skill(kind: ToolKind) -> Skill {
         ToolKind::Pickaxe => Skill::Mining,
         ToolKind::Scythe => Skill::Combat,
         ToolKind::FishingRod => Skill::Fishing,
+        ToolKind::MilkPail | ToolKind::Shears => Skill::Farming,
     }
 }
 
@@ -110,6 +111,7 @@ impl World {
                 }
             }
             ToolKind::FishingRod => {}
+            ToolKind::MilkPail | ToolKind::Shears => self.use_animal_tool(kind, t),
         }
     }
 

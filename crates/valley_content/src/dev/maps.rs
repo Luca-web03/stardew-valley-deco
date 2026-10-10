@@ -212,6 +212,8 @@ pub fn town() -> Map {
     b.house(9, 2, 6, "Warp 0 0 Town");
     b.set_props("Buildings", 18, 11, SIGN, &[("Action", "Message \"Welcome to town!\"")]);
     b.set_props("Buildings", 20, 11, SIGN, &[("Action", "Billboard")]);
+    b.set_props("Buildings", 30, 14, SIGN, &[("Action", "AnimalShop")]);
+    b.set_props("Buildings", 32, 14, SIGN, &[("Action", "Carpenter")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }
@@ -274,6 +276,31 @@ pub fn seed_shop() -> Map {
     b.map
 }
 
+/// Animal house interior with a trough row along the top.
+pub fn animal_house(id: &str, w: i32, h: i32) -> Map {
+    let mut b = B::new(id, w, h, indoor_sheet());
+    b.fill("Back", 0, 0, w, h, VOID);
+    b.fill("Back", 1, 2, w - 2, h - 3, MAT);
+    for x in 0..w {
+        b.set("Buildings", x, 0, IWALL_TOP);
+        b.set("Buildings", x, 1, IWALL);
+        if x != w / 2 {
+            b.set("Buildings", x, h - 1, IWALL_TOP);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, IWALL_TOP);
+        b.set("Buildings", w - 1, y, IWALL_TOP);
+    }
+    for x in 2..w - 2 {
+        b.set_props("Back", x, 2, RUG, &[("Trough", "T")]);
+    }
+    b.set("Back", w / 2, h - 1, MAT);
+    // Exit warp; the engine retargets it to the building door at runtime.
+    b.prop("Warp", &format!("{} {} Farm 0 0", w / 2, h - 1));
+    b.map
+}
+
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance()]
+    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10)]
 }

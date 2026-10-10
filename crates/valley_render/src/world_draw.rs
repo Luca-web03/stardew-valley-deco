@@ -72,7 +72,13 @@ fn draw_layer(rc: &mut RenderCtx, out: &mut DrawList, cam: &Camera, loc: &GameLo
 }
 
 pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera) {
-    let loc = w.location();
+    draw_location_view(rc, out, w, &w.current, cam);
+}
+
+/// Draw any location (the farmer only appears in the current one).
+pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc_name: &str, cam: &Camera) {
+    let Some(loc) = w.locations.get(loc_name) else { return };
+    let is_current = loc_name == w.current;
     let season = w.clock.season.key();
     let ms = w.game_ms;
     let map_h = (loc.height() * TILE) as f32;
@@ -193,9 +199,56 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
         }
     }
 
+    // Farm buildings.
+    if loc_name == "Farm" {
+        for b in &w.buildings {
+            let Some(data) = w.buildings_data.get(&b.kind) else { continue };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &data.texture.replace('\\', "/"));
+            let (tw, th) = rc.textures.size(tex);
+            let src = data.source_rect.as_ref().map(|r| IRect::new(r.x, r.y, r.width, r.height)).unwrap_or(IRect::new(0, 0, tw as i32, th as i32));
+            let bottom = ((b.tile.y + b.size.1) * TILE) as f32;
+            let left = (b.tile.x * TILE) as f32;
+            let p = cam.to_screen(Vec2::new(left, bottom - src.h as f32 * ZOOM));
+            let mut s = Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), sort_depth(bottom - 1.0, map_h));
+            if b.days_left > 0 {
+                s.tint = Color::rgba(200, 200, 200, 140);
+            }
+            out.sprite(s);
+        }
+    }
+
+    // Farm animals.
+    for a in w.animals.iter().filter(|a| a.location == loc_name) {
+        let Some(data) = w.animals_data.get(&a.kind) else { continue };
+        let baby = a.is_baby(data);
+        let tex_name = if baby { data.baby_texture.clone().unwrap_or_else(|| data.texture.clone()) } else { data.texture.clone() };
+        let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name.replace('\\', "/"));
+        let (sw_, sh_) = (data.sprite_width.max(16), data.sprite_height.max(16));
+        let frame = if a.moving { ((a.walk_ms / 200) % 4) as i32 } else { 0 };
+        let row = match a.facing {
+            Dir::Down => 0,
+            Dir::Right => 1,
+            Dir::Up => 2,
+            Dir::Left => 3,
+        };
+        let src = IRect::new(frame * sw_, row * sh_, sw_, sh_);
+        let scale = if baby { ZOOM * 0.75 } else { ZOOM };
+        let (dw, dh) = (sw_ as f32 * scale, sh_ as f32 * scale);
+        let p = cam.to_screen(a.pos);
+        let depth = sort_depth(a.pos.y + TILE_F, map_h);
+        let shadow = rc.assets.shadow(rc.textures);
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x + TILE_F / 2.0 - dw / 2.0, p.y + TILE_F - 12.0), dw / 16.0, depth - 0.0005);
+        out.sprite(Sprite::new(tex, src, FRect::new(p.x + TILE_F / 2.0 - dw / 2.0, p.y + TILE_F - dh, dw, dh), depth));
+        if a.emote_ms > 0 {
+            if let Some(ft) = rc.textures.id("__engine/font8x8") {
+                out.draw_tinted(ft, IRect::new((3 % 16) * 8, 0, 8, 8), Vec2::new(p.x + 20.0, p.y + TILE_F - dh - 30.0), 3.0, Color::rgb(240, 60, 90), DEPTH_OVERLAY + 0.01);
+            }
+        }
+    }
+
     // NPCs.
     let shadow = rc.assets.shadow(rc.textures);
-    for npc in w.npcs_here() {
+    for npc in w.npcs.iter().filter(|n| n.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &npc.texture);
         let frame = walk_frame(npc.moving, npc.walk_ms, 200);
         let p = cam.to_screen(npc.pos);
@@ -205,7 +258,7 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
     }
 
     // Monsters.
-    for m in w.monsters.iter().filter(|m| m.location == w.current) {
+    for m in w.monsters.iter().filter(|m| m.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &format!("Characters/Monsters/{}", m.info.name));
         let (tw, th) = rc.textures.size(tex);
         let fh = if th % 24 == 0 && th >= 24 { 24 } else { 16 };
@@ -235,11 +288,13 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
     }
 
     // Farmer.
-    draw_farmer(rc, out, w, cam, map_h);
+    if is_current {
+        draw_farmer(rc, out, w, cam, map_h);
+    }
 
     // Floating damage numbers.
     if let Some(ft) = rc.textures.id("__engine/font8x8") {
-        for f in w.floaters.iter().filter(|f| f.location == w.current) {
+        for f in w.floaters.iter().filter(|f| f.location == loc_name) {
             let p = cam.to_screen(f.pos);
             let alpha = (f.ms as f32 / 300.0).min(1.0);
             for (i, ch) in f.text.chars().enumerate() {
@@ -254,7 +309,7 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
 
     // Dropped items.
     for d in &w.dropped {
-        if d.location != w.current {
+        if d.location != loc_name {
             continue;
         }
         let (tex, src) = item_sprite(rc, w, &d.item);
@@ -265,12 +320,14 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
         out.sprite(Sprite::new(tex, src, FRect::new(p.x - size / 2.0, p.y - size / 2.0 - d.z * 4.0 + bob - 8.0, size, size), sort_depth(d.pos.y + 1.0, map_h)));
     }
 
-    draw_fishing_world(rc, out, w, cam, map_h);
+    if is_current {
+        draw_fishing_world(rc, out, w, cam, map_h);
+    }
 
     draw_layer(rc, out, cam, loc, "Front", DEPTH_FRONT, season, ms);
     draw_layer(rc, out, cam, loc, "AlwaysFront", DEPTH_ALWAYS_FRONT, season, ms);
 
-    draw_lighting(rc, out, w, cam);
+    draw_lighting(rc, out, w, loc, cam);
 }
 
 fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
@@ -348,8 +405,7 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
 }
 
 /// Darken outdoors at night and during rain; draw rain streaks.
-fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera) {
-    let loc = w.location();
+fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLocation, cam: &Camera) {
     let full = FRect::new(0.0, 0.0, cam.screen_w, cam.screen_h);
     let time = w.clock.time;
     // Approximate seasonal dusk.

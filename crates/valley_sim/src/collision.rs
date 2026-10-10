@@ -10,7 +10,7 @@ pub fn tile_passable(loc: &GameLocation, p: TilePos) -> bool {
     if !loc.in_bounds(p) {
         return false;
     }
-    if !loc.has_tile("Back", p) {
+    if !loc.has_tile("Back", p) || loc.blocked.contains(&p) {
         return false;
     }
     if let Some(v) = loc.tile_prop("Back", p, "Passable") {

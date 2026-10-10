@@ -26,6 +26,10 @@ pub struct SaveData {
     pub farmer: Farmer,
     pub locations: BTreeMap<String, LocationState>,
     pub shipping_bin: Vec<Item>,
+    #[serde(default)]
+    pub buildings: Vec<crate::farm::Building>,
+    #[serde(default)]
+    pub animals: Vec<crate::farm::FarmAnimal>,
 }
 
 impl SaveData {
@@ -41,6 +45,8 @@ impl SaveData {
             farmer: w.farmer.clone(),
             locations: w.locations.iter().map(|(k, v)| (k.clone(), v.state.clone())).collect(),
             shipping_bin: w.shipping_bin.clone(),
+            buildings: w.buildings.clone(),
+            animals: w.animals.clone(),
         }
     }
 
@@ -61,6 +67,17 @@ impl SaveData {
         w.weather_tomorrow = self.weather_tomorrow;
         w.daily_luck = self.daily_luck;
         w.farmer = self.farmer;
+        // Recreate building interiors before restoring location states.
+        w.buildings = self.buildings;
+        w.next_building_id = w.buildings.iter().map(|b| b.id).max().unwrap_or(0);
+        for b in w.buildings.clone() {
+            if b.days_left == 0 {
+                w.finish_building(b.id);
+            }
+        }
+        w.rebuild_location_edges();
+        w.animals = self.animals;
+        w.next_animal_id = w.animals.iter().map(|a| a.id).max().unwrap_or(0);
         for (name, state) in self.locations {
             if let Some(loc) = w.locations.get_mut(&name) {
                 loc.state = state;

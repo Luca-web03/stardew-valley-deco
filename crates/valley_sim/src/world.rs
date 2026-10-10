@@ -61,6 +61,10 @@ pub enum WorldEvent {
     Letter { id: String, letter: crate::mail::Letter },
     QuestCompleted(String),
     NewQuest(String),
+    /// (animal kind, price)
+    OpenAnimalShop(Vec<(String, i32)>),
+    /// Building kinds available to construct.
+    OpenCarpenter(Vec<String>),
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -141,6 +145,15 @@ pub struct World {
     pub quest_data: HashMap<String, String>,
     /// Today's help-wanted request (if any, not yet accepted).
     pub daily_quest: Option<crate::quests::Quest>,
+    pub buildings_data: BTreeMap<String, valley_content::data::BuildingData>,
+    pub animals_data: BTreeMap<String, valley_content::data::FarmAnimalData>,
+    pub building_maps: crate::farm::BuildingMaps,
+    pub buildings: Vec<crate::farm::Building>,
+    pub animals: Vec<crate::farm::FarmAnimal>,
+    pub next_building_id: u32,
+    pub next_animal_id: u32,
+    /// Item id of hay (well-known id or placeholder).
+    pub hay_id: Option<String>,
 }
 
 impl World {
@@ -219,7 +232,22 @@ impl World {
             mail_data: cm.load_string_dict("Data/mail"),
             quest_data: cm.load_string_dict("Data/Quests"),
             daily_quest: None,
+            buildings_data: cm.load_dict("Data/Buildings"),
+            animals_data: cm.load_dict("Data/FarmAnimals"),
+            building_maps: Default::default(),
+            buildings: Vec::new(),
+            animals: Vec::new(),
+            next_building_id: 0,
+            next_animal_id: 0,
+            hay_id: None,
         };
+        let interior_maps: Vec<String> = w.buildings_data.values().filter_map(|b| b.indoor_map.clone()).collect();
+        for m in interior_maps {
+            if let Some(map) = cm.load_map(&format!("Maps/{m}")) {
+                w.building_maps.insert(m, map);
+            }
+        }
+        w.hay_id = ["178", "Dev_Hay"].iter().find(|id| w.items.objects.contains_key(**id)).map(|s| s.to_string());
         w.mine_items = crate::mines::MineItems::resolve(&w.items);
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
@@ -297,6 +325,21 @@ impl World {
             .and_then(|d| d.default_arrival_tile.as_ref())
             .map(|t| TilePos::new(t.x, t.y))
             .unwrap_or(TilePos::new(3, 3))
+    }
+
+    /// Recompute the warp graph and runtime blocked tiles (after buildings change).
+    pub(crate) fn rebuild_location_edges(&mut self) {
+        let tiles: std::collections::HashSet<TilePos> = self.buildings.iter().flat_map(|b| b.footprint().collect::<Vec<_>>()).collect();
+        if let Some(farm) = self.locations.get_mut("Farm") {
+            farm.blocked = tiles;
+        }
+        self.build_location_edges();
+        // Building doors connect the farm and interiors for NPC routing.
+        for b in self.buildings.clone() {
+            if let Some(i) = &b.interior {
+                self.location_edges.entry("Farm".into()).or_default().push(i.clone());
+            }
+        }
     }
 
     fn build_location_edges(&mut self) {
@@ -405,6 +448,7 @@ impl World {
         self.spawn_forage();
         self.deliver_dated_mail();
         self.roll_daily_quest();
+        self.animals_morning();
         for loc in self.locations.values_mut() {
             if loc.outdoors && raining {
                 for t in loc.state.terrain.values_mut() {
@@ -525,6 +569,7 @@ impl World {
                 loc.state.terrain.remove(&p);
             }
         }
+        self.animals_overnight();
         self.spawn_daily_debris();
         self.leave_mines();
         self.dropped.clear();
@@ -605,6 +650,7 @@ impl World {
         self.update_farmer(input, dt);
         self.update_npcs(dt);
         self.update_monsters(dt);
+        self.update_animals(dt);
         self.update_dropped(dt);
     }
 
@@ -868,6 +914,17 @@ impl World {
             return true;
         }
 
+        // Farm animals and buildings.
+        if self.pet_animal(target) {
+            return true;
+        }
+        if self.interact_building(target) {
+            return true;
+        }
+        if self.place_hay(target) {
+            return true;
+        }
+
         // Harvest / forage.
         if self.try_harvest(target) {
             return true;
@@ -985,6 +1042,16 @@ impl World {
             }
             "kitchen" | "Kitchen" => {
                 self.emit(WorldEvent::OpenCooking);
+                true
+            }
+            "AnimalShop" => {
+                let list: Vec<(String, i32)> = self.animals_data.iter().filter(|(_, d)| d.purchase_price >= 0).map(|(k, d)| (k.clone(), d.purchase_price)).collect();
+                self.emit(WorldEvent::OpenAnimalShop(list));
+                true
+            }
+            "Carpenter" => {
+                let list: Vec<String> = self.buildings_data.keys().cloned().collect();
+                self.emit(WorldEvent::OpenCarpenter(list));
                 true
             }
             "Billboard" => {

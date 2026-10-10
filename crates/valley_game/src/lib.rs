@@ -44,7 +44,14 @@ struct Fade {
     target: f32,
 }
 
+/// Building placement mode (free camera over the farm).
+struct Placement {
+    kind: String,
+    cam: Vec2,
+}
+
 pub struct ValleyGame {
+    placement: Option<Placement>,
     pub cm: ContentManager,
     pub world: Option<World>,
     assets: Assets,
@@ -63,6 +70,7 @@ pub struct ValleyGame {
 impl ValleyGame {
     pub fn new(cm: ContentManager, save_dir: PathBuf) -> Self {
         Self {
+            placement: None,
             cm,
             world: None,
             assets: Assets::new(),
@@ -246,7 +254,54 @@ impl ValleyGame {
         }
     }
 
+    fn update_placement(&mut self, ctx: &mut EngineCtx) {
+        let Some(p) = self.placement.as_mut() else { return };
+        let speed = 12.0;
+        let i = &ctx.input;
+        if i.held(Key::A) || i.held(Key::Left) {
+            p.cam.x -= speed;
+        }
+        if i.held(Key::D) || i.held(Key::Right) {
+            p.cam.x += speed;
+        }
+        if i.held(Key::W) || i.held(Key::Up) {
+            p.cam.y -= speed;
+        }
+        if i.held(Key::S) || i.held(Key::Down) {
+            p.cam.y += speed;
+        }
+        if i.pressed(Key::Escape) || i.mouse_pressed(MouseButton::Right) {
+            self.placement = None;
+            return;
+        }
+        if i.mouse_pressed(MouseButton::Left) {
+            let world_pos = p.cam + ctx.input.mouse;
+            let tile = TilePos::from_world(world_pos);
+            let kind = p.kind.clone();
+            if let Some(w) = self.world.as_mut() {
+                let size = w.buildings_data.get(&kind).map(|d| (d.size.x.max(1), d.size.y.max(1))).unwrap_or((1, 1));
+                let origin = TilePos::new(tile.x - size.0 / 2, tile.y - size.1 / 2);
+                match w.place_building(&kind, origin) {
+                    Ok(()) => {
+                        self.placement = None;
+                        self.toast("Construction started!");
+                    }
+                    Err(e) => self.toast(e),
+                }
+            }
+        }
+    }
+
     fn update_playing(&mut self, ctx: &mut EngineCtx) {
+        if self.placement.is_some() {
+            self.update_placement(ctx);
+            if let Some(w) = self.world.as_mut() {
+                w.paused = true;
+                w.update(&Default::default());
+            }
+            self.handle_world_events(ctx);
+            return;
+        }
         let cam = self.camera(ctx);
         self.cursor_tile = cam.map(|c| TilePos::from_world(c.to_world(ctx.input.mouse)));
 
@@ -318,6 +373,8 @@ impl ValleyGame {
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
+                WorldEvent::OpenAnimalShop(list) => self.menus.push(Menu::AnimalShop { list, hovered: None }),
+                WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::Letter { letter, .. } => self.menus.push(Menu::Letter { letter, shown: 0.0 }),
                 WorldEvent::QuestCompleted(t) => self.toast(format!("Quest complete: {t}")),
@@ -585,6 +642,46 @@ impl ValleyGame {
                     }
                 }
             }
+            Menu::AnimalShop { list, hovered } => {
+                let rows = shop_rows(sw, sh);
+                *hovered = rows.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < list.len());
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        let kind = list[i].0.clone();
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            let r = g.world.as_mut().map(|w| w.buy_animal(&kind, None));
+                            match r {
+                                Some(Ok(())) => g.toast(format!("A new {kind} moved in!")),
+                                Some(Err(e)) => g.toast(e),
+                                None => {}
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::Carpenter { list, hovered } => {
+                let rows = shop_rows(sw, sh);
+                *hovered = rows.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < list.len());
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        let kind = list[i].clone();
+                        close = true;
+                        action = Some(Box::new(move |g: &mut ValleyGame, ctx: &mut EngineCtx| {
+                            let Some(w) = g.world.as_ref() else { return };
+                            let farm = &w.locations["Farm"];
+                            let center = Vec2::new(farm.width() as f32 * TILE_F / 2.0, farm.height() as f32 * TILE_F / 2.0);
+                            let cam = center - Vec2::new(ctx.screen_w as f32 / 2.0, ctx.screen_h as f32 / 2.0);
+                            g.placement = Some(Placement { kind, cam });
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
             Menu::Billboard => {
                 let accept = billboard_accept_rect(sw, sh);
                 if ctx.input.mouse_pressed(MouseButton::Left) && accept.contains(ctx.input.mouse) {
@@ -707,7 +804,40 @@ impl ValleyGame {
         ui.text_centered("Tab: next field   Enter: start   Esc: back", sw / 2.0, sh / 2.0 + 220.0, 2.0, ui::TEXT);
     }
 
+    fn draw_placement(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
+        let (sw, sh) = (ctx.screen_w as f32, ctx.screen_h as f32);
+        out.clear(Color::BLACK);
+        let (Some(p), Some(w)) = (self.placement.as_ref(), self.world.as_ref()) else { return };
+        let cam = Camera { pos: p.cam, screen_w: sw, screen_h: sh };
+        let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
+        valley_render::world_draw::draw_location_view(&mut rc, out, w, "Farm", &cam);
+        let tile = TilePos::from_world(p.cam + ctx.input.mouse);
+        let size = w.buildings_data.get(&p.kind).map(|d| (d.size.x.max(1), d.size.y.max(1))).unwrap_or((1, 1));
+        let origin = TilePos::new(tile.x - size.0 / 2, tile.y - size.1 / 2);
+        let farm = &w.locations["Farm"];
+        for dy in 0..size.1 {
+            for dx in 0..size.0 {
+                let t = TilePos::new(origin.x + dx, origin.y + dy);
+                let ok = farm.is_clear(t) && valley_sim::collision::tile_passable(farm, t) && !(w.current == "Farm" && w.farmer.tile() == t);
+                let sp = cam.to_screen(Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F));
+                let c = if ok { Color::rgba(80, 220, 80, 110) } else { Color::rgba(230, 60, 60, 130) };
+                out.fill(FRect::new(sp.x + 2.0, sp.y + 2.0, TILE_F - 4.0, TILE_F - 4.0), c, valley_render::DEPTH_OVERLAY + 0.01);
+            }
+        }
+        let font = self.font.as_ref().unwrap();
+        let white = rc.assets.white(rc.textures);
+        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let name = w.buildings_data.get(&p.kind).map(|d| d.name.clone()).unwrap_or_default();
+        let r = FRect::new(16.0, 16.0, 720.0, 72.0);
+        ui.panel(r);
+        ui.text(&format!("Place: {name}   (WASD: move view, click: build, Esc: cancel)"), Vec2::new(r.x + 20.0, r.y + 28.0), 2.0, ui::TEXT);
+    }
+
     fn draw_playing(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
+        if self.placement.is_some() {
+            self.draw_placement(ctx, out);
+            return;
+        }
         let (sw, sh) = (ctx.screen_w as f32, ctx.screen_h as f32);
         out.clear(Color::BLACK);
         let Some(cam) = self.camera(ctx) else { return };
@@ -1144,6 +1274,51 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
             if let Some(title) = &letter.title {
                 ui.text(title, Vec2::new(r.x + 40.0, r.y + r.h - 34.0), 2.0, Color::rgb(140, 100, 60));
+            }
+        }
+        Menu::AnimalShop { list, hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Livestock", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            for (i, (r, (kind, price))) in shop_rows(sw, sh).iter().zip(list).enumerate() {
+                ui.slot(*r, *hovered == Some(i));
+                let data = w.animals_data.get(kind);
+                if let Some(d) = data {
+                    if let Some(tex) = rc.assets.try_tex(rc.cm, rc.textures, &d.texture.replace('\\', "/")) {
+                        ui.icon(tex, IRect::new(0, 0, d.sprite_width.max(16), d.sprite_height.max(16)), FRect::new(r.x + 8.0, r.y + 4.0, 68.0, 68.0));
+                    }
+                }
+                let name = data.map(|d| d.display_name.clone()).filter(|n| !n.is_empty()).unwrap_or_else(|| kind.clone());
+                let house = data.map(|d| d.house.clone()).unwrap_or_default();
+                ui.text(&name, Vec2::new(r.x + 96.0, r.y + 14.0), 3.0, ui::TEXT);
+                ui.text(&format!("Lives in: {house}"), Vec2::new(r.x + 96.0, r.y + 46.0), 2.0, ui::TEXT);
+                let ps = format!("{price}g");
+                let m = ui.measure(&ps, 3.0);
+                ui.text(&ps, Vec2::new(r.x + r.w - m.x - 24.0, r.y + 26.0), 3.0, if *price > w.farmer.money { Color::RED } else { ui::TEXT });
+            }
+            ui.text(&format!("Money: {}g", w.farmer.money), Vec2::new(f.x + 32.0, f.y + f.h - 50.0), 2.0, ui::TEXT);
+        }
+        Menu::Carpenter { list, hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Construction", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            for (i, (r, kind)) in shop_rows(sw, sh).iter().zip(list).enumerate() {
+                ui.slot(*r, *hovered == Some(i));
+                let Some(d) = w.buildings_data.get(kind) else { continue };
+                if let Some(tex) = rc.assets.try_tex(rc.cm, rc.textures, &d.texture.replace('\\', "/")) {
+                    let (tw, th) = rc.textures.size(tex);
+                    let src = d.source_rect.as_ref().map(|s| IRect::new(s.x, s.y, s.width, s.height)).unwrap_or(IRect::new(0, 0, tw as i32, th as i32));
+                    ui.icon(tex, src, FRect::new(r.x + 8.0, r.y + 4.0, 68.0, 68.0));
+                }
+                ui.text(&d.name, Vec2::new(r.x + 96.0, r.y + 10.0), 3.0, ui::TEXT);
+                let mats: Vec<String> = d.build_materials.iter().map(|m| {
+                    let (_, id) = valley_sim::item::split_qualified(&m.item_id);
+                    format!("{} x{}", w.items.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| id.to_string()), m.amount)
+                }).collect();
+                ui.text(&format!("{}  {}", mats.join(", "), if d.build_days > 0 { format!("({} days)", d.build_days) } else { String::new() }), Vec2::new(r.x + 96.0, r.y + 46.0), 2.0, ui::TEXT);
+                let ps = format!("{}g", d.build_cost);
+                let m = ui.measure(&ps, 3.0);
+                ui.text(&ps, Vec2::new(r.x + r.w - m.x - 24.0, r.y + 26.0), 3.0, if d.build_cost > w.farmer.money { Color::RED } else { ui::TEXT });
             }
         }
         Menu::Billboard => {
