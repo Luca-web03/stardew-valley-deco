@@ -187,6 +187,8 @@ pub struct World {
     /// The spouse will ask about a baby when next spoken to.
     pub child_question_pending: bool,
     pub fish_pond_data: Vec<crate::fish_ponds::FishPondData>,
+    /// Data/SecretNotes (id -> text).
+    pub secret_notes: BTreeMap<String, String>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -325,6 +327,7 @@ impl World {
             order_offers: Vec::new(),
             child_question_pending: false,
             fish_pond_data: cm.load_json("Data/FishPondData").unwrap_or_default(),
+            secret_notes: cm.load_string_dict("Data/SecretNotes").into_iter().collect(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -1273,9 +1276,9 @@ impl World {
 
         // Planting / fertilizing / placing / eating with the held item.
         let slot = self.farmer.current_slot;
-        // Warp items act before placement (they can be "crafting" objects).
+        // Warp items and note scraps act before placement.
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
-            if self.use_warp_totem(slot, &id) {
+            if self.use_warp_totem(slot, &id) || self.read_note_scrap(slot, &id) {
                 return true;
             }
         }

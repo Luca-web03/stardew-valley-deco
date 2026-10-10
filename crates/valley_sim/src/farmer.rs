@@ -214,6 +214,9 @@ pub struct Farmer {
     /// Kitchen fridge storage (cooking draws ingredients from it too).
     #[serde(default = "fridge_inventory")]
     pub fridge: Inventory,
+    /// Secret notes already read (ids).
+    #[serde(default)]
+    pub notes_read: Vec<String>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -311,6 +314,7 @@ impl Farmer {
             orders_completed: Vec::new(),
             children: Vec::new(),
             fridge: fridge_inventory(),
+            notes_read: Vec::new(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),

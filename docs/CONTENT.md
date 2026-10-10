@@ -86,6 +86,7 @@ Other conventions:
 | Clothing: `Data/Hats` (slash format), `Data/Shirts` / `Data/Pants` (`DefaultColor` tints the generated farmer), qualified ids `(H)`, `(S)`, `(P)` | `valley_sim::item::ClothingInfo` |
 | Warp items: `Port.WarpTo` custom field ("<location> [x y]") on an object, or well-known totem ids (destination = the location's `DefaultArrivalTile`, approx.) | `valley_sim::world::World::warp_totem_target` |
 | Buildings: `DefaultAction` runs as a tile action on non-door tiles; `ObeliskWarp <location> <x> <y>` teleports | `valley_sim::farm`, `World::teleport` |
+| Secret notes: `Data/SecretNotes`; note scraps are object `79` or the placeholder `Dev_NoteScrap`, found while digging artifact spots and searching trash cans (approx. chance) | `valley_sim::secret_notes` |
 
 ## Mods
 

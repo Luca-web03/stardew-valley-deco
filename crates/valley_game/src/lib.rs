@@ -1801,7 +1801,8 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     let shipped: i32 = w.farmer.shipped.values().sum();
                     let fish: i32 = w.farmer.fish_caught.values().map(|v| v.0).sum();
                     let cooked: i32 = w.farmer.cooking_recipes.values().sum();
-                    ui.text(&format!("Shipped: {shipped}   Fish caught: {fish}   Dishes cooked: {cooked}   Monsters: {}", w.monsters_killed), Vec2::new(f.x + 40.0, f.y + f.h - 48.0), 2.0, ui::TEXT);
+                    let notes = if w.secret_notes.is_empty() { String::new() } else { format!("   Notes: {}/{}", w.farmer.notes_read.len(), w.secret_notes.len()) };
+                    ui.text(&format!("Shipped: {shipped}   Fish caught: {fish}   Dishes cooked: {cooked}   Monsters: {}{notes}", w.monsters_killed), Vec2::new(f.x + 40.0, f.y + f.h - 48.0), 2.0, ui::TEXT);
                 }
                 InvTab::Skills => {
                     use valley_sim::farmer::Skill;

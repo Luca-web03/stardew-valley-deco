@@ -116,7 +116,7 @@ impl World {
     }
 
     /// Dig an artifact spot with the hoe.
-    pub(crate) fn dig_artifact_spot(&mut self, t: TilePos) -> bool {
+    pub fn dig_artifact_spot(&mut self, t: TilePos) -> bool {
         let Some(PlacedObject { kind: ObjKind::ArtifactSpot, .. }) = self.location().object(t) else { return false };
         self.location_mut().state.objects.remove(&t);
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, t.x as i64, t.y as i64, 3]));
@@ -135,6 +135,7 @@ impl World {
         if !got {
             self.spawn_drop(Item::object(&self.mine_items.stone.clone(), 1), t.world_center());
         }
+        self.maybe_drop_note(&mut rng, t.world_center());
         self.sound("hoeHit");
         true
     }

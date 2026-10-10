@@ -121,6 +121,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "SpriteIndex": ICON_GUARD_RING, "CustomFields": { "Port.Defense": "2" } },
         "Dev_MagnetRing": { "Name": "Magnet Ring", "DisplayName": "Magnet Ring", "Description": "Pulls items from further away.", "Type": "Ring", "Category": -96, "Price": 400,
                             "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
+        "Dev_NoteScrap": { "Name": "Note Scrap", "DisplayName": "Note Scrap", "Description": "A torn page with writing on it. Read it to see what it says.", "Type": "Basic", "Category": 0, "Price": 1,
+                           "SpriteIndex": ICON_NOTE_SCRAP },
         "Dev_HomingStone": { "Name": "Homing Stone", "DisplayName": "Homing Stone", "Description": "Squeeze it to return to your farm in a flash.", "Type": "Crafting", "Category": -8, "Price": 20,
                              "SpriteIndex": ICON_HOMING_STONE, "CustomFields": { "Port.WarpTo": "Farm" } },
         "Dev_DuneCharm": { "Name": "Dune Charm", "DisplayName": "Dune Charm", "Description": "Smells faintly of hot sand. Takes you to the dunes.", "Type": "Crafting", "Category": -8, "Price": 40,
@@ -495,6 +497,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Quests", json!({
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
             "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
+        })),
+        ("Data/SecretNotes", json!({
+            "1": "Day 3. The well behind the store hums at night. Nobody else seems to hear it.",
+            "2": "If you're reading this: the third boulder in the dunes is hollow.^Bring a pick.",
+            "3": "Recipe for courage: one warm meal, one good friend, and an early start."
         })),
         ("Data/Hats", json!({
             "Dev_StrawHat": "Straw Hat/Woven for long days in the sun./true/false//Straw Hat/0/Characters\\Farmer\\Dev_Hats",

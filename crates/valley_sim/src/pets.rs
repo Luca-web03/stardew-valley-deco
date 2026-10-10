@@ -211,6 +211,8 @@ impl World {
         let entry = data.garbage_cans.get(can).cloned().unwrap_or_default();
         let chance = entry.base_chance.or(data.default_chance_to_find_item).unwrap_or(0.2);
         let pool: Vec<GarbageItem> = data.before_all.iter().cloned().chain(entry.items.iter().cloned()).chain(data.after_all.iter().cloned()).collect();
+        let me = self.farmer.center();
+        self.maybe_drop_note(&mut rng, me);
         if pool.is_empty() || !rng.chance(chance) {
             self.hud("Nothing but trash.");
             return true;

@@ -45,7 +45,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,
-      collections, achievements (engine-defined milestones)
+      collections, achievements (engine-defined milestones), secret notes
 - [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
       trash cans (Data/GarbageCans)
 - [x] Cutscene events (core command subset), festivals

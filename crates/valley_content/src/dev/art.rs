@@ -396,6 +396,7 @@ pub const ICON_CRAWLER: i32 = 59;
 pub const ICON_BATTERY: i32 = 60;
 pub const ICON_HOMING_STONE: i32 = 61;
 pub const ICON_DUNE_CHARM: i32 = 62;
+pub const ICON_NOTE_SCRAP: i32 = 63;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -673,6 +674,15 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_NOTE_SCRAP, OBJ_COLS, 16, 16);
+        c.rect(3, 3, 10, 11, Color::rgb(240, 230, 200));
+        c.px(12, 3, Color::rgb(0, 0, 0));
+        for y in [5, 7, 9, 11] {
+            c.rect(4, y, 7, 1, Color::rgb(150, 130, 110));
+        }
         c.auto_outline(OUTLINE);
     }
     {
