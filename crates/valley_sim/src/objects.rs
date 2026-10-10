@@ -26,6 +26,8 @@ pub enum ObjKind {
     ArtifactSpot,
     /// Crab pot on a water tile.
     CrabPot { bait: bool, catch: Option<Item> },
+    /// Cask aging `item`; `aged` is in base days.
+    Cask { item: Option<Item>, aged: f32 },
     /// Any other placed item.
     Placed,
 }

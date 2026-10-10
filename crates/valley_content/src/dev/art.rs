@@ -885,6 +885,28 @@ pub fn craftables() -> Image {
         c.rect(7, 13, 2, 5, Color::rgb(160, 160, 170));
         c.auto_outline(OUTLINE);
     }
+    {
+        // Cask: a hooped barrel lying on a stand.
+        let mut c = Cell::at(&mut img, 5, 8, 16, 32);
+        c.ellipse(8.0, 22.0, 7.0, 7.5, Color::rgb(150, 95, 50));
+        c.rect(1, 18, 14, 1, Color::rgb(90, 90, 100));
+        c.rect(1, 25, 14, 1, Color::rgb(90, 90, 100));
+        c.ellipse(8.0, 22.0, 2.0, 2.0, Color::rgb(110, 70, 40));
+        c.rect(2, 29, 12, 2, Color::rgb(100, 65, 35));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Sewing machine: a small table with an arm and a spool.
+        let mut c = Cell::at(&mut img, 6, 8, 16, 32);
+        c.rect(1, 22, 14, 3, Color::rgb(140, 100, 60));
+        c.rect(2, 25, 2, 6, Color::rgb(100, 70, 40));
+        c.rect(12, 25, 2, 6, Color::rgb(100, 70, 40));
+        c.rect(3, 13, 10, 3, Color::rgb(60, 120, 110));
+        c.rect(10, 13, 3, 9, Color::rgb(60, 120, 110));
+        c.rect(4, 16, 1, 5, Color::rgb(200, 200, 210));
+        c.rect(6, 10, 3, 3, Color::rgb(220, 80, 80));
+        c.auto_outline(OUTLINE);
+    }
     img
 }
 

@@ -258,6 +258,13 @@ impl Item {
         }
     }
 
+    /// Change an object's quality (other items have none).
+    pub fn set_quality(&mut self, q: Quality) {
+        if let Item::Object { quality, .. } = self {
+            *quality = q;
+        }
+    }
+
     pub fn extra(&self) -> Option<&ItemExtra> {
         match self {
             Item::Object { extra, .. } => extra.as_deref(),

@@ -90,6 +90,9 @@ Other conventions:
 | Stables: building id `Stable` or `Port.Stable` custom field; horse sheet `Animals/horse` (else placeholder `Animals/Dev_Horse`), 32x32 frames; riding speed x1.6 (approx.) | `valley_sim::horse` |
 | Minecarts: `Data/Minecarts` networks (`UnlockCondition`, `LockedMessage`, `Destinations` with `Price`, `TargetLocation`, `TargetTile`), tile action `MinecartTransport [network] [exclude]` | `valley_sim::minecarts` |
 | TV: weather, fortune and the cooking show from `Data/TV/CookingChannel` ("recipe/text"; Sundays, rerun Wednesdays) | `valley_sim::minecarts::Channel` |
+| Shops: `Currency` (0 money, 1 star tokens, 2 Qi coins, 4 Qi gems) and `TradeItemId` / `TradeItemAmount` on items | `valley_sim::shop`, `World::buy` |
+| Casks: big craftable `163` or `Port.Cask`; aging rate from `Port.AgingRate` or well-known drink/cheese ids (approx.); silver/gold/iridium at 14/28/56 base days | `valley_sim::casks` |
+| Tailoring: `Data/TailoringRecipes` (`FirstItemTags`, `SecondItemTags`, `SpendRightItem`, `CraftedItemId(s)`); sewing machine = big craftable with `Port.SewingMachine` or a `Tailoring` tile action | `valley_sim::tailoring` |
 
 ## Mods
 

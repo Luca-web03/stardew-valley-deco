@@ -29,9 +29,10 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Trees (chop, stump, growth — approx.), tree seeds, tappers,
       fruit trees, debris, grass, forage, artifact spots
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
-      random item queries, daily stock limits), traveling cart
+      random item queries, daily stock limits, trade items, star tokens /
+      Qi coins / Qi gems), traveling cart
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines),
-      furniture
+      furniture, casks, tailoring at the sewing machine
 - [x] Cooking, food buffs
 - [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots
 - [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,

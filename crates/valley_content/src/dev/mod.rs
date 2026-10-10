@@ -124,6 +124,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "SpriteIndex": ICON_GUARD_RING, "CustomFields": { "Port.Defense": "2" } },
         "Dev_MagnetRing": { "Name": "Magnet Ring", "DisplayName": "Magnet Ring", "Description": "Pulls items from further away.", "Type": "Ring", "Category": -96, "Price": 400,
                             "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
+        "Dev_Cloth": { "Name": "Cloth", "DisplayName": "Cloth", "Description": "Woven fabric for the sewing machine.", "Type": "Crafting", "Category": -8, "Price": 100,
+                       "SpriteIndex": ICON_FIBER, "ContextTags": ["item_cloth"] },
         "Dev_NoteScrap": { "Name": "Note Scrap", "DisplayName": "Note Scrap", "Description": "A torn page with writing on it. Read it to see what it says.", "Type": "Basic", "Category": 0, "Price": 1,
                            "SpriteIndex": ICON_NOTE_SCRAP },
         "Dev_HomingStone": { "Name": "Homing Stone", "DisplayName": "Homing Stone", "Description": "Squeeze it to return to your farm in a flash.", "Type": "Crafting", "Category": -8, "Price": 20,
@@ -180,6 +182,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
     for (id, dmg) in [("Dev_CopperOre", "10"), ("Dev_IronOre", "20"), ("Dev_GoldOre", "30"), ("Dev_Coal", "15")] {
         objects[id]["CustomFields"] = json!({ "Port.AmmoDamage": dmg });
     }
+    objects["Dev_Juice"]["CustomFields"] = json!({ "Port.AgingRate": "2.0" });
     let bigs = json!({
         "Dev_Box": { "Name": "Storage Box", "DisplayName": "Storage Box", "Description": "Holds 36 items.",
                      "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
@@ -191,6 +194,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                         "Price": 50, "SpriteIndex": 3 },
         "Dev_LightningRod": { "Name": "Lightning Rod", "DisplayName": "Lightning Rod", "Description": "Catches lightning during storms.",
                               "Price": 50, "SpriteIndex": 4 },
+        "Dev_Cask": { "Name": "Cask", "DisplayName": "Cask", "Description": "Ages drinks to a higher quality over time.",
+                      "Price": 50, "SpriteIndex": 5, "CustomFields": { "Port.Cask": "true" } },
+        "Dev_SewingMachine": { "Name": "Sewing Machine", "DisplayName": "Sewing Machine", "Description": "Turns cloth into clothing.",
+                               "Price": 50, "SpriteIndex": 6, "CustomFields": { "Port.SewingMachine": "true" } },
     });
     let machines = json!({
         "(BC)Dev_Juicer": {
@@ -225,6 +232,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Tapper": "388 30 Dev_CopperBar 1/Home/Dev_Tapper/true/default/",
         "Blast Charge": "Dev_CopperOre 4 Dev_Coal 1/Home/Dev_Bomb/false/default/",
         "Homing Stone": "390 10 Dev_Quartz 1/Home/Dev_HomingStone 3/false/default/",
+        "Cask": "388 20/Home/Dev_Cask/true/default/",
+        "Sewing Machine": "388 10 Dev_IronBar 1/Home/Dev_SewingMachine/true/default/",
         "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
         "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
     });
@@ -318,6 +327,22 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "club", "ItemId": "(W)Dev_Club", "Price": 900 },
                 { "Id": "sling", "ItemId": "(W)Dev_Slingshot", "Price": 500 },
                 { "Id": "bomb", "ItemId": "(O)Dev_Bomb", "Price": 150 }
+            ]
+        },
+        "Dev_DuneTrader": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "charm", "ItemId": "(O)Dev_DuneCharm", "TradeItemId": "(O)Dev_Quartz", "TradeItemAmount": 3 },
+                { "Id": "cloth", "ItemId": "(O)Dev_Cloth", "Price": 50, "TradeItemId": "(O)Dev_Driftwood", "TradeItemAmount": 2 },
+                { "Id": "cask", "ItemId": "(BC)Dev_Cask", "TradeItemId": "(O)Dev_GoldBar", "TradeItemAmount": 1, "AvailableStock": 1 }
+            ]
+        },
+        "Dev_TokenBooth": {
+            "Currency": 1,
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "straw", "ItemId": "(H)Dev_StrawHat", "Price": 40 },
+                { "Id": "tart", "ItemId": "(O)Dev_BerryTart", "Price": 15 }
             ]
         },
         "Traveler": {
@@ -518,6 +543,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 ]
             }
         })),
+        ("Data/TailoringRecipes", json!([
+            { "Id": "Dev_StripesFromBerries", "FirstItemTags": ["item_cloth"], "SecondItemTags": ["id_o_dev_berry"], "CraftedItemId": "(S)Dev_Stripes" },
+            { "Id": "Dev_ShortsFromBeans", "FirstItemTags": ["item_cloth"], "SecondItemTags": ["id_o_dev_bean"], "CraftedItemId": "(P)Dev_Shorts" },
+            { "Id": "Dev_HatFromAnything", "FirstItemTags": ["item_cloth"], "SecondItemTags": ["category_fish"], "SpendRightItem": false, "CraftedItemIds": ["(H)Dev_Cap", "(H)Dev_Beanie"] }
+        ])),
         ("Data/SecretNotes", json!({
             "1": "Day 3. The well behind the store hums at night. Nobody else seems to hear it.",
             "2": "If you're reading this: the third boulder in the dunes is hollow.^Bring a pick.",

@@ -220,6 +220,13 @@ pub struct Farmer {
     /// Riding the horse of this stable (building id).
     #[serde(default)]
     pub mounted: Option<u32>,
+    /// Other currencies: festival star tokens, casino coins, Qi gems.
+    #[serde(default)]
+    pub star_tokens: i32,
+    #[serde(default)]
+    pub qi_coins: i32,
+    #[serde(default)]
+    pub qi_gems: i32,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -319,6 +326,9 @@ impl Farmer {
             fridge: fridge_inventory(),
             notes_read: Vec::new(),
             mounted: None,
+            star_tokens: 0,
+            qi_coins: 0,
+            qi_gems: 0,
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),

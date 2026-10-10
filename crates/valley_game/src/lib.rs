@@ -569,6 +569,7 @@ impl ValleyGame {
                 WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
+                WorldEvent::OpenTailoring => self.menus.push(Menu::Tailoring { left: None, right: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::MinecartMenu { network, prompt, choices } => {
                     let mut options: Vec<String> = choices.iter().map(|(_, l)| l.clone()).collect();
@@ -784,8 +785,8 @@ impl ValleyGame {
                                     }
                                     stock.entries.retain(|e| e.stock != 0);
                                 }
-                            } else if entry.price * n > money {
-                                g.toast("Not enough money.");
+                            } else if !w.can_afford(&entry, 1) {
+                                g.toast(if entry.trade.is_some() { "You don't have enough to trade." } else { "Not enough money." });
                             }
                         }));
                     } else {
@@ -1019,6 +1020,40 @@ impl ValleyGame {
                             let cam = center - Vec2::new(ctx.screen_w as f32 / 2.0, ctx.screen_h as f32 / 2.0);
                             g.placement = Some(Placement { kind, cam });
                         }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::Tailoring { left, right } => {
+                let (prow, _) = chest_rects(sw, sh);
+                let (ls, rs, sew) = tailoring_rects(sw, sh);
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    let m = ctx.input.mouse;
+                    if ls.contains(m) {
+                        *left = None;
+                    } else if rs.contains(m) {
+                        *right = None;
+                    } else if sew.contains(m) {
+                        if let (Some(l), Some(r)) = (*left, *right) {
+                            *left = None;
+                            *right = None;
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(Err(e)) = g.world.as_mut().map(|w| w.tailor(l, r)) {
+                                    g.toast(&e);
+                                }
+                            }));
+                        }
+                    } else if let Some(i) = prow.iter().position(|r| r.contains(m)) {
+                        let has = self.world.as_ref().is_some_and(|w| w.farmer.inventory.get(i).is_some());
+                        if has && *left != Some(i) && *right != Some(i) {
+                            if left.is_none() {
+                                *left = Some(i);
+                            } else {
+                                *right = Some(i);
+                            }
+                        }
                     }
                 }
                 if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
@@ -1497,6 +1532,13 @@ fn question_box(sw: f32, sh: f32, n: usize) -> FRect {
     FRect::new(b.x, (sh - h - 20.0).max(10.0), b.w, h)
 }
 
+/// Sewing machine: fabric slot, second-item slot and the Sew button.
+fn tailoring_rects(sw: f32, sh: f32) -> (FRect, FRect, FRect) {
+    let f = menu_frame(sw, sh);
+    let y = f.y + 120.0;
+    (FRect::new(f.x + 200.0, y, 64.0, 64.0), FRect::new(f.x + 320.0, y, 64.0, 64.0), FRect::new(f.x + 440.0, y + 6.0, 140.0, 52.0))
+}
+
 /// Accept buttons under the two special order cards.
 fn order_accept_rects(sw: f32, sh: f32) -> [FRect; 2] {
     let f = menu_frame(sw, sh);
@@ -1715,11 +1757,24 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 let (tex, src) = item_sprite(rc, w, &e.item);
                 ui.icon(tex, src, FRect::new(r.x + 12.0, r.y + 6.0, 64.0, 64.0));
                 ui.text(&w.items.display_name(&e.item), Vec2::new(r.x + 96.0, r.y + 26.0), 3.0, ui::TEXT);
-                let price = format!("{}g", e.price);
+                let cname = valley_sim::shop::currency_name(e.currency);
+                let price = match (&e.trade, e.price) {
+                    (Some((_, n)), 0) => format!("x{n}"),
+                    (Some((_, n)), p) => format!("{p}{}{cname} + x{n}", if e.currency == 0 { "" } else { " " }),
+                    (None, p) if e.currency == 0 => format!("{p}g"),
+                    (None, p) => format!("{p} {cname}"),
+                };
                 let pm = ui.measure(&price, 3.0);
-                ui.text(&price, Vec2::new(r.x + r.w - pm.x - 24.0, r.y + 26.0), 3.0, if e.price > w.farmer.money { Color::RED } else { ui::TEXT });
+                let px = r.x + r.w - pm.x - 24.0;
+                ui.text(&price, Vec2::new(px, r.y + 26.0), 3.0, if w.can_afford(e, 1) { ui::TEXT } else { Color::RED });
+                if let Some((id, _)) = &e.trade {
+                    let (ttex, tsrc) = item_sprite(rc, w, &valley_sim::item::Item::object(id, 1));
+                    ui.icon(ttex, tsrc, FRect::new(px - 52.0, r.y + 14.0, 48.0, 48.0));
+                }
             }
-            ui.text(&format!("Money: {}g    (click: buy, shift: x5, click inventory: sell)", w.farmer.money), Vec2::new(f.x + 32.0, f.y + 360.0), 2.0, ui::TEXT);
+            let cur = stock.entries.first().map(|e| e.currency).unwrap_or(0);
+            let balance = if cur == 0 { format!("Money: {}g", w.farmer.money) } else { format!("{}: {}", valley_sim::shop::currency_name(cur), w.currency_balance(cur)) };
+            ui.text(&format!("{balance}    (click: buy, shift: x5, click inventory: sell)"), Vec2::new(f.x + 32.0, f.y + 360.0), 2.0, ui::TEXT);
             for (i, r) in shop_inventory_rects(sw, sh).iter().enumerate() {
                 ui.slot(*r, false);
                 if let Some(item) = w.farmer.inventory.get(i) {
@@ -2141,6 +2196,39 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                 }
             }
+        }
+        Menu::Tailoring { left, right } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered("Sewing Machine", sw / 2.0, f.y + 28.0, 3.0, ui::TEXT);
+            let (ls, rs, sew) = tailoring_rects(sw, sh);
+            let slot_item = |i: &Option<usize>| i.and_then(|i| w.farmer.inventory.get(i)).cloned();
+            for (r, it, label) in [(ls, slot_item(left), "Fabric"), (rs, slot_item(right), "Item")] {
+                ui.slot(r, false);
+                match it {
+                    Some(it) => hud::draw_item_in_slot(rc, ui, w, &it, r),
+                    None => ui.text(label, Vec2::new(r.x + 4.0, r.y + 28.0), 1.5, Color::rgba(70, 36, 20, 140)),
+                }
+            }
+            // Preview the result.
+            let preview = match (slot_item(left), slot_item(right)) {
+                (Some(l), Some(r)) => w.tailoring_recipe(&l, &r).and_then(|rec| rec.crafted_item_id.clone().or_else(|| rec.crafted_item_ids.as_ref().and_then(|v| v.first().cloned()))).and_then(|id| w.items.create(&id, 1)),
+                _ => None,
+            };
+            let out = FRect::new(sew.x + sew.w + 40.0, sew.y - 6.0, 64.0, 64.0);
+            ui.slot(out, false);
+            if let Some(p) = &preview {
+                hud::draw_item_in_slot(rc, ui, w, p, out);
+            }
+            ui.button(sew, "Sew", preview.is_some());
+            let (prow, _) = chest_rects(sw, sh);
+            for (i, r) in prow.iter().enumerate() {
+                ui.slot(*r, *left == Some(i) || *right == Some(i));
+                if let Some(item) = w.farmer.inventory.get(i) {
+                    hud::draw_item_in_slot(rc, ui, w, item, *r);
+                }
+            }
+            ui.text("Click fabric, then a second item, then Sew.", Vec2::new(f.x + 48.0, f.y + 280.0), 2.0, ui::TEXT);
         }
         Menu::OrderBoard => {
             let f = menu_frame(sw, sh);

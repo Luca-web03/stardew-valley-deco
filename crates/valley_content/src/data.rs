@@ -183,6 +183,9 @@ pub struct ShopItemData {
     pub random_item_id: Option<Vec<String>>,
     /// Cap on how many items an item query adds.
     pub max_items: Option<i32>,
+    /// Pay with items instead of (or as well as) currency.
+    pub trade_item_id: Option<String>,
+    pub trade_item_amount: Option<i32>,
     #[serde(default = "neg1")]
     pub price: i32,
     pub condition: Option<String>,
@@ -200,6 +203,8 @@ impl Default for ShopItemData {
             item_id: String::new(),
             random_item_id: None,
             max_items: None,
+            trade_item_id: None,
+            trade_item_amount: None,
             price: -1,
             condition: None,
             available_stock: -1,
@@ -288,6 +293,7 @@ pub struct BigCraftableData {
     pub texture: Option<String>,
     pub sprite_index: i32,
     pub context_tags: Option<Vec<String>>,
+    pub custom_fields: Option<BTreeMap<String, String>>,
 }
 
 impl Default for BigCraftableData {
@@ -304,6 +310,7 @@ impl Default for BigCraftableData {
             texture: None,
             sprite_index: 0,
             context_tags: None,
+            custom_fields: None,
         }
     }
 }

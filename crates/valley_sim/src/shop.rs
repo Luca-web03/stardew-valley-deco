@@ -11,6 +11,20 @@ pub struct ShopEntry {
     pub stock: i32,
     /// Daily limit the entry started with; -1 = unlimited.
     pub limit: i32,
+    /// Shop currency: 0 money, 1 star tokens, 2 Qi coins, 4 Qi gems.
+    pub currency: i32,
+    /// Items paid per purchase: (unqualified object id, amount).
+    pub trade: Option<(String, i32)>,
+}
+
+/// Display name of a shop currency.
+pub fn currency_name(c: i32) -> &'static str {
+    match c {
+        1 => "tokens",
+        2 => "Qi coins",
+        4 => "Qi gems",
+        _ => "g",
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -53,7 +67,10 @@ pub fn build_stock(id: &str, data: &ShopData, db: &ItemDb, ctx: &mut QueryCtx) -
             } else {
                 default_buy_price(db, &item)
             };
-            entries.push(ShopEntry { item, price, stock: e.available_stock, limit: e.available_stock });
+            let trade = e.trade_item_id.as_deref().map(|t| (crate::item::split_qualified(t).1.to_string(), e.trade_item_amount.unwrap_or(1).max(1)));
+            // Trade-only entries cost nothing unless a price is given.
+            let price = if trade.is_some() && e.price < 0 { 0 } else { price };
+            entries.push(ShopEntry { item, price, stock: e.available_stock, limit: e.available_stock, currency: data.currency, trade });
         }
     }
     let owner = data.owners.first().map(|o| o.name.clone()).filter(|n| !n.is_empty() && n != "AnyOrNone" && n != "Any" && n != "None");

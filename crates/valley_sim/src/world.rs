@@ -74,6 +74,8 @@ pub enum WorldEvent {
     MinecartMenu { network: String, prompt: String, choices: Vec<crate::minecarts::MinecartChoice> },
     /// Pick a TV channel.
     TvMenu(Vec<crate::minecarts::Channel>),
+    /// Open the sewing machine.
+    OpenTailoring,
     /// Offer a paid trip (bus, boat...) to another location.
     TravelPrompt { location: String, tile: TilePos, fare: i32 },
     Warped { from: String, to: String },
@@ -196,6 +198,7 @@ pub struct World {
     pub minecarts: BTreeMap<String, crate::minecarts::MinecartNetwork>,
     /// Data/TV/CookingChannel (episode -> "recipe/text").
     pub cooking_channel: BTreeMap<String, String>,
+    pub tailoring: Vec<crate::tailoring::TailoringRecipe>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -337,6 +340,7 @@ impl World {
             secret_notes: cm.load_string_dict("Data/SecretNotes").into_iter().collect(),
             minecarts: crate::minecarts::load(cm),
             cooking_channel: cm.load_string_dict("Data/TV/CookingChannel").into_iter().collect(),
+            tailoring: cm.load_json("Data/TailoringRecipes").unwrap_or_default(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -752,6 +756,7 @@ impl World {
         // Machines keep working through the night until 6am.
         let overnight = Clock::minutes_between(self.clock.time, 2600) + 240;
         self.advance_machines(overnight);
+        self.casks_overnight();
 
         let old_season = self.clock.season;
         self.tick_quest_days();
@@ -1360,6 +1365,7 @@ impl World {
         let toks: Vec<&str> = action.split_whitespace().collect();
         let Some(&cmd) = toks.first() else { return false };
         match cmd {
+            "Tailoring" => self.open_tailoring(),
             "MinecartTransport" => {
                 let network = toks.get(1).copied().unwrap_or("Default");
                 self.open_minecart(network, toks.get(2).copied())
@@ -1612,10 +1618,35 @@ impl World {
         stock.entries.retain(|e| e.stock != 0);
     }
 
+    /// Balance of a shop currency (see [`shop::currency_name`]).
+    pub fn currency_balance(&self, currency: i32) -> i32 {
+        match currency {
+            1 => self.farmer.star_tokens,
+            2 => self.farmer.qi_coins,
+            4 => self.farmer.qi_gems,
+            _ => self.farmer.money,
+        }
+    }
+
+    fn currency_mut(&mut self, currency: i32) -> &mut i32 {
+        match currency {
+            1 => &mut self.farmer.star_tokens,
+            2 => &mut self.farmer.qi_coins,
+            4 => &mut self.farmer.qi_gems,
+            _ => &mut self.farmer.money,
+        }
+    }
+
+    /// Can the farmer pay for `count` of this entry?
+    pub fn can_afford(&self, entry: &shop::ShopEntry, count: i32) -> bool {
+        let trade_ok = entry.trade.as_ref().map_or(true, |(id, n)| self.farmer.inventory.count(id) >= n * count);
+        trade_ok && self.currency_balance(entry.currency) >= entry.price * count
+    }
+
     /// Buy `count` of a shop entry. Returns false if unaffordable / no space.
     pub fn buy(&mut self, entry: &shop::ShopEntry, count: i32) -> bool {
         let cost = entry.price * count;
-        if cost > self.farmer.money {
+        if !self.can_afford(entry, count) {
             self.sound("cancel");
             return false;
         }
@@ -1625,7 +1656,10 @@ impl World {
             self.hud("Inventory full");
             return false;
         }
-        self.farmer.money -= cost;
+        if let Some((id, n)) = &entry.trade {
+            self.farmer.inventory.remove_object(id, n * count);
+        }
+        *self.currency_mut(entry.currency) -= cost;
         self.farmer.inventory.add(item);
         self.sound("purchase");
         true

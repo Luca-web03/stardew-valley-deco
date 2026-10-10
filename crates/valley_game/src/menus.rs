@@ -86,6 +86,9 @@ pub enum Menu {
     Billboard,
     /// Special orders board.
     OrderBoard,
+    /// Sewing machine: inventory slots chosen as fabric (left) and the
+    /// second item (right).
+    Tailoring { left: Option<usize>, right: Option<usize> },
     Journal {
         selected: usize,
     },

@@ -115,7 +115,9 @@ impl World {
         let obj = match &item {
             Item::Big { id, .. } => {
                 let qid = format!("(BC){id}");
-                let kind = if self.items.machines.contains_key(&qid) {
+                let kind = if self.is_cask(id) {
+                    ObjKind::Cask { item: None, aged: 0.0 }
+                } else if self.items.machines.contains_key(&qid) {
                     ObjKind::Machine { output: None, minutes_left: 0, ready: false }
                 } else if self.items.big(id).is_some_and(|b| b.data.name.contains("Chest") || b.data.context_tags.iter().flatten().any(|t| t == "chest_item" || t == "storage_item")) {
                     ObjKind::Chest(Inventory::new(36))
@@ -157,7 +159,7 @@ impl World {
                 self.sound("hammer");
                 return true;
             }
-            ObjKind::Machine { output: Some(_), .. } => {
+            ObjKind::Machine { output: Some(_), .. } | ObjKind::Cask { item: Some(_), .. } => {
                 if let Some(o) = self.location_mut().state.objects.get_mut(&t) {
                     o.shake = 20;
                 }
@@ -175,6 +177,12 @@ impl World {
     /// Interact with a placed object (open chest, load/collect machine).
     pub fn interact_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
+        if matches!(o.kind, ObjKind::Cask { .. }) {
+            return self.cask_action(t);
+        }
+        if o.big && self.is_sewing_machine(&o.item_id) {
+            return self.open_tailoring();
+        }
         match o.kind {
             ObjKind::Chest(_) => {
                 self.emit(WorldEvent::OpenChest(t));

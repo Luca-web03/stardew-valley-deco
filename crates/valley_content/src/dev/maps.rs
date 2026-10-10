@@ -396,6 +396,7 @@ pub fn dunes() -> Map {
     // Ride back to town.
     b.set_props("Buildings", 5, 15, SIGN, &[("Action", "Port.Travel Town 36 18 0")]);
     b.set_props("Buildings", 14, 15, MINECART, &[("Action", "MinecartTransport Default Dunes")]);
+    b.set_props("Buildings", 20, 15, SIGN, &[("Action", "OpenShop Dev_DuneTrader")]);
     b.map
 }
 
