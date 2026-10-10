@@ -1,0 +1,11 @@
+[package]
+name = "engine"
+description = "Game-agnostic 2D engine core: draw lists, textures, input, fixed-step game modules, software renderer."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+png.workspace = true
+font8x8.workspace = true

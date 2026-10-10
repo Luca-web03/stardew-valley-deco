@@ -1,0 +1,11 @@
+/target
+# Game content is NEVER committed. Point the app at your own install instead.
+/Content
+/content
+/GameContent
+*.xnb
+*.xwb
+*.xsb
+*.xgs
+/saves
+/screenshots

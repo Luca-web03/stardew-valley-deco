@@ -1,0 +1,15 @@
+[package]
+name = "valley_content"
+description = "Loads game content (textures, maps, data) from a user-supplied, unpacked game Content folder, with an original built-in fallback pack."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+engine.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+roxmltree.workspace = true
+flate2.workspace = true
+lz4_flex.workspace = true
