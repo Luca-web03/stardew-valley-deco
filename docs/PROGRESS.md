@@ -47,7 +47,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
-      gifts, friendship, dating, marriage, spouse, children (approx. timings)
+      gifts, friendship, dating, marriage, spouse, children (approx. timings),
+      divorce, jealousy
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,

@@ -70,6 +70,8 @@ pub enum WorldEvent {
     ShaftPrompt,
     /// Brief screen flash (magical travel).
     Flash,
+    /// Confirm a divorce.
+    DivorcePrompt,
     /// Pick a minecart destination.
     MinecartMenu { network: String, prompt: String, choices: Vec<crate::minecarts::MinecartChoice> },
     /// Pick a TV channel.
@@ -629,6 +631,7 @@ impl World {
                 pos: Vec2::ZERO,
                 facing,
                 home: NpcHome { location: home.location.clone(), tile: TilePos::new(home.tile.x, home.tile.y), facing },
+                original_home: NpcHome { location: home.location.clone(), tile: TilePos::new(home.tile.x, home.tile.y), facing },
                 birthday: data.birth_season.clone().map(|s| (s, data.birth_day)),
                 can_romance: data.can_be_romanced,
                 dialogue: cm.load_string_dict(&format!("Characters/Dialogue/{name}")),
@@ -1398,6 +1401,14 @@ impl World {
             "Tailoring" => self.open_tailoring(),
             "Theater" | "Port.Theater" => self.watch_movie(),
             "Port.Mastery" => self.open_mastery(),
+            "Port.Divorce" | "DivorceBook" => {
+                if self.farmer.spouse.is_none() {
+                    self.emit(WorldEvent::Message("Marriage and divorce records. You have nothing to file.".into()));
+                } else {
+                    self.emit(WorldEvent::DivorcePrompt);
+                }
+                true
+            }
             "Port.Reels" => {
                 self.emit(WorldEvent::OpenReels);
                 true
@@ -1822,6 +1833,7 @@ impl World {
         if let Some(given) = self.farmer.inventory.get(slot).cloned() {
             self.order_gift(&name, &given);
         }
+        self.check_jealousy(&name);
         self.farmer.inventory.reduce(slot, 1);
         let romanceable = self.npcs[i].can_romance;
         let f = self.farmer.friendship(&name);

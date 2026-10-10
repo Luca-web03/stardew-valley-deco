@@ -579,6 +579,12 @@ impl ValleyGame {
                 }
                 WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
+                WorldEvent::DivorcePrompt => self.menus.push(Menu::Question {
+                    text: format!("File for divorce? The fee is {}g.", valley_sim::romance::DIVORCE_COST),
+                    options: vec!["File".into(), "Never mind".into()],
+                    selected: 1,
+                    kind: QuestionKind::Divorce,
+                }),
                 WorldEvent::MinecartMenu { network, prompt, choices } => {
                     let mut options: Vec<String> = choices.iter().map(|(_, l)| l.clone()).collect();
                     options.push("Cancel".into());
@@ -759,6 +765,11 @@ impl ValleyGame {
                                 }
                             }
                             QuestionKind::DialogueAnswer | QuestionKind::Minecart { .. } | QuestionKind::Tv { .. } | QuestionKind::Mastery { .. } => {}
+                            QuestionKind::Divorce => {
+                                if let Some(Err(e)) = g.world.as_mut().map(|w| w.divorce()) {
+                                    g.toast(&e);
+                                }
+                            }
                             QuestionKind::Shaft => {
                                 if let Some(w) = g.world.as_mut() {
                                     w.jump_down_shaft();

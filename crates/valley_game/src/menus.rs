@@ -17,6 +17,8 @@ pub enum QuestionKind {
     DialogueAnswer,
     /// Jump down a deep-cavern shaft.
     Shaft,
+    /// File for divorce.
+    Divorce,
     /// Pay a fare and travel.
     Travel { location: String, tile: valley_sim::TilePos, fare: i32 },
     /// Minecart destination `ids[i]` (last option = cancel).

@@ -38,6 +38,8 @@ pub struct Npc {
     pub pos: Vec2,
     pub facing: Dir,
     pub home: NpcHome,
+    /// Home from the character data (where they return after a divorce).
+    pub original_home: NpcHome,
     pub birthday: Option<(String, i32)>,
     pub can_romance: bool,
     pub dialogue: HashMap<String, String>,

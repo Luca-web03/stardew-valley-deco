@@ -29,6 +29,10 @@ impl World {
             self.say(&name, "That's sweet, but I don't think of you that way.", Emotion::Neutral);
             return true;
         }
+        if f.status == RelationStatus::Divorced {
+            self.say(&name, "After everything that happened? No.", Emotion::Angry);
+            return true;
+        }
         if is_bouquet {
             match f.status {
                 RelationStatus::Friendly if f.hearts() >= 8 => {
@@ -102,4 +106,46 @@ impl World {
         let pages = dialogue::parse(&text, &subs);
         npc.dialogue.insert("__spouse_today".into(), pages.iter().map(|p| p.text.clone()).collect::<Vec<_>>().join("#$b#"));
     }
+
+    /// Paperwork at town hall: end the marriage (approx. cost). The former
+    /// spouse moves back to their own home tomorrow.
+    pub fn divorce(&mut self) -> Result<(), String> {
+        let Some(spouse) = self.farmer.spouse.clone() else { return Err("You aren't married.".into()) };
+        if self.farmer.money < DIVORCE_COST {
+            return Err(format!("The filing fee is {DIVORCE_COST}g."));
+        }
+        self.farmer.money -= DIVORCE_COST;
+        self.farmer.spouse = None;
+        let f = self.farmer.friendship(&spouse);
+        f.status = RelationStatus::Divorced;
+        f.points = 0;
+        if let Some(npc) = self.npcs.iter_mut().find(|n| n.name == spouse) {
+            npc.home = npc.original_home.clone();
+            npc.dialogue.remove("__spouse_today");
+        }
+        self.emit(WorldEvent::Message("The papers are filed. Your former spouse will move out tomorrow.".into()));
+        Ok(())
+    }
+
+    /// Gifts to another romanceable villager in front of the spouse sting.
+    pub(crate) fn check_jealousy(&mut self, recipient: &str) {
+        let Some(spouse) = self.farmer.spouse.clone() else { return };
+        if spouse == recipient || !self.npcs.iter().any(|n| n.name == recipient && n.can_romance) {
+            return;
+        }
+        let me = self.farmer.tile();
+        let nearby = self.npcs.iter().any(|n| n.name == spouse && n.location == self.current && n.tile().manhattan(me) <= JEALOUSY_RANGE);
+        if !nearby {
+            return;
+        }
+        let f = self.farmer.friendship(&spouse);
+        f.points = (f.points - JEALOUSY_POINTS).max(0);
+        self.say(&spouse, "...I saw that.", Emotion::Angry);
+    }
 }
+
+/// Filing fee for a divorce (approx.).
+pub const DIVORCE_COST: i32 = 50_000;
+/// Friendship the spouse loses when they see a gift to a rival (approx.).
+pub const JEALOUSY_POINTS: i32 = 30;
+pub const JEALOUSY_RANGE: i32 = 10;

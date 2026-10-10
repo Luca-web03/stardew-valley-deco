@@ -102,6 +102,7 @@ Other conventions:
 | Mastery (engine-defined): XP past level 10 counts toward 5 mastery levels; one perk per skill at a `Port.Mastery` tile | `valley_sim::mastery` |
 | Books: objects with `Port.BookXp` ("<Skill> <xp>") and/or `Port.BookPower` (id in `Data/Powers`) | `valley_sim::mastery::read_book` |
 | Trinkets: `Data/Trinkets` items `(TR)id`, worn in the trinket slot; effects via `Port.TrinketStats` ("attack 2 defense 1 speed 1 magnet 32 luck 1"); the original's effect classes are not implemented | `valley_sim::item::TrinketData` |
+| Divorce: `Port.Divorce` / `DivorceBook` tile action, fee 50,000g (approx.); jealousy: -30 spouse points for gifts to another romanceable villager within 10 tiles of the spouse (approx.) | `valley_sim::romance` |
 
 ## Mods
 

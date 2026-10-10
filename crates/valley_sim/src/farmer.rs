@@ -101,6 +101,8 @@ pub enum RelationStatus {
     /// Wedding happens on this `days_played` value.
     Engaged { wedding_day: i32 },
     Married,
+    /// Former spouse: can't be dated again.
+    Divorced,
 }
 
 impl Friendship {
@@ -117,7 +119,7 @@ impl Friendship {
             RelationStatus::Married => 14 * Self::POINTS_PER_HEART,
             RelationStatus::Dating | RelationStatus::Engaged { .. } => 10 * Self::POINTS_PER_HEART,
             RelationStatus::Friendly if romanceable => 8 * Self::POINTS_PER_HEART,
-            RelationStatus::Friendly => 10 * Self::POINTS_PER_HEART,
+            RelationStatus::Friendly | RelationStatus::Divorced => 10 * Self::POINTS_PER_HEART,
         }
     }
 }

@@ -264,6 +264,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 10, 11, SIGN, &[("Action", "OpenShop Dev_Tailor")]);
     b.set_props("Buildings", 7, 3, MINECART, &[("Action", "MinecartTransport Default Town")]);
     b.set_props("Buildings", 6, 11, SIGN, &[("Action", "OpenShop Dev_Bookstall")]);
+    b.set_props("Buildings", 27, 11, SIGN, &[("Action", "Port.Divorce")]);
     b.set_props("Buildings", 4, 11, LAMP, &[("Action", "Port.Mastery")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
