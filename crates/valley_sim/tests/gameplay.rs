@@ -235,3 +235,22 @@ fn save_and_restore_roundtrip() {
     assert_eq!(SaveData::capture(&restored).farmer, SaveData::capture(&w).farmer);
 }
 
+
+#[test]
+fn tv_shows_forecast() {
+    let (_, mut w) = new_world();
+    w.farmer.set_tile(TilePos::new(2, 3));
+    w.farmer.facing = Dir::Up;
+    w.drain_events();
+    assert!(w.do_action(None));
+    let ev = w.drain_events();
+    assert!(ev.iter().any(|e| matches!(e, WorldEvent::Message(m) if m.contains("Weather report"))), "{ev:?}");
+}
+
+#[test]
+fn debris_uses_available_ids() {
+    let (_, w) = new_world();
+    let farm = &w.locations["Farm"];
+    assert!(farm.state.objects.values().all(|o| w.items.objects.contains_key(&o.item_id)));
+    assert!(!w.compat.bed_fallback, "placeholder farmhouse has a bed tile");
+}

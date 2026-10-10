@@ -160,6 +160,18 @@ pub struct World {
     /// Event scripts per location (key -> script).
     pub event_data: HashMap<String, HashMap<String, String>>,
     pub event: Option<crate::events::EventRunner>,
+    pub compat: Compat,
+}
+
+/// Fallbacks for content maps that don't carry this engine's helper
+/// properties (approximate well-known positions on the standard farm).
+#[derive(Clone, Debug, Default)]
+pub struct Compat {
+    pub shipping_bin: Option<TilePos>,
+    pub farmhouse_door: Option<TilePos>,
+    pub farmhouse_entry: Option<TilePos>,
+    /// No "Bed" tile in the farmhouse map: sleep from the wake spot.
+    pub bed_fallback: bool,
 }
 
 impl World {
@@ -248,6 +260,7 @@ impl World {
             hay_id: None,
             event_data: HashMap::new(),
             event: None,
+            compat: Compat::default(),
         };
         let names: Vec<String> = w.locations.keys().cloned().collect();
         for n in names {
@@ -266,6 +279,7 @@ impl World {
         w.mine_items = crate::mines::MineItems::resolve(&w.items);
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
+        w.setup_compat();
         w.spawn_npcs(cm);
         w.populate_new_farm();
         w.farmer.mailbox.push("welcome".into());
@@ -324,6 +338,23 @@ impl World {
             }
         }
         TilePos::new(5, 5)
+    }
+
+    fn setup_compat(&mut self) {
+        let has_bed = self.locations.get("FarmHouse").is_some_and(|h| {
+            (0..h.height()).any(|y| (0..h.width()).any(|x| h.tile_prop("Back", TilePos::new(x, y), "Bed").is_some()))
+        });
+        self.compat.bed_fallback = !has_bed;
+        let Some(farm) = self.locations.get("Farm") else { return };
+        let has_door = door_warps(farm).iter().any(|(_, t, _)| t == "FarmHouse");
+        let big = farm.width() >= 60;
+        if farm.map_prop_tile("ShippingBinTile").is_none() && big {
+            self.compat.shipping_bin = Some(TilePos::new(71, 14));
+        }
+        if !has_door && big {
+            self.compat.farmhouse_door = Some(TilePos::new(64, 15));
+            self.compat.farmhouse_entry = Some(TilePos::new(3, 11));
+        }
     }
 
     /// Tile where the farmer wakes: next to the bed, or the arrival tile.
@@ -425,6 +456,7 @@ impl World {
     /// Initial clutter on a new farm: weeds, stones, twigs and trees.
     fn populate_new_farm(&mut self) {
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, 77]));
+        let items = self.items.clone();
         let Some(farm) = self.locations.get_mut("Farm") else { return };
         let (w, h) = (farm.width(), farm.height());
         let protected: Vec<TilePos> = ["FarmHouseEntry", "ShippingBinTile"].iter().filter_map(|k| farm.map_prop_tile(k)).collect();
@@ -439,11 +471,11 @@ impl World {
                 }
                 let r = rng.next_f64();
                 if r < 0.04 {
-                    farm.state.objects.insert(p, debris_object(&mut rng, DebrisKind::Weeds));
+                    farm.state.objects.insert(p, debris_object_from(&items, &mut rng, DebrisKind::Weeds));
                 } else if r < 0.06 {
-                    farm.state.objects.insert(p, debris_object(&mut rng, DebrisKind::Stone));
+                    farm.state.objects.insert(p, debris_object_from(&items, &mut rng, DebrisKind::Stone));
                 } else if r < 0.075 {
-                    farm.state.objects.insert(p, debris_object(&mut rng, DebrisKind::Twig));
+                    farm.state.objects.insert(p, debris_object_from(&items, &mut rng, DebrisKind::Twig));
                 } else if r < 0.085 {
                     let mut t = Tree::new(["1", "2", "3"][rng.range(0, 3) as usize], 5);
                     t.flip = rng.chance(0.5);
@@ -608,6 +640,7 @@ impl World {
 
     fn spawn_daily_debris(&mut self) {
         let mut rng = self.day_rng(2);
+        let items = self.items.clone();
         let Some(farm) = self.locations.get_mut("Farm") else { return };
         if farm.map.prop("SpawnDebris").is_none() && farm.map.width < 60 {
             // Placeholder farms opt in explicitly; large real farms always spawn.
@@ -623,7 +656,7 @@ impl World {
                         1 => DebrisKind::Twig,
                         _ => DebrisKind::Weeds,
                     };
-                    farm.state.objects.insert(p, debris_object(&mut rng, kind));
+                    farm.state.objects.insert(p, debris_object_from(&items, &mut rng, kind));
                     break;
                 }
             }
@@ -981,6 +1014,25 @@ impl World {
                 return true;
             }
         }
+        // Content farms whose farmhouse door isn't a map action.
+        if self.current == "Farm" {
+            if let Some(door) = self.compat.farmhouse_door {
+                if target == door {
+                    let entry = self.compat.farmhouse_entry.unwrap_or(TilePos::new(3, 11));
+                    self.warp_farmer("FarmHouse", entry, Some(Dir::Up));
+                    return true;
+                }
+            }
+        }
+        // Farmhouses without a bed tile: the bed spot is where you wake.
+        if self.current == "FarmHouse" && self.compat.bed_fallback && target.manhattan(self.wake_tile()) <= 1 && self.farmer.current_item().is_none() {
+            self.emit(WorldEvent::SleepPrompt);
+            return true;
+        }
+        if self.current == "FarmHouse" && self.location().action_at(target).is_none() && self.location().tile_prop("Buildings", target, "TV").is_some() {
+            self.watch_tv();
+            return true;
+        }
 
         // Planting / fertilizing / placing / eating with the held item.
         let slot = self.farmer.current_slot;
@@ -1008,7 +1060,8 @@ impl World {
         if self.current != "Farm" {
             return false;
         }
-        match self.location().map_prop_tile("ShippingBinTile") {
+        let b = self.location().map_prop_tile("ShippingBinTile").or(self.compat.shipping_bin);
+        match b {
             Some(b) => t == b || t == TilePos::new(b.x + 1, b.y),
             None => false,
         }
@@ -1060,6 +1113,10 @@ impl World {
             }
             "Mailbox" => {
                 self.open_mailbox();
+                true
+            }
+            "TV" => {
+                self.watch_tv();
                 true
             }
             "kitchen" | "Kitchen" => {
@@ -1258,15 +1315,37 @@ impl World {
         f.points = (f.points + points).clamp(0, 2500);
         f.gifted_today = true;
         f.gifts_this_week += 1;
-        let (text, emo) = match taste {
+        let (fallback, emo) = match taste {
             0 => ("Oh, I love this! Thank you!", dialogue::Emotion::Happy),
             1 => ("Thanks, this is nice.", dialogue::Emotion::Happy),
             2 => ("Oh... thanks, I guess.", dialogue::Emotion::Sad),
             3 => ("What? Why would you give me this?", dialogue::Emotion::Angry),
             _ => ("Thanks.", dialogue::Emotion::Neutral),
         };
+        // NPCGiftTastes stores a reaction line before each item list.
+        let text_idx = match taste {
+            0 => 0,
+            1 => 2,
+            2 => 4,
+            3 => 6,
+            _ => 8,
+        };
+        let raw = self.gift_tastes.get(&name).and_then(|e| e.split('/').nth(text_idx).map(|s| s.trim().to_string())).filter(|s| !s.is_empty());
         self.sound("give_gift");
-        self.emit(WorldEvent::Dialogue { npc: Some(name), pages: vec![DialoguePage { text: text.into(), emotion: emo }] });
+        let pages = match raw {
+            Some(r) => {
+                let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
+                let mut p = dialogue::parse(&r, &subs);
+                if p.iter().all(|x| x.emotion == dialogue::Emotion::Neutral) {
+                    for x in p.iter_mut() {
+                        x.emotion = emo;
+                    }
+                }
+                p
+            }
+            None => vec![DialoguePage { text: fallback.into(), emotion: emo }],
+        };
+        self.emit(WorldEvent::Dialogue { npc: Some(name), pages });
     }
 
     /// Eat the item in `slot` (after confirmation).
@@ -1535,6 +1614,26 @@ impl World {
         self.npcs.iter().filter(move |n| n.location == self.current)
     }
 
+    /// The TV: tomorrow's weather and today's luck.
+    pub fn watch_tv(&mut self) {
+        let forecast = match self.weather_tomorrow {
+            Weather::Sun => "Tomorrow looks clear and sunny.",
+            Weather::Rain => "Expect rain tomorrow. Your crops will thank you.",
+            Weather::Storm => "A thunderstorm is on the way tomorrow. Stay safe!",
+            Weather::Snow => "Snow is in the forecast for tomorrow.",
+            Weather::Wind => "It'll be a breezy day tomorrow.",
+        };
+        let luck = match self.daily_luck {
+            l if l > 0.07 => "The spirits are very happy today. Great luck!",
+            l if l > 0.02 => "The spirits are in good humor today.",
+            l if l >= -0.02 => "The spirits feel neutral today.",
+            l if l >= -0.07 => "The spirits are somewhat annoyed today.",
+            _ => "The spirits are very displeased today. Be careful!",
+        };
+        self.sound("tvClick");
+        self.emit(WorldEvent::Message(format!("Weather report: {forecast}\n\nFortune corner: {luck}")));
+    }
+
     // ---------------------------------------------------------------- crafting
 
     pub fn unlock_recipes(&mut self) {
@@ -1635,12 +1734,18 @@ fn shrink(r: IRect, by: i32) -> IRect {
     IRect::new(r.x + by, r.y + by, (r.w - by * 2).max(1), (r.h - by * 2).max(1))
 }
 
-fn debris_object(rng: &mut Rng, kind: DebrisKind) -> PlacedObject {
-    let id = match kind {
-        DebrisKind::Weeds => "Dev_Weeds",
-        DebrisKind::Twig => "Dev_Twig",
-        DebrisKind::Stone => "Dev_Rock",
-    };
+/// Well-known debris object ids (first available wins), with placeholders last.
+fn debris_candidates(kind: DebrisKind) -> &'static [&'static str] {
+    match kind {
+        DebrisKind::Weeds => &["674", "675", "784", "785", "Dev_Weeds"],
+        DebrisKind::Twig => &["294", "295", "Dev_Twig"],
+        DebrisKind::Stone => &["343", "450", "Dev_Rock"],
+    }
+}
+
+fn debris_object_from(items: &ItemDb, rng: &mut Rng, kind: DebrisKind) -> PlacedObject {
+    let avail: Vec<&str> = debris_candidates(kind).iter().copied().filter(|id| items.objects.contains_key(*id)).collect();
+    let id = rng.pick(&avail).copied().unwrap_or(debris_candidates(kind).last().unwrap());
     let mut o = PlacedObject::debris(id, kind);
     o.flip = rng.chance(0.5);
     o

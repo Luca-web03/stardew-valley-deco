@@ -178,7 +178,7 @@ pub fn farmhouse() -> Map {
     b.set("Back", 5, h - 1, MAT);
     b.set_props("Back", 9, 4, BED_TOP, &[("Bed", "T")]);
     b.set_props("Back", 9, 5, BED_BOTTOM, &[("Bed", "T")]);
-    b.set("Buildings", 2, 2, TV);
+    b.set_props("Buildings", 2, 2, TV, &[("Action", "TV")]);
     // Kitchen counter.
     b.set_props("Buildings", 6, 2, COUNTER, &[("Action", "kitchen")]);
     b.set_props("Buildings", 7, 2, COUNTER, &[("Action", "kitchen")]);
