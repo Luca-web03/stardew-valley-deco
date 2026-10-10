@@ -336,6 +336,14 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "bomb", "ItemId": "(O)Dev_Bomb", "Price": 150 }
             ]
         },
+        "Dev_MarketStall": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "tart", "ItemId": "(O)Dev_BerryTart", "Price": 300 },
+                { "Id": "charm", "ItemId": "(O)Dev_DuneCharm", "Price": 400 },
+                { "Id": "cap", "ItemId": "(H)Dev_Cap", "Price": 600, "AvailableStock": 1 }
+            ]
+        },
         "Dev_BoxOffice": {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [{ "Id": "ticket", "ItemId": "(O)Dev_Ticket", "Price": 500 }]
@@ -554,6 +562,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                     { "Id": "Town", "DisplayName": "Town", "TargetLocation": "Town", "TargetTile": { "X": 7, "Y": 4 }, "TargetDirection": "down" },
                     { "Id": "Dunes", "DisplayName": "Sunscorch Dunes", "Price": 50, "TargetLocation": "Dev_Dunes", "TargetTile": { "X": 14, "Y": 16 }, "TargetDirection": "down" }
                 ]
+            }
+        })),
+        ("Data/PassiveFestivals", json!({
+            "Dev_LanternMarket": {
+                "DisplayName": "Lantern Market", "ShowOnCalendar": true, "Season": "Summer", "StartDay": 10, "EndDay": 12,
+                "StartTime": 1700, "StartMessage": "The Lantern Market is open in the dunes tonight!", "OnlyShowMessageOnFirstDay": false,
+                "MapReplacements": { "Dev_Dunes": "Dev_Dunes_Market" }
             }
         })),
         ("Data/Movies", json!([

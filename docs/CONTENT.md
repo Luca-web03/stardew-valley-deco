@@ -96,6 +96,7 @@ Other conventions:
 | Fishing gear: rods hold bait from upgrade level 1 and tackle from level 2 (approx.); bait = category -21; tackle = category -22 with `Port.Tackle` (`bite_speed`, `bar_size`, `slow_escape`, `no_bounce`, `treasure`) or well-known ids; 20 uses | `valley_sim::fishing_gear` |
 | Harvest huts: building id `Junimo Hut` or `Port.HarvestHut`; gathers ripe hand-harvested crops within 8 tiles each night into its storage | `valley_sim::harvest_huts` |
 | Movies: `Data/Movies` (`Seasons`, `YearModulus`/`YearRemainder`, `Title`, `Tags`, `Scenes[].Text`), `Data/MoviesReactions` (`NPCName`, `Reactions[].Tag/Response`); tickets = object `809` or placeholder `Dev_Ticket`; theater door = `Theater` tile action; concessions not implemented | `valley_sim::movies` |
+| Passive festivals: `Data/PassiveFestivals` (`Season`, `StartDay`/`EndDay`, `Condition`, `StartMessage`, `MapReplacements` location -> map asset); setup/cleanup methods are code in the original and not run | `valley_sim::passive_festivals` |
 
 ## Mods
 

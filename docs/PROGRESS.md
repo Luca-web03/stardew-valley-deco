@@ -54,7 +54,8 @@ were not available; such values are isolated constants that can be tuned.
       collections, achievements (engine-defined milestones), secret notes
 - [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
       trash cans (Data/GarbageCans)
-- [x] Cutscene events (core command subset), festivals
+- [x] Cutscene events (core command subset), festivals, passive festivals
+      (multi-day map swaps)
 - [x] Movie theater: seasonal movies, tickets, inviting villagers,
       reactions by movie tags (no concessions yet)
 - [x] Skills, professions, level-up screen

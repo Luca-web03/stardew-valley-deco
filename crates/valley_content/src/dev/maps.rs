@@ -403,6 +403,19 @@ pub fn dunes() -> Map {
     b.map
 }
 
+/// The dunes dressed up for the (invented) Lantern Market festival.
+pub fn dunes_market() -> Map {
+    let mut map = dunes();
+    map.id = "Dev_Dunes_Market".into();
+    let mut b = B { map };
+    for x in [8, 12, 16, 22, 25] {
+        b.set("Buildings", x, 13, LAMP);
+    }
+    b.set_props("Buildings", 18, 13, BIN, &[("Action", "OpenShop Dev_MarketStall")]);
+    b.set_props("Buildings", 19, 13, SIGN, &[("Action", "Message \"Lanterns, snacks and souvenirs!\"")]);
+    b.map
+}
+
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market()]
 }

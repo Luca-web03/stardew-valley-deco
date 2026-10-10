@@ -24,6 +24,7 @@ pub mod fishing;
 pub mod fishing_gear;
 pub mod harvest_huts;
 pub mod movies;
+pub mod passive_festivals;
 pub mod gsq;
 pub mod house;
 pub mod input;

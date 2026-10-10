@@ -203,6 +203,11 @@ pub struct World {
     pub movie_reactions: Vec<crate::movies::NpcMovieReactions>,
     /// Villager invited to today's movie.
     pub movie_invite: Option<String>,
+    pub passive_festivals: BTreeMap<String, crate::passive_festivals::PassiveFestivalData>,
+    /// Replacement maps named by passive festivals (asset -> map).
+    pub passive_maps: BTreeMap<String, valley_content::Map>,
+    /// Maps swapped out for today's festivals (location -> original).
+    pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -298,6 +303,7 @@ impl World {
         farmer.appearance = opts.appearance.clone();
         farmer.male = opts.male;
 
+        let (passive_festivals, passive_maps) = crate::passive_festivals::load(cm);
         let mut w = World {
             items,
             clock: Clock::default(),
@@ -348,6 +354,9 @@ impl World {
             movies: cm.load_json("Data/Movies").unwrap_or_default(),
             movie_reactions: cm.load_json("Data/MoviesReactions").unwrap_or_default(),
             movie_invite: None,
+            passive_festivals,
+            passive_maps,
+            festival_original_maps: BTreeMap::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -706,6 +715,7 @@ impl World {
         self.pet_morning();
         self.cart_morning();
         self.orders_morning();
+        self.passive_festivals_morning();
     }
 
     /// End the day (sleep or pass out) and start the next one.
