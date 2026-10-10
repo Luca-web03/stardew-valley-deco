@@ -537,6 +537,13 @@ impl ValleyGame {
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
                 WorldEvent::Music(track) => ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume }),
                 WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
+                WorldEvent::DialogueQuestion { npc, prompt, choices } => {
+                    let display = self.world.as_ref().and_then(|w| w.npcs.iter().find(|n| n.name == npc).map(|n| n.display_name.clone())).unwrap_or(npc);
+                    let q = Menu::Question { text: format!("{display}: {prompt}"), options: choices, selected: 0, kind: QuestionKind::DialogueAnswer };
+                    // Show after the dialogue pages already on screen.
+                    let at = if matches!(self.menus.last(), Some(Menu::Dialogue { .. })) { self.menus.len() - 1 } else { self.menus.len() };
+                    self.menus.insert(at, q);
+                }
                 WorldEvent::FestivalHost { festival } => self.menus.push(Menu::Question {
                     text: format!("Are you ready to begin the main event of the {festival}?"),
                     options: vec!["Yes".into(), "Not yet".into()],
@@ -632,7 +639,13 @@ impl ValleyGame {
                 if let Some(i) = chosen {
                     close = true;
                     let kind = kind.clone();
-                    if let QuestionKind::Elevator { levels } = &kind {
+                    if kind == QuestionKind::DialogueAnswer {
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(w) = g.world.as_mut() {
+                                w.answer_question(i);
+                            }
+                        }));
+                    } else if let QuestionKind::Elevator { levels } = &kind {
                         if let Some(&level) = levels.get(i) {
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
                                 if let Some(w) = g.world.as_mut() {
@@ -670,6 +683,7 @@ impl ValleyGame {
                                     w.leave_festival();
                                 }
                             }
+                            QuestionKind::DialogueAnswer => {}
                         }));
                     }
                 }

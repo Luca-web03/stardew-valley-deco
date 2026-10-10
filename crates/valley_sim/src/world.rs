@@ -73,6 +73,8 @@ pub enum WorldEvent {
     OpenMuseum,
     /// Talked to the festival host: ask to start the main event.
     FestivalHost { festival: String },
+    /// An NPC asked a question; answer with `World::answer_question`.
+    DialogueQuestion { npc: String, prompt: String, choices: Vec<String> },
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -176,6 +178,7 @@ pub struct World {
     pub festival_done_today: bool,
     /// MarriageDialogue<Name> tables.
     pub spouse_dialogue: HashMap<String, HashMap<String, String>>,
+    pub pending_question: Option<(String, dialogue::Question)>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -283,6 +286,7 @@ impl World {
             festival_maps: HashMap::new(),
             festival_done_today: false,
             spouse_dialogue: HashMap::new(),
+            pending_question: None,
         };
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
             let data = cm.load_string_dict(&format!("Data/Festivals/{key}"));
@@ -1378,13 +1382,21 @@ impl World {
         let key = if npc.dialogue.contains_key("__spouse_today") { Some("__spouse_today".to_string()) } else { dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining) };
         let raw = key.and_then(|k| npc.dialogue.get(&k).cloned()).unwrap_or_else(|| "...".to_string());
         let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
-        let pages = dialogue::parse(&raw, &subs);
+        let parsed = dialogue::parse_full(&raw, &subs);
+        let pages = parsed.pages;
+        let question = parsed.question;
         let romanceable = self.npcs[i].can_romance;
         let fr = self.farmer.friendship(&name);
         fr.met = true;
         fr.talked_today = true;
         fr.points = (fr.points + 20).min(fr.max_points(romanceable));
-        self.emit(WorldEvent::Dialogue { npc: Some(name), pages });
+        if !pages.is_empty() {
+            self.emit(WorldEvent::Dialogue { npc: Some(name.clone()), pages });
+        }
+        if let Some(q) = question {
+            self.emit(WorldEvent::DialogueQuestion { npc: name.clone(), prompt: q.prompt.clone(), choices: q.choices.iter().map(|c| c.text.clone()).collect() });
+            self.pending_question = Some((name, q));
+        }
     }
 
     /// Gift taste: 0 love, 1 like, 2 dislike, 3 hate, 4 neutral.
@@ -1761,6 +1773,28 @@ impl World {
                 self.farmer.health += 25;
             }
             _ => {}
+        }
+    }
+
+    /// Answer the pending dialogue question with choice `i`.
+    pub fn answer_question(&mut self, i: usize) {
+        let Some((npc, q)) = self.pending_question.take() else { return };
+        let Some(c) = q.choices.get(i).cloned() else { return };
+        let romanceable = self.npcs.iter().find(|n| n.name == npc).is_some_and(|n| n.can_romance);
+        let f = self.farmer.friendship(&npc);
+        f.points = (f.points + c.friendship).clamp(0, f.max_points(romanceable));
+        if !c.id.is_empty() && !self.farmer.dialogue_answers.contains(&c.id) {
+            self.farmer.dialogue_answers.push(c.id.clone());
+        }
+        let raw = match &c.reaction {
+            dialogue::Reaction::Key(k) => self.npcs.iter().find(|n| n.name == npc).and_then(|n| n.dialogue.get(k).cloned()),
+            dialogue::Reaction::Text(t) => Some(t.clone()),
+            dialogue::Reaction::None => None,
+        };
+        if let Some(raw) = raw {
+            let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
+            let pages = dialogue::parse(&raw, &subs);
+            self.emit(WorldEvent::Dialogue { npc: Some(npc), pages });
         }
     }
 

@@ -254,3 +254,30 @@ fn debris_uses_available_ids() {
     assert!(farm.state.objects.values().all(|o| w.items.objects.contains_key(&o.item_id)));
     assert!(!w.compat.bed_fallback, "placeholder farmhouse has a bed tile");
 }
+
+#[test]
+fn npc_question_answers_change_friendship() {
+    let (_, mut w) = new_world();
+    w.clock.day = 3; // Wednesday
+    let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
+    let home = w.npcs[i].home.tile;
+    w.farmer.events_seen.push("Dev_Intro".into());
+    w.warp_farmer("Town", TilePos::new(home.x, home.y + 1), Some(Dir::Up));
+    w.npcs[i].route.clear();
+    w.npcs[i].location = "Town".into();
+    w.npcs[i].set_tile(home);
+    w.farmer.set_tile(TilePos::new(home.x, home.y + 1));
+    w.farmer.facing = Dir::Up;
+    w.farmer.friendship("Mara").met = true;
+    w.drain_events();
+    assert!(w.do_action(None));
+    let ev = w.drain_events();
+    assert!(ev.iter().any(|e| matches!(e, WorldEvent::DialogueQuestion { choices, .. } if choices.len() == 2)), "{ev:?}");
+    let before = w.farmer.friendships["Mara"].points;
+    w.answer_question(0);
+    assert_eq!(w.farmer.friendships["Mara"].points, before + 20);
+    assert!(w.farmer.dialogue_answers.contains(&"7001".to_string()));
+    let ev = w.drain_events();
+    let Some(WorldEvent::Dialogue { pages, .. }) = ev.iter().find(|e| matches!(e, WorldEvent::Dialogue { .. })) else { panic!() };
+    assert!(pages[0].text.contains("meteor"));
+}

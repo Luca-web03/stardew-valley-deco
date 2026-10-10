@@ -222,6 +222,9 @@ pub struct Farmer {
     pub spouse: Option<String>,
     #[serde(default)]
     pub appearance: Appearance,
+    /// Dialogue response ids chosen so far.
+    #[serde(default)]
+    pub dialogue_answers: Vec<String>,
 }
 
 impl Farmer {
@@ -271,6 +274,7 @@ impl Farmer {
             bundles: Default::default(),
             spouse: None,
             appearance: Appearance::default(),
+            dialogue_answers: Vec::new(),
         }
     }
 

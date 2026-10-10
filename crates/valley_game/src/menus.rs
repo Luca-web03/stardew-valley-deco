@@ -13,6 +13,8 @@ pub enum QuestionKind {
     Elevator { levels: Vec<i32> },
     FestivalMain,
     FestivalLeave,
+    /// Answer an NPC's question (option index is the answer).
+    DialogueAnswer,
 }
 
 #[derive(Clone, Debug, PartialEq)]
