@@ -347,6 +347,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "ProduceItemIds": [{ "ItemId": "(O)Dev_Milk" }], "Sound": "goat"
             }
         })),
+        ("Data/Events/Town", json!({
+            "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
+        })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",
             "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"

@@ -65,6 +65,9 @@ pub enum WorldEvent {
     OpenAnimalShop(Vec<(String, i32)>),
     /// Building kinds available to construct.
     OpenCarpenter(Vec<String>),
+    Music(String),
+    Fade { to_black: bool },
+    EventEnded,
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -154,6 +157,9 @@ pub struct World {
     pub next_animal_id: u32,
     /// Item id of hay (well-known id or placeholder).
     pub hay_id: Option<String>,
+    /// Event scripts per location (key -> script).
+    pub event_data: HashMap<String, HashMap<String, String>>,
+    pub event: Option<crate::events::EventRunner>,
 }
 
 impl World {
@@ -240,7 +246,16 @@ impl World {
             next_building_id: 0,
             next_animal_id: 0,
             hay_id: None,
+            event_data: HashMap::new(),
+            event: None,
         };
+        let names: Vec<String> = w.locations.keys().cloned().collect();
+        for n in names {
+            let d = cm.load_string_dict(&format!("Data/Events/{n}"));
+            if !d.is_empty() {
+                w.event_data.insert(n, d);
+            }
+        }
         let interior_maps: Vec<String> = w.buildings_data.values().filter_map(|b| b.indoor_map.clone()).collect();
         for m in interior_maps {
             if let Some(map) = cm.load_map(&format!("Maps/{m}")) {
@@ -624,6 +639,12 @@ impl World {
     pub fn update_ms(&mut self, input: &PlayerInput, dt: u32) {
         self.game_ms += dt as u64;
         self.animate(dt);
+        if self.event.is_some() {
+            if !self.paused || self.event.as_ref().is_some_and(|e| !e.waiting_ui) {
+                self.update_event(dt);
+            }
+            return;
+        }
         if self.paused {
             return;
         }
@@ -873,6 +894,7 @@ impl World {
         self.sound("doorClose");
         self.quest_visit(target);
         self.emit(WorldEvent::Warped { from, to: target.to_string() });
+        self.check_location_events();
     }
 
     fn face_toward(&mut self, t: TilePos) {

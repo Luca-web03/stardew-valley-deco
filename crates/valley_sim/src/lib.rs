@@ -13,6 +13,7 @@ pub mod crop;
 pub mod machines;
 pub mod mines;
 pub mod dialogue;
+pub mod events;
 pub mod farm;
 pub mod farmer;
 pub mod fishing;

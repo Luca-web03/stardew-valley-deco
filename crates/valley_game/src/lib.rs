@@ -131,7 +131,7 @@ impl ValleyGame {
         let w = self.world.as_ref()?;
         let loc = w.location();
         Some(Camera::follow(
-            w.farmer.center(),
+            w.event_camera_focus().unwrap_or_else(|| w.farmer.center()),
             loc.width() as f32 * TILE_F,
             loc.height() as f32 * TILE_F,
             ctx.screen_w as f32,
@@ -307,6 +307,15 @@ impl ValleyGame {
 
         if !self.menus.is_empty() {
             self.update_menu(ctx);
+        } else if self.world.as_ref().is_some_and(|w| w.in_event()) {
+            if ctx.input.pressed(Key::Escape) {
+                if let Some(w) = self.world.as_mut() {
+                    w.skip_event();
+                }
+            }
+            if let Some(w) = self.world.as_mut() {
+                w.update(&Default::default());
+            }
         } else if input_map::menu_pressed(&ctx.input) {
             self.menus.push(Menu::Inventory { tab: InvTab::Items, held: None, hovered: None });
         } else if input_map::journal_pressed(&ctx.input) {
@@ -373,6 +382,9 @@ impl ValleyGame {
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
+                WorldEvent::Music(track) => ctx.audio.music(&track),
+                WorldEvent::Fade { to_black } => self.fade = if to_black { Fade { alpha: 0.0, target: 1.0 } } else { Fade { alpha: 1.0, target: 0.0 } },
+                WorldEvent::EventEnded => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::OpenAnimalShop(list) => self.menus.push(Menu::AnimalShop { list, hovered: None }),
                 WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
@@ -723,6 +735,11 @@ impl ValleyGame {
         }
         if close {
             self.menus.pop();
+            if self.menus.is_empty() {
+                if let Some(w) = self.world.as_mut() {
+                    w.event_resume();
+                }
+            }
         }
         if let Some(a) = action {
             a(self, ctx);

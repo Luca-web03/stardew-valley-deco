@@ -246,9 +246,36 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Event actors take the place of NPCs and the farmer.
+    let event_here = w.event.as_ref().filter(|e| e.location == loc_name);
+    if let Some(e) = event_here {
+        let shadow = rc.assets.shadow(rc.textures);
+        for a in &e.actors {
+            let tex = rc.assets.tex(rc.cm, rc.textures, &a.texture);
+            let frame = if a.moving.is_some() { ((a.walk_ms / 150) % 4) as i32 } else { 0 };
+            let p = cam.to_screen(a.pos);
+            let depth = sort_depth(a.pos.y + TILE_F, map_h);
+            out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
+            out.draw(tex, character_src(a.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+            if let Some((id, _)) = a.emote {
+                if let Some(ft) = rc.textures.id("__engine/font8x8") {
+                    let ch = match id {
+                        8 | 16 => '?',
+                        20 | 32 => '!',
+                        12 => '*',
+                        _ => '!',
+                    } as i32;
+                    let white = rc.assets.white(rc.textures);
+                    out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(p.x + 14.0, p.y - 112.0), 36.0, Color::rgba(255, 255, 255, 230), DEPTH_OVERLAY + 0.009);
+                    out.draw_tinted(ft, IRect::new((ch % 16) * 8, (ch / 16) * 8, 8, 8), Vec2::new(p.x + 20.0, p.y - 106.0), 3.0, Color::rgb(60, 40, 30), DEPTH_OVERLAY + 0.01);
+                }
+            }
+        }
+    }
+
     // NPCs.
     let shadow = rc.assets.shadow(rc.textures);
-    for npc in w.npcs.iter().filter(|n| n.location == loc_name) {
+    for npc in w.npcs.iter().filter(|n| n.location == loc_name && event_here.is_none()) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &npc.texture);
         let frame = walk_frame(npc.moving, npc.walk_ms, 200);
         let p = cam.to_screen(npc.pos);
@@ -288,7 +315,7 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     }
 
     // Farmer.
-    if is_current {
+    if is_current && event_here.is_none() {
         draw_farmer(rc, out, w, cam, map_h);
     }
 
