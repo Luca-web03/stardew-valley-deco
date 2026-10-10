@@ -58,12 +58,36 @@ pub struct Friendship {
     pub gifts_this_week: i32,
     pub gifted_today: bool,
     pub met: bool,
+    #[serde(default)]
+    pub status: RelationStatus,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RelationStatus {
+    #[default]
+    Friendly,
+    Dating,
+    /// Wedding happens on this `days_played` value.
+    Engaged { wedding_day: i32 },
+    Married,
 }
 
 impl Friendship {
     pub const POINTS_PER_HEART: i32 = 250;
     pub fn hearts(&self) -> i32 {
         self.points / Self::POINTS_PER_HEART
+    }
+
+    /// Maximum friendship points for the current relationship (documented
+    /// caps: 8 hearts for romanceable villagers until dating, 10 while
+    /// dating, 14 when married).
+    pub fn max_points(&self, romanceable: bool) -> i32 {
+        match self.status {
+            RelationStatus::Married => 14 * Self::POINTS_PER_HEART,
+            RelationStatus::Dating | RelationStatus::Engaged { .. } => 10 * Self::POINTS_PER_HEART,
+            RelationStatus::Friendly if romanceable => 8 * Self::POINTS_PER_HEART,
+            RelationStatus::Friendly => 10 * Self::POINTS_PER_HEART,
+        }
     }
 }
 
@@ -163,6 +187,8 @@ pub struct Farmer {
     pub tool_upgrade: Option<(crate::item::Tool, i32)>,
     #[serde(default)]
     pub bundles: crate::bundles::BundleProgress,
+    #[serde(default)]
+    pub spouse: Option<String>,
 }
 
 impl Farmer {
@@ -210,6 +236,7 @@ impl Farmer {
             pending_levelups: Vec::new(),
             tool_upgrade: None,
             bundles: Default::default(),
+            spouse: None,
         }
     }
 

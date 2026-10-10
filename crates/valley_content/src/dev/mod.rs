@@ -107,6 +107,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
+        "Dev_Bouquet": obj("Bouquet", "Basic", 0, 100, ICON_BOUQUET, -300),
+        "Dev_Pendant": obj("Promise Pendant", "Basic", 0, 2500, ICON_PENDANT, -300),
         "Dev_CopperBar": obj("Copper Bar", "Basic", -15, 60, ICON_COPPER_BAR, -300),
         "Dev_IronBar": obj("Iron Bar", "Basic", -15, 120, ICON_IRON_BAR, -300),
         "Dev_GoldBar": obj("Gold Bar", "Basic", -15, 250, ICON_GOLD_BAR, -300),
@@ -206,6 +208,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "RockNodule_Name": "Rock Nodule", "RockNodule_Description": "Something rattles inside. A blacksmith can crack it open.",
         "ClearQuartz_Name": "Clear Quartz", "ClearQuartz_Description": "A clear crystal.",
         "Amberite_Name": "Amberite", "Amberite_Description": "A warm, glowing stone.",
+        "Bouquet_Name": "Bouquet", "Bouquet_Description": "Give it to someone you'd like to date.",
+        "PromisePendant_Name": "Promise Pendant", "PromisePendant_Description": "Give it to the one you want to marry.",
         "Egg_Name": "Egg", "Egg_Description": "Fresh from the henhouse.",
         "GoatMilk_Name": "Goat Milk", "GoatMilk_Description": "Rich and creamy.",
         "Hay_Name": "Hay", "Hay_Description": "Dried grass for animal feed.",
@@ -254,7 +258,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 },
                 { "Id": "fert", "ItemId": "(O)Dev_Fertilizer", "Price": 10 },
                 { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" },
-                { "Id": "rod", "ItemId": "(T)FishingRod", "Price": 200 }
+                { "Id": "rod", "ItemId": "(T)FishingRod", "Price": 200 },
+                { "Id": "bouquet", "ItemId": "(O)Dev_Bouquet", "Price": 200 },
+                { "Id": "pendant", "ItemId": "(O)Dev_Pendant", "Price": 5000 }
             ]
         }
     });
@@ -414,6 +420,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Characters", characters),
         ("Characters/Dialogue/Mara", mara_dialogue),
         ("Characters/Dialogue/Tobin", tobin_dialogue),
+        ("Characters/Dialogue/MarriageDialogueMara", json!({
+            "Indoor_Day_0": "Morning! I made tea. Don't let it go cold.$h",
+            "Indoor_Day_1": "I rearranged the shelves. I think it looks better, don't you?",
+            "Rainy_Day_0": "Listen to that rain. The crops will love it.$h",
+            "Outdoor_0": "I'll be outside enjoying the sun for a while."
+        })),
         ("Characters/schedules/Mara", mara_schedule),
         ("Characters/schedules/Tobin", tobin_schedule),
     ]

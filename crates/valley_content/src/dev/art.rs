@@ -332,6 +332,8 @@ pub const ICON_IRIDIUM_BAR: i32 = 41;
 pub const ICON_GEODE: i32 = 42;
 pub const ICON_QUARTZ: i32 = 43;
 pub const ICON_AMBERITE: i32 = 44;
+pub const ICON_BOUQUET: i32 = 45;
+pub const ICON_PENDANT: i32 = 46;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -553,6 +555,25 @@ pub fn objects() -> Image {
         let mut c = Cell::at(&mut img, ICON_AMBERITE, OBJ_COLS, 16, 16);
         c.ellipse(8.0, 9.0, 4.5, 5.0, Color::rgb(240, 160, 40));
         c.px(7, 7, Color::rgb(255, 230, 160));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BOUQUET, OBJ_COLS, 16, 16);
+        c.rect(7, 9, 2, 6, Color::rgb(70, 140, 50));
+        for (x, y, col) in [(5, 5, Color::rgb(240, 90, 120)), (9, 4, Color::rgb(250, 220, 90)), (7, 7, Color::rgb(130, 140, 250)), (10, 7, Color::rgb(240, 120, 60))] {
+            c.ellipse(x as f32, y as f32, 2.2, 2.2, col);
+        }
+        c.rect(5, 10, 6, 2, Color::rgb(230, 230, 240));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_PENDANT, OBJ_COLS, 16, 16);
+        for i in 0..5 {
+            c.px(4 + i, 2 + i, Color::rgb(220, 200, 120));
+            c.px(11 - i, 2 + i, Color::rgb(220, 200, 120));
+        }
+        c.ellipse(8.0, 10.0, 3.0, 3.5, Color::rgb(90, 200, 220));
+        c.px(7, 9, Color::WHITE);
         c.auto_outline(OUTLINE);
     }
     {

@@ -173,6 +173,8 @@ pub struct World {
     /// Temporary maps used by event scripts (changeToTemporaryMap).
     pub festival_maps: HashMap<String, valley_content::Map>,
     pub festival_done_today: bool,
+    /// MarriageDialogue<Name> tables.
+    pub spouse_dialogue: HashMap<String, HashMap<String, String>>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -278,6 +280,7 @@ impl World {
             festivals: HashMap::new(),
             festival_maps: HashMap::new(),
             festival_done_today: false,
+            spouse_dialogue: HashMap::new(),
         };
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
             let data = cm.load_string_dict(&format!("Data/Festivals/{key}"));
@@ -329,6 +332,13 @@ impl World {
         w.bed_tile = w.find_bed_tile();
         w.setup_compat();
         w.spawn_npcs(cm);
+        let romanceable: Vec<String> = w.npcs.iter().filter(|n| n.can_romance).map(|n| n.name.clone()).collect();
+        for n in romanceable {
+            let d = cm.load_string_dict(&format!("Characters/Dialogue/MarriageDialogue{n}"));
+            if !d.is_empty() {
+                w.spouse_dialogue.insert(n, d);
+            }
+        }
         w.populate_new_farm();
         w.farmer.mailbox.push("welcome".into());
         for starter in ["Dev_Q1"] {
@@ -541,6 +551,7 @@ impl World {
     /// Morning setup: weather-dependent watering, NPC schedules, mail.
     pub fn start_day(&mut self) {
         self.festival_done_today = false;
+        self.check_wedding();
         let raining = self.weather.is_raining();
         self.unlock_recipes();
         self.run_sprinklers();
@@ -574,6 +585,7 @@ impl World {
             };
         }
         self.update_npc_schedules();
+        self.spouse_morning();
     }
 
     /// End the day (sleep or pass out) and start the next one.
@@ -1330,6 +1342,9 @@ impl World {
         let held = self.farmer.current_item().cloned();
         let f = self.farmer.friendship(&name).clone();
         if let Some(Item::Object { id, .. }) = &held {
+            if self.try_romance_item(i, id) {
+                return;
+            }
             if f.talked_today && !f.gifted_today {
                 self.give_gift(i, id.clone());
                 return;
@@ -1342,14 +1357,15 @@ impl World {
         let raining = self.weather.is_raining();
         let hearts = f.hearts();
         let npc = &self.npcs[i];
-        let key = dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining);
+        let key = if npc.dialogue.contains_key("__spouse_today") { Some("__spouse_today".to_string()) } else { dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining) };
         let raw = key.and_then(|k| npc.dialogue.get(&k).cloned()).unwrap_or_else(|| "...".to_string());
         let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
         let pages = dialogue::parse(&raw, &subs);
+        let romanceable = self.npcs[i].can_romance;
         let fr = self.farmer.friendship(&name);
         fr.met = true;
         fr.talked_today = true;
-        fr.points += 20;
+        fr.points = (fr.points + 20).min(fr.max_points(romanceable));
         self.emit(WorldEvent::Dialogue { npc: Some(name), pages });
     }
 
@@ -1400,8 +1416,9 @@ impl World {
         }
         let slot = self.farmer.current_slot;
         self.farmer.inventory.reduce(slot, 1);
+        let romanceable = self.npcs[i].can_romance;
         let f = self.farmer.friendship(&name);
-        f.points = (f.points + points).clamp(0, 2500);
+        f.points = (f.points + points).clamp(0, f.max_points(romanceable));
         f.gifted_today = true;
         f.gifts_this_week += 1;
         let (fallback, emo) = match taste {
