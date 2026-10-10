@@ -14,13 +14,17 @@ use crate::*;
 /// Frame layout for 16x32 character sheets: rows down, right, up, left;
 /// four walk frames per row.
 pub fn character_src(facing: Dir, frame: i32) -> IRect {
-    let row = match facing {
+    character_src_with(&crate::layouts::CharacterLayout::default(), facing, frame)
+}
+
+pub fn character_src_with(l: &crate::layouts::CharacterLayout, facing: Dir, frame: i32) -> IRect {
+    let row = l.rows[match facing {
         Dir::Down => 0,
         Dir::Right => 1,
         Dir::Up => 2,
         Dir::Left => 3,
-    };
-    IRect::new((frame % 4) * 16, row * 32, 16, 32)
+    }];
+    IRect::new((frame % l.walk_frames.max(1)) * l.frame_w, row * l.frame_h, l.frame_w, l.frame_h)
 }
 
 fn walk_frame(moving: bool, walk_ms: u32, frame_ms: u32) -> i32 {
@@ -86,8 +90,9 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     draw_layer(rc, out, cam, loc, "Back", DEPTH_BACK, season, ms);
     draw_layer(rc, out, cam, loc, "Buildings", DEPTH_BUILDINGS, season, ms);
 
+    let lay = rc.assets.layouts(rc.cm);
     // Tilled soil.
-    let dirt_tex = rc.assets.tex(rc.cm, rc.textures, "TerrainFeatures/hoeDirt");
+    let dirt_tex = rc.assets.tex(rc.cm, rc.textures, &lay.hoe_dirt.texture);
     let crops_tex = rc.assets.tex(rc.cm, rc.textures, "TileSheets/crops");
     for (p, t) in &loc.state.terrain {
         let TerrainFeature::HoeDirt(d) = t else { continue };
@@ -106,16 +111,21 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
             mask |= 8;
         }
         let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
-        let src = IRect::new((mask % 4) * 16, (mask / 4) * 16, 16, 16);
+        let cols = lay.hoe_dirt.cols.max(1);
+        let src = IRect::new((mask % cols) * 16, (mask / cols) * 16, 16, 16);
         out.draw(dirt_tex, src, pos, ZOOM, DEPTH_GROUND);
         if d.watered {
-            out.draw(dirt_tex, IRect::new(64 + src.x, src.y, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.001);
+            let [ox, oy] = lay.hoe_dirt.watered_offset;
+            out.draw(dirt_tex, IRect::new(ox + src.x, oy + src.y, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.001);
         }
         if let Some(c) = &d.crop {
             let Some(data) = w.items.crops.get(&c.seed_id) else { continue };
             let frame = c.sprite_frame(data);
             let tex = if data.texture.is_empty() { crops_tex } else { rc.assets.tex(rc.cm, rc.textures, &data.texture) };
-            let src = IRect::new((data.sprite_index % 2) * 128 + frame * 16, (data.sprite_index / 2) * 32, 16, 32);
+            let cl = &lay.crops;
+            let per_row = cl.crops_per_row.max(1);
+            let strip = cl.frames_per_crop * cl.frame_w;
+            let src = IRect::new((data.sprite_index % per_row) * strip + frame * cl.frame_w, (data.sprite_index / per_row) * cl.frame_h, cl.frame_w, cl.frame_h);
             let mut s = Sprite::new(
                 tex,
                 src,
@@ -169,17 +179,22 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     // Trees.
     for (p, t) in &loc.state.terrain {
         let TerrainFeature::Tree(tree) = t else { continue };
-        let tex = tree_texture(rc, &tree.kind, season);
+        let tex = rc.assets.tex(rc.cm, rc.textures, &lay.tree_texture(&tree.kind, season));
+        let [cx, cy, cw, ch] = lay.trees.canopy;
+        let [sx, sy, sw_, sh_] = lay.trees.stump;
+        let canopy_src = IRect::new(cx, cy, cw, ch);
+        let (cwf, chf) = (cw as f32 * ZOOM, ch as f32 * ZOOM);
         let base = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
         let depth = sort_depth((p.y * TILE + TILE - 2) as f32, map_h);
         let shadow = rc.assets.shadow(rc.textures);
         out.draw_tinted(shadow, IRect::new(0, 0, 16, 6), Vec2::new(base.x, base.y + TILE_F - 20.0), ZOOM, Color::WHITE, depth - 0.0005);
+        let canopy_rect = FRect::new(base.x + TILE_F / 2.0 - cwf / 2.0, base.y + TILE_F - chf, cwf, chf);
         if tree.stump || tree.falling > 0 {
-            out.draw(tex, IRect::new(0, 48, 16, 16), base, ZOOM, depth);
+            out.draw(tex, IRect::new(sx, sy, sw_, sh_), Vec2::new(base.x + TILE_F / 2.0 - sw_ as f32 * ZOOM / 2.0, base.y + TILE_F - sh_ as f32 * ZOOM), ZOOM, depth);
             if tree.falling > 0 {
                 // Canopy tipping over.
-                let mut s = Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x - TILE_F, base.y - TILE_F * 5.0, TILE_F * 3.0, TILE_F * 6.0), depth + 0.0001);
-                s.origin = Vec2::new(TILE_F * 1.5, TILE_F * 6.0);
+                let mut s = Sprite::new(tex, canopy_src, canopy_rect, depth + 0.0001);
+                s.origin = Vec2::new(cwf / 2.0, chf);
                 let dir = if tree.flip { -1.0 } else { 1.0 };
                 s.rotation = dir * (tree.falling as f32 / 60.0).powi(2) * std::f32::consts::FRAC_PI_2;
                 s.tint = Color::WHITE.with_alpha(1.0 - tree.falling as f32 / 70.0);
@@ -187,15 +202,17 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
             }
         } else if tree.mature() {
             let shake = shake_off(tree.shake);
-            let mut s = Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x - TILE_F + shake, base.y - TILE_F * 5.0, TILE_F * 3.0, TILE_F * 6.0), depth);
+            let mut r = canopy_rect;
+            r.x += shake;
+            let mut s = Sprite::new(tex, canopy_src, r, depth);
             s.flip_x = tree.flip;
             out.sprite(s);
         } else {
             // Saplings: scaled-down canopy.
             let scale = 0.25 + tree.stage as f32 * 0.15;
-            let w_px = TILE_F * 3.0 * scale;
-            let h_px = TILE_F * 6.0 * scale;
-            out.sprite(Sprite::new(tex, IRect::new(48, 0, 48, 96), FRect::new(base.x + TILE_F / 2.0 - w_px / 2.0, base.y + TILE_F - h_px, w_px, h_px), depth));
+            let w_px = cwf * scale;
+            let h_px = chf * scale;
+            out.sprite(Sprite::new(tex, canopy_src, FRect::new(base.x + TILE_F / 2.0 - w_px / 2.0, base.y + TILE_F - h_px, w_px, h_px), depth));
         }
     }
 
@@ -281,7 +298,9 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         let p = cam.to_screen(npc.pos);
         let depth = sort_depth(npc.pos.y + TILE_F, map_h);
         out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
-        out.draw(tex, character_src(npc.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+        let src = character_src_with(&lay.character, npc.facing, frame);
+        let h = src.h as f32 * ZOOM;
+        out.draw(tex, src, Vec2::new(p.x + TILE_F / 2.0 - src.w as f32 * ZOOM / 2.0, p.y + TILE_F - h), ZOOM, depth);
     }
 
     // Monsters.
@@ -359,7 +378,11 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
 
 fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
     let f = &w.farmer;
-    let tex = farmer_texture(rc, &f.appearance);
+    let lay = rc.assets.layouts(rc.cm);
+    let tex = match &lay.farmer.texture {
+        Some(t) => rc.assets.tex(rc.cm, rc.textures, t),
+        None => farmer_texture(rc, &f.appearance),
+    };
     let shadow = rc.assets.shadow(rc.textures);
     let p = cam.to_screen(f.pos);
     let depth = sort_depth(f.pos.y + TILE_F, map_h);
@@ -542,10 +565,6 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
     }
 }
 
-fn tree_texture(rc: &mut RenderCtx, kind: &str, season: &str) -> engine::TexId {
-    let _ = kind;
-    rc.assets.tex(rc.cm, rc.textures, &format!("TerrainFeatures/dev_tree_{season}"))
-}
 
 /// Texture + source rect of an object id's icon.
 pub fn object_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId, IRect) {

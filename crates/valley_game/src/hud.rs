@@ -105,7 +105,7 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
     }
 
     // Toasts (newest at the bottom).
-    let mut y = sh - 140.0;
+    let mut y = sh - 196.0;
     for (msg, ms) in toasts.iter().rev().take(5) {
         let alpha = (*ms as f32 / 500.0).min(1.0);
         let m = ui.measure(msg, 2.0);

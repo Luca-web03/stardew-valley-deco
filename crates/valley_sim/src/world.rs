@@ -905,7 +905,23 @@ impl World {
         }
         self.farmer.moving = moved;
         if moved {
+            let before = self.farmer.walk_ms;
             self.farmer.walk_ms += dt;
+            // A footstep every ~320 ms, sounding like the ground underfoot.
+            let step_ms = if input.walk { 450 } else { 320 };
+            if before / step_ms != self.farmer.walk_ms / step_ms {
+                let ground = self.location().ground_type(self.farmer.tile());
+                let has_dirt = matches!(self.location().terrain(self.farmer.tile()), Some(TerrainFeature::HoeDirt(_)));
+                let cue = match ground.as_deref() {
+                    _ if has_dirt => "sandyStep",
+                    Some("Grass") => "grassyStep",
+                    Some("Stone") => "stoneStep",
+                    Some("Wood") => "woodyStep",
+                    Some("Water") => "waterSlosh",
+                    _ => "sandyStep",
+                };
+                self.sound(cue);
+            }
         } else {
             self.farmer.walk_ms = 0;
         }

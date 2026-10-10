@@ -1204,6 +1204,8 @@ name = "valley_render"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "serde",
+ "serde_json",
  "valley_content",
  "valley_sim",
 ]

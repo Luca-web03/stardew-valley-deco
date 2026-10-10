@@ -10,3 +10,7 @@ publish.workspace = true
 engine.workspace = true
 valley_content.workspace = true
 valley_sim.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

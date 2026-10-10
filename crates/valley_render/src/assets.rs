@@ -11,6 +11,7 @@ pub struct Assets {
     shadow: Option<TexId>,
     white: Option<TexId>,
     ladder: Option<TexId>,
+    layouts: Option<crate::layouts::Layouts>,
 }
 
 impl Assets {
@@ -46,6 +47,11 @@ impl Assets {
             }
             store.insert("__shadow", img)
         })
+    }
+
+    /// Sprite-sheet layouts (loaded once from the content folder).
+    pub fn layouts(&mut self, cm: &mut ContentManager) -> crate::layouts::Layouts {
+        self.layouts.get_or_insert_with(|| crate::layouts::Layouts::load(cm)).clone()
     }
 
     /// Engine-owned ladder sprites (16x16: down ladder at x 0, up ladder at x 16).
