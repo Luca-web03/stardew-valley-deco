@@ -38,6 +38,8 @@ were not available; such values are isolated constants that can be tuned.
       weapons, rings, boots, combat, fainting
 - [x] Weapon special moves (block, flurry, slam; approx. timings),
       slingshot with ammo and projectiles
+- [x] Deep cavern below the mines (shafts, tougher floors), paid travel
+      between areas, warp totems and obelisks, placeholder desert
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
@@ -59,8 +61,6 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [x] Deep cavern below the mines (shafts, tougher floors), paid travel
-      between areas, warp totems and obelisks, placeholder desert
 - [ ] Area-specific mechanics beyond that (island, volcano, desert shops
       and events)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer
