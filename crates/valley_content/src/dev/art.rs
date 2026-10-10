@@ -1239,3 +1239,56 @@ pub fn shed(w: i32, h: i32, wall: Color, roof: Color) -> Image {
     c.auto_outline(OUTLINE);
     img
 }
+
+/// Furniture sheet: 32 columns of 16px cells. Pieces start at these indices:
+/// 0 chair (1x2), 2 table (2x2), 4 rug (3x2), 8 bookcase (2x3), 11 lamp (1x2).
+pub fn furniture() -> Image {
+    let mut img = Image::new(512, 48);
+    let wood = Color::rgb(160, 104, 56);
+    {
+        let mut c = Cell { ox: 0, oy: 0, w: 16, h: 32, img: &mut img };
+        c.rect(4, 4, 8, 12, shade(wood, 10));
+        c.rect(4, 16, 8, 3, shade(wood, 30));
+        c.rect(4, 19, 2, 11, shade(wood, -20));
+        c.rect(10, 19, 2, 11, shade(wood, -20));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell { ox: 32, oy: 0, w: 32, h: 32, img: &mut img };
+        c.rect(2, 10, 28, 8, shade(wood, 25));
+        c.rect(2, 16, 28, 2, shade(wood, -15));
+        c.rect(4, 18, 3, 12, shade(wood, -25));
+        c.rect(25, 18, 3, 12, shade(wood, -25));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell { ox: 64, oy: 0, w: 48, h: 32, img: &mut img };
+        c.rect(1, 2, 46, 28, Color::rgb(70, 110, 160));
+        c.rect(4, 5, 40, 22, Color::rgb(220, 200, 140));
+        c.rect(8, 9, 32, 14, Color::rgb(170, 70, 80));
+        for x in (10..38).step_by(6) {
+            c.rect(x, 14, 3, 4, Color::rgb(230, 210, 150));
+        }
+    }
+    {
+        let mut c = Cell { ox: 128, oy: 0, w: 32, h: 48, img: &mut img };
+        c.rect(1, 2, 30, 44, shade(wood, -30));
+        for (row, y) in [8, 22, 36].iter().enumerate() {
+            c.rect(3, *y, 26, 2, shade(wood, 20));
+            for k in 0..6 {
+                let col = [Color::rgb(200, 70, 60), Color::rgb(70, 130, 200), Color::rgb(230, 190, 70), Color::rgb(90, 160, 90)][(k + row) % 4];
+                c.rect(4 + k as i32 * 4, y - 6, 3, 6, col);
+            }
+        }
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell { ox: 176, oy: 0, w: 16, h: 32, img: &mut img };
+        c.rect(7, 10, 2, 18, Color::rgb(70, 70, 80));
+        c.rect(4, 27, 8, 3, Color::rgb(60, 60, 70));
+        c.rect(3, 2, 10, 9, Color::rgb(250, 230, 160));
+        c.rect(3, 9, 10, 2, Color::rgb(220, 180, 100));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}

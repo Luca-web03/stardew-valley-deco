@@ -67,6 +67,7 @@ impl SaveData {
         w.weather_tomorrow = self.weather_tomorrow;
         w.daily_luck = self.daily_luck;
         w.farmer = self.farmer;
+        w.apply_house_map();
         // Recreate building interiors before restoring location states.
         w.buildings = self.buildings;
         w.next_building_id = w.buildings.iter().map(|b| b.id).max().unwrap_or(0);

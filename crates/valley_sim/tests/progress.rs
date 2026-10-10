@@ -33,7 +33,15 @@ fn cooking_consumes_ingredients_and_food_buffs_expire() {
 #[test]
 fn kitchen_action_opens_cooking() {
     let mut w = world();
-    w.farmer.set_tile(TilePos::new(6, 3));
+    // The kitchen comes with the first farmhouse upgrade.
+    w.farmer.money = 20_000;
+    w.farmer.inventory.add(valley_sim::item::Item::object("388", 450));
+    w.start_house_upgrade().unwrap();
+    for _ in 0..3 {
+        w.end_day(false);
+    }
+    assert_eq!(w.farmer.house_level, 1);
+    w.farmer.set_tile(TilePos::new(12, 3));
     w.farmer.facing = Dir::Up;
     w.drain_events();
     assert!(w.do_action(None));

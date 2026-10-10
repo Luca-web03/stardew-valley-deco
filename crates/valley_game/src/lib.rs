@@ -920,7 +920,17 @@ impl ValleyGame {
                 let rows = shop_rows(sw, sh);
                 *hovered = rows.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < list.len());
                 if ctx.input.mouse_pressed(MouseButton::Left) {
-                    if let Some(i) = *hovered {
+                    if let Some(i) = (*hovered).filter(|&i| list[i] == valley_sim::world::HOUSE_UPGRADE_ENTRY) {
+                        let _ = i;
+                        close = true;
+                        action = Some(Box::new(|g: &mut ValleyGame, _| {
+                            match g.world.as_mut().map(|w| w.start_house_upgrade()) {
+                                Some(Ok(())) => g.toast("Your farmhouse will be ready in 3 days."),
+                                Some(Err(e)) => g.toast(e),
+                                None => {}
+                            }
+                        }));
+                    } else if let Some(i) = *hovered {
                         let kind = list[i].clone();
                         close = true;
                         action = Some(Box::new(move |g: &mut ValleyGame, ctx: &mut EngineCtx| {
@@ -1851,6 +1861,14 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             ui.text("Construction", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
             for (i, (r, kind)) in shop_rows(sw, sh).iter().zip(list).enumerate() {
                 ui.slot(*r, *hovered == Some(i));
+                if kind == valley_sim::world::HOUSE_UPGRADE_ENTRY {
+                    ui.text("Upgrade Farmhouse", Vec2::new(r.x + 96.0, r.y + 10.0), 3.0, ui::TEXT);
+                    if let Some((money, mat, n)) = w.house_upgrade_cost() {
+                        let name = w.items.object(&mat).map(|o| o.display_name.clone()).unwrap_or(mat);
+                        ui.text(&format!("{money}g + {n} {name}  (3 days)"), Vec2::new(r.x + 96.0, r.y + 46.0), 2.0, ui::TEXT);
+                    }
+                    continue;
+                }
                 let Some(d) = w.buildings_data.get(kind) else { continue };
                 if let Some(tex) = rc.assets.try_tex(rc.cm, rc.textures, &d.texture.replace('\\', "/")) {
                     let (tw, th) = rc.textures.size(tex);

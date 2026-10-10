@@ -40,6 +40,23 @@ pub struct LocationState {
     pub terrain: BTreeMap<TilePos, TerrainFeature>,
     #[serde(with = "tile_map")]
     pub objects: BTreeMap<TilePos, PlacedObject>,
+    #[serde(default)]
+    pub furniture: Vec<PlacedFurniture>,
+}
+
+/// A piece of furniture placed in a location (top-left footprint tile).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlacedFurniture {
+    pub id: String,
+    pub tile: TilePos,
+    pub footprint: (i32, i32),
+    pub walkable: bool,
+}
+
+impl PlacedFurniture {
+    pub fn covers(&self, p: TilePos) -> bool {
+        p.x >= self.tile.x && p.y >= self.tile.y && p.x < self.tile.x + self.footprint.0 && p.y < self.tile.y + self.footprint.1
+    }
 }
 
 /// JSON object keys must be strings, so tile-keyed maps are stored as
@@ -147,9 +164,14 @@ impl GameLocation {
         self.state.objects.get(&p)
     }
 
+    pub fn furniture_at(&self, p: TilePos) -> Option<&PlacedFurniture> {
+        self.state.furniture.iter().find(|f| f.covers(p))
+    }
+
     /// Free for placing something (no object, terrain feature, building tile, water).
     pub fn is_clear(&self, p: TilePos) -> bool {
         !self.blocked.contains(&p)
+            && self.furniture_at(p).is_none()
             && self.in_bounds(p)
             && self.has_tile("Back", p)
             && !self.has_tile("Buildings", p)

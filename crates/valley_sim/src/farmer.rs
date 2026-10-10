@@ -229,6 +229,12 @@ pub struct Farmer {
     pub rings: [Option<Item>; 2],
     #[serde(default)]
     pub boots: Option<Item>,
+    /// Farmhouse upgrade level (0 = starting cabin).
+    #[serde(default)]
+    pub house_level: i32,
+    /// Days left on a farmhouse upgrade in progress (0 = none).
+    #[serde(default)]
+    pub house_upgrade_days: i32,
 }
 
 impl Farmer {
@@ -281,6 +287,8 @@ impl Farmer {
             dialogue_answers: Vec::new(),
             rings: [None, None],
             boots: None,
+            house_level: 0,
+            house_upgrade_days: 0,
         }
     }
 

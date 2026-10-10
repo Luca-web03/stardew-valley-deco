@@ -33,6 +33,9 @@ pub fn tile_passable(loc: &GameLocation, p: TilePos) -> bool {
             return false;
         }
     }
+    if loc.furniture_at(p).is_some_and(|f| !f.walkable) {
+        return false;
+    }
     if let Some(t) = loc.terrain(p) {
         if !t.passable() {
             return false;

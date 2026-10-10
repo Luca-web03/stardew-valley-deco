@@ -29,6 +29,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/tools.png", art::tools().encode_png());
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
     m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
+    m.insert("TileSheets/furniture.png", art::furniture().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
@@ -271,6 +272,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "MilkPail": tool("MilkPail", "Milk Pail", 6, 0),
     });
     let shops = json!({
+        "Furniture": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "chair", "ItemId": "(F)Dev_Chair" },
+                { "Id": "table", "ItemId": "(F)Dev_Table" },
+                { "Id": "rug", "ItemId": "(F)Dev_Rug" },
+                { "Id": "bookcase", "ItemId": "(F)Dev_Bookcase" },
+                { "Id": "lamp", "ItemId": "(F)Dev_Lamp" }
+            ]
+        },
         "AnimalShop": {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [
@@ -378,6 +389,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Perch": "Pond Perch/25/smooth/4/14/600 2600/spring summer fall/both/x/1/.4/.1/0/false",
             "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false",
             "Dev_Crawler": "Pond Crawler/trap/.6/x/freshwater/1/6/false"
+        })),
+        ("Data/Furniture", json!({
+            "Dev_Chair": "Wooden Chair/chair/1 2/1 1/4/150/-1/Wooden Chair/0",
+            "Dev_Table": "Small Table/table/2 2/2 1/1/300/-1/Small Table/2",
+            "Dev_Rug": "Woven Rug/rug/3 2/3 2/1/250/-1/Woven Rug/4",
+            "Dev_Bookcase": "Bookcase/bookcase/2 3/2 1/1/450/-1/Bookcase/8",
+            "Dev_Lamp": "Floor Lamp/lamp/1 2/1 1/1/200/-1/Floor Lamp/11"
         })),
         ("Data/Boots", json!({
             "Dev_WorkBoots": "Work Boots/Sturdy and comfortable./300/2/0/0/Work Boots/0/55/Maps\\springobjects"

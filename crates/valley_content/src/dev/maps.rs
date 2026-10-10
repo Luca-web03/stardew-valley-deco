@@ -183,12 +183,41 @@ pub fn farmhouse() -> Map {
     b.set_props("Back", 9, 4, BED_TOP, &[("Bed", "T")]);
     b.set_props("Back", 9, 5, BED_BOTTOM, &[("Bed", "T")]);
     b.set_props("Buildings", 2, 2, TV, &[("Action", "TV")]);
-    // Kitchen counter.
-    b.set_props("Buildings", 6, 2, COUNTER, &[("Action", "kitchen")]);
-    b.set_props("Buildings", 7, 2, COUNTER, &[("Action", "kitchen")]);
+
     b.set_props("Buildings", 3, 4, TABLE, &[]);
     b.fill("Back", 3, 6, 3, 2, RUG);
     b.prop("Warp", "5 10 Farm 21 10");
+    b.map
+}
+
+/// First farmhouse upgrade: a wider house with a kitchen.
+pub fn farmhouse1() -> Map {
+    let (w, h) = (16, 12);
+    let mut b = B::new("FarmHouse1", w, h, indoor_sheet());
+    b.fill("Back", 0, 0, w, h, VOID);
+    b.fill("Back", 1, 3, w - 2, h - 4, FLOOR);
+    b.fill("Buildings", 1, 1, w - 2, 1, IWALL_TOP);
+    b.fill("Buildings", 1, 2, w - 2, 1, IWALL);
+    for y in 1..h - 1 {
+        b.set("Buildings", 0, y, IWALL_TOP);
+        b.set("Buildings", w - 1, y, IWALL_TOP);
+    }
+    for x in 0..w {
+        b.set("Buildings", x, 0, IWALL_TOP);
+        if x != 5 {
+            b.set("Buildings", x, h - 1, IWALL_TOP);
+        }
+    }
+    b.set("Back", 5, h - 2, MAT);
+    b.set("Back", 5, h - 1, MAT);
+    b.set_props("Back", 9, 4, BED_TOP, &[("Bed", "T")]);
+    b.set_props("Back", 9, 5, BED_BOTTOM, &[("Bed", "T")]);
+    b.set_props("Buildings", 2, 2, TV, &[("Action", "TV")]);
+    for x in 11..15 {
+        b.set_props("Buildings", x, 2, COUNTER, &[("Action", "kitchen")]);
+    }
+    b.fill("Back", 3, 6, 3, 2, RUG);
+    b.prop("Warp", "5 11 Farm 21 10");
     b.map
 }
 
@@ -221,6 +250,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 34, 14, SIGN, &[("Action", "Blacksmith")]);
     b.set_props("Buildings", 16, 11, SIGN, &[("Action", "Bundles")]);
     b.set_props("Buildings", 14, 11, SIGN, &[("Action", "Museum")]);
+    b.set_props("Buildings", 12, 11, SIGN, &[("Action", "OpenShop Furniture")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }
@@ -329,5 +359,5 @@ pub fn greenhouse() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse()]
 }

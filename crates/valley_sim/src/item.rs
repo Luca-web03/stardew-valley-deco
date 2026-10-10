@@ -154,6 +154,8 @@ pub enum Item {
     Weapon { id: String },
     /// Footwear from Data/Boots.
     Boots { id: String },
+    /// Furniture from Data/Furniture.
+    Furniture { id: String },
 }
 
 impl Item {
@@ -170,14 +172,14 @@ impl Item {
     pub fn stack(&self) -> i32 {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => 1,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => {}
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } => {}
         }
     }
 
@@ -239,6 +241,7 @@ impl Item {
             Item::Tool(t) => format!("(T){}", t.kind.data_key()),
             Item::Weapon { id } => format!("(W){id}"),
             Item::Boots { id } => format!("(B){id}"),
+            Item::Furniture { id } => format!("(F){id}"),
         }
     }
 
@@ -251,7 +254,7 @@ impl Item {
 
     /// Tools, weapons and boots can't be stacked.
     pub fn is_equipment(&self) -> bool {
-        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. })
+        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. })
     }
 }
 
@@ -335,6 +338,68 @@ pub fn parse_boots(id: &str, s: &str) -> Option<BootsInfo> {
     })
 }
 
+/// Furniture (`Data/Furniture`, public slash format:
+/// name/type/tilesheet size/bounding box size/rotations/price/placement/display name/sprite index/texture/...).
+#[derive(Clone, Debug, PartialEq)]
+pub struct FurnitureInfo {
+    pub name: String,
+    pub kind: String,
+    /// Sprite size in tiles (w, h); "-1" means the type's default.
+    pub sheet_size: (i32, i32),
+    /// Footprint in tiles.
+    pub footprint: (i32, i32),
+    pub price: i32,
+    pub display_name: String,
+    pub sprite_index: i32,
+    pub texture: Option<String>,
+}
+
+impl FurnitureInfo {
+    /// Rugs and window decorations don't block movement.
+    pub fn walkable(&self) -> bool {
+        matches!(self.kind.as_str(), "rug" | "window" | "painting" | "decor" | "lamp_wall")
+    }
+}
+
+fn parse_size(s: &str, default: (i32, i32)) -> (i32, i32) {
+    let t: Vec<i32> = s.split_whitespace().filter_map(|v| v.parse().ok()).collect();
+    match t.as_slice() {
+        [w, h] if *w > 0 && *h > 0 => (*w, *h),
+        _ => default,
+    }
+}
+
+pub fn parse_furniture(id: &str, s: &str) -> Option<FurnitureInfo> {
+    let f: Vec<&str> = s.split('/').collect();
+    let kind = f.get(1).unwrap_or(&"decor").to_string();
+    let default_size = match kind.as_str() {
+        "chair" | "decor" | "lamp" | "torch" => (1, 2),
+        "bench" | "couch" => (2, 2),
+        "armchair" => (2, 2),
+        "dresser" => (2, 2),
+        "long table" => (5, 3),
+        "table" => (2, 3),
+        "rug" => (3, 2),
+        "bookcase" => (2, 3),
+        "fireplace" => (2, 5),
+        "window" => (1, 2),
+        "painting" => (2, 2),
+        _ => (1, 2),
+    };
+    let sheet_size = parse_size(f.get(2).unwrap_or(&"-1"), default_size);
+    let footprint = parse_size(f.get(3).unwrap_or(&"-1"), (sheet_size.0, if kind == "rug" { sheet_size.1 } else { 1 }));
+    Some(FurnitureInfo {
+        name: f.first()?.to_string(),
+        kind,
+        sheet_size,
+        footprint,
+        price: f.get(5).and_then(|v| v.trim().parse().ok()).unwrap_or(100),
+        display_name: f.get(7).filter(|s| !s.is_empty()).or(f.first()).unwrap_or(&"").to_string(),
+        sprite_index: f.get(8).and_then(|v| v.trim().parse().ok()).unwrap_or_else(|| id.parse().unwrap_or(0)),
+        texture: f.get(9).filter(|s| !s.trim().is_empty()).map(|s| s.to_string()),
+    })
+}
+
 /// Implicit context tags for an object category (public data convention).
 pub fn category_tag(cat: i32) -> Option<&'static str> {
     Some(match cat {
@@ -377,6 +442,7 @@ pub struct ItemDb {
     pub tools: BTreeMap<String, ToolData>,
     pub weapons: BTreeMap<String, WeaponData>,
     pub boots: BTreeMap<String, BootsInfo>,
+    pub furniture: BTreeMap<String, FurnitureInfo>,
     /// Preloaded string tables used at runtime (lowercased asset name).
     pub strings: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
@@ -407,6 +473,12 @@ impl ItemDb {
         db.crops = cm.load_dict::<CropData>("Data/Crops");
         db.tools = cm.load_dict::<ToolData>("Data/Tools");
         db.weapons = cm.load_dict::<WeaponData>("Data/Weapons");
+        for (id, raw) in cm.load_string_dict("Data/Furniture") {
+            if let Some(mut f) = parse_furniture(&id, &raw) {
+                f.display_name = cm.expand(&f.display_name);
+                db.furniture.insert(id, f);
+            }
+        }
         for (id, raw) in cm.load_string_dict("Data/Boots") {
             if let Some(mut b) = parse_boots(&id, &raw) {
                 b.display_name = cm.expand(&b.display_name);
@@ -479,6 +551,7 @@ impl ItemDb {
             Item::Tool(_) => tags.push("category_tool".into()),
             Item::Weapon { .. } => tags.push("category_weapon".into()),
             Item::Boots { .. } => tags.push("category_boots".into()),
+            Item::Furniture { .. } => tags.push("category_furniture".into()),
         }
         tags
     }
@@ -507,6 +580,7 @@ impl ItemDb {
             Item::Big { id, .. } => self.big(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Boots { id } => self.boots.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Furniture { id } => self.furniture.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
                 match t.level {
@@ -526,6 +600,7 @@ impl ItemDb {
             Item::Big { id, .. } => self.big(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Boots { id } => self.boots.get(id).map(|b| format!("{}\nDefense +{}", b.description, b.defense)).unwrap_or_default(),
+            Item::Furniture { id } => self.furniture.get(id).map(|f| format!("Furniture ({}). Can be placed indoors.", f.kind)).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
     }
@@ -539,6 +614,7 @@ impl ItemDb {
             }
             Item::Big { id, .. } => self.big(id).map(|b| b.data.price).unwrap_or(0),
             Item::Boots { id } => self.boots.get(id).map(|b| b.price / 2).unwrap_or(0),
+            Item::Furniture { id } => self.furniture.get(id).map(|f| f.price / 2).unwrap_or(0),
             Item::Tool(_) | Item::Weapon { .. } => 0,
         }
     }
@@ -556,6 +632,7 @@ impl ItemDb {
             "BC" => self.bigs.contains_key(id).then(|| Item::big(id, stack)),
             "W" => self.weapons.contains_key(id).then(|| Item::Weapon { id: id.to_string() }),
             "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
+            "F" => self.furniture.contains_key(id).then(|| Item::Furniture { id: id.to_string() }),
             "T" => ToolKind::from_key(id).map(|k| Item::Tool(Tool::new(k))),
             _ => None,
         }
@@ -565,6 +642,17 @@ impl ItemDb {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_furniture() {
+        let f = parse_furniture("X", "Oak Table/table/-1/-1/1/350/-1/Oak Table/12").unwrap();
+        assert_eq!(f.sheet_size, (2, 3));
+        assert_eq!(f.footprint, (2, 1));
+        assert_eq!(f.price, 350);
+        let r = parse_furniture("Y", "Mat/rug/3 2/3 2/1/200/-1/Mat").unwrap();
+        assert!(r.walkable());
+        assert_eq!(r.footprint, (3, 2));
+    }
 
     #[test]
     fn qualified_ids() {

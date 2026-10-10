@@ -23,6 +23,9 @@ use crate::terrain::{TerrainFeature, Tree};
 use crate::time::{Clock, ClockEvent, Weather, DAY_END};
 use crate::{Dir, TilePos, TILE};
 
+/// Carpenter menu entry meaning "upgrade the farmhouse".
+pub const HOUSE_UPGRADE_ENTRY: &str = "__farmhouse_upgrade";
+
 /// Milliseconds per simulation tick.
 pub const TICK_MS: u32 = 1000 / engine::TICKS_PER_SECOND;
 
@@ -184,6 +187,8 @@ pub struct World {
     pub bombs: Vec<crate::equipment::LitBomb>,
     pub explosions: Vec<crate::equipment::Explosion>,
     pub trap_fish: Vec<crate::equipment::TrapFish>,
+    /// Farmhouse maps by upgrade level (1.., from Maps/FarmHouse<N>).
+    pub house_maps: BTreeMap<i32, valley_content::Map>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -297,6 +302,7 @@ impl World {
             bombs: Vec::new(),
             explosions: Vec::new(),
             trap_fish: cm.load_string_dict("Data/Fish").iter().filter_map(|(k, v)| crate::equipment::parse_trap(k, v)).collect(),
+            house_maps: (1..=3).filter_map(|i| cm.load_map(&format!("Maps/FarmHouse{i}")).map(|m| (i, m))).collect(),
         };
         w.trap_fish.sort_by(|a, b| a.id.cmp(&b.id));
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
@@ -403,6 +409,14 @@ impl World {
     }
 
     // ---------------------------------------------------------------- setup
+
+    pub(crate) fn find_bed_tile_pub(&self) -> TilePos {
+        self.find_bed_tile()
+    }
+
+    pub(crate) fn build_location_edges_pub(&mut self) {
+        self.rebuild_location_edges();
+    }
 
     fn find_bed_tile(&self) -> TilePos {
         if let Some(h) = self.locations.get("FarmHouse") {
@@ -711,6 +725,7 @@ impl World {
         self.animals_overnight();
         self.orchard_overnight();
         self.crab_pots_overnight();
+        self.house_overnight();
         self.spawn_daily_debris();
         self.leave_mines();
         self.bombs.clear();
@@ -1104,7 +1119,7 @@ impl World {
         if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) {
             return true;
         }
-        if self.crab_pot_action(target) || self.place_bomb(target) {
+        if self.crab_pot_action(target) || self.place_bomb(target) || self.place_furniture(target) || self.pickup_furniture(target) {
             return true;
         }
         if self.interact_building(target) {
@@ -1280,7 +1295,10 @@ impl World {
                 true
             }
             "Carpenter" => {
-                let list: Vec<String> = self.buildings_data.keys().cloned().collect();
+                let mut list: Vec<String> = self.buildings_data.keys().cloned().collect();
+                if self.house_upgrade_cost().is_some() {
+                    list.insert(0, crate::world::HOUSE_UPGRADE_ENTRY.to_string());
+                }
                 self.emit(WorldEvent::OpenCarpenter(list));
                 true
             }

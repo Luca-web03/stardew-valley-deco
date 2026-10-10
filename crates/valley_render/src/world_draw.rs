@@ -250,6 +250,15 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Furniture: rugs lie on the floor, the rest is y-sorted by its footprint bottom.
+    for f in &loc.state.furniture {
+        let (tex, src) = furniture_sprite(rc, w, &f.id);
+        let bottom = ((f.tile.y + f.footprint.1) * TILE) as f32;
+        let p = cam.to_screen(Vec2::new((f.tile.x * TILE) as f32, bottom - src.h as f32 * ZOOM));
+        let depth = if f.walkable { DEPTH_GROUND + 0.004 } else { sort_depth(bottom - 1.0, map_h) };
+        out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), depth));
+    }
+
     // Farm buildings.
     if loc_name == "Farm" {
         for b in &w.buildings {
@@ -636,6 +645,7 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
     match item {
         Item::Object { id, .. } => object_sprite(rc, w, id),
         Item::Big { id, .. } => big_sprite(rc, w, id),
+        Item::Furniture { id } => furniture_sprite(rc, w, id),
         Item::Boots { id } => {
             let (tex_name, idx) = match w.items.boots.get(id) {
                 Some(b) => (b.texture.clone().unwrap_or_else(|| "Maps/springobjects".into()).replace('\\', "/"), b.sprite_index),
@@ -732,4 +742,16 @@ pub fn farmer_texture(rc: &mut RenderCtx, a: &valley_sim::farmer::Appearance) ->
     let c = |v: [u8; 3]| Color::rgb(v[0], v[1], v[2]);
     let look = valley_content::dev::art::Look { skin: c(a.skin), hair: c(a.hair), shirt: c(a.shirt), legs: c(a.pants), long_hair: a.long_hair, beard: false };
     rc.assets.generated(rc.textures, &a.texture_name(), || valley_content::dev::art::character(&look))
+}
+
+/// Texture + source rect of a furniture piece (sprite size from its data).
+pub fn furniture_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId, IRect) {
+    let (tex_name, idx, size) = match w.items.furniture.get(id) {
+        Some(f) => (f.texture.clone().unwrap_or_else(|| "TileSheets/furniture".into()).replace('\\', "/"), f.sprite_index, f.sheet_size),
+        None => ("TileSheets/furniture".to_string(), 0, (1, 1)),
+    };
+    let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+    let (tw, _) = rc.textures.size(tex);
+    let cols = (tw / 16).max(1) as i32;
+    (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, size.0 * 16, size.1 * 16))
 }
