@@ -1,6 +1,6 @@
 [package]
 name = "valley_app"
-description = "Desktop window (macroquad) and headless runner for the engine and its game modules."
+description = "Desktop window (macroquad), audio output and headless runner for the engine and its game modules."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
@@ -16,3 +16,12 @@ valley_content.workspace = true
 valley_game.workspace = true
 valley_sim.workspace = true
 macroquad.workspace = true
+
+# Audio output: cpal on Windows/macOS. On Linux, ALSA is loaded at runtime
+# (dlopen of libasound.so.2), so building needs no ALSA headers and machines
+# without ALSA or a sound card simply run silently.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc.workspace = true
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+cpal.workspace = true

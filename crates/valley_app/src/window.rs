@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use engine::{Color as EColor, DrawCmd, DrawList, Key, ModuleHost, MouseButton, TexId, Vec2};
 use macroquad::prelude as mq;
 
+use crate::audio::AudioSystem;
 use crate::Args;
 
 const KEYS: &[(mq::KeyCode, Key)] = &[
@@ -82,7 +83,10 @@ pub fn run(args: Args) {
     };
     macroquad::Window::from_config(conf, async move {
         let mut host = ModuleHost::new(args.width, args.height);
-        host.add(Box::new(crate::build_game(&args)));
+        let game = crate::build_game(&args);
+        let library = valley_content::audio::AudioLibrary::open(&game.cm);
+        let mut audio = if args.mute { AudioSystem::silent(library) } else { AudioSystem::start(library) };
+        host.add(Box::new(game));
         let mut gpu = GpuTextures::default();
         let mut list = DrawList::new(args.width, args.height);
         loop {
@@ -123,7 +127,7 @@ pub fn run(args: Args) {
             if host.advance(mq::get_frame_time() as f64) == 0 {
                 // Keep edge-triggered input until a tick consumes it.
             }
-            host.ctx.audio.drain();
+            audio.process(host.ctx.audio.drain());
             if host.ctx.quit_requested {
                 break;
             }

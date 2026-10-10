@@ -7,6 +7,8 @@
 *.xwb
 *.xsb
 *.xgs
+*.wav
+*.ogg
 /saves
 /screenshots
 

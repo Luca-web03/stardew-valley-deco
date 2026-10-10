@@ -1,16 +1,17 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::de::DeserializeOwned;
 
 use crate::map::Map;
-use crate::source::{normalize, ContentSource, DirSource, LayeredSource};
+use crate::source::{normalize, ContentSource, DirSource, LayeredSource, ReadSeek};
 use crate::xnb::{self, XnbAsset};
 
 /// Loads and caches assets by game asset name (e.g. `Maps/Farm`,
 /// `Data/Objects`, `TileSheets/crops`).
 pub struct ContentManager {
-    source: Box<dyn ContentSource>,
+    source: Arc<dyn ContentSource>,
     json_cache: HashMap<String, Arc<serde_json::Value>>,
     string_cache: HashMap<String, HashMap<String, String>>,
     pub warnings: Vec<String>,
@@ -18,17 +19,20 @@ pub struct ContentManager {
     pub locale: String,
     /// True if any user-provided (real game) content directory is mounted.
     pub has_game_content: bool,
+    /// The user content directory, if one was given.
+    pub game_dir: Option<PathBuf>,
 }
 
 impl ContentManager {
     pub fn new(source: Box<dyn ContentSource>) -> Self {
         Self {
-            source,
+            source: Arc::from(source),
             json_cache: HashMap::new(),
             string_cache: HashMap::new(),
             warnings: Vec::new(),
             locale: String::new(),
             has_game_content: false,
+            game_dir: None,
         }
     }
 
@@ -43,6 +47,7 @@ impl ContentManager {
         layered.push(Box::new(crate::dev::build()));
         let mut cm = Self::new(Box::new(layered));
         cm.has_game_content = has;
+        cm.game_dir = dir.map(|d| d.to_path_buf());
         cm
     }
 
@@ -53,6 +58,25 @@ impl ContentManager {
 
     pub fn describe(&self) -> String {
         self.source.describe()
+    }
+
+    /// Raw bytes of a content file by relative path *including* extension
+    /// (e.g. `XACT/Sound Bank.xsb`), through the same layered source as
+    /// every other asset.
+    pub fn read_raw(&self, path: &str) -> Option<Vec<u8>> {
+        self.source.read(&normalize(path))
+    }
+
+    /// Open a content file for incremental (seekable) reads; used for large
+    /// files such as audio wave banks that should not be loaded whole.
+    pub fn open_raw(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        self.source.open(&normalize(path))
+    }
+
+    /// Shared handle to the underlying source, for subsystems that resolve
+    /// files later or from another thread (e.g. audio).
+    pub fn raw_source(&self) -> Arc<dyn ContentSource> {
+        self.source.clone()
     }
 
     fn read_with_ext(&self, asset: &str, exts: &[&str]) -> Option<(String, Vec<u8>)> {

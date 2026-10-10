@@ -38,14 +38,21 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Cutscene events (core command subset)
 - [x] Skills, professions, level-up screen
 - [x] Saves (JSON), title screen, character creation, load list
-- [x] Audio: being integrated (wave bank reader, mixer, placeholder synth)
+- [x] Community bundles (Data/Bundles) and museum donations (Data/MuseumRewards)
+- [x] Options: zoom, music/sound volume; snow/wind particles, night light pools
+- [x] Audio: XACT wave banks (PCM 8/16-bit, MS-ADPCM), best-effort sound bank
+      cue mapping + `Audio/cues.json` override, loose `.wav`/`.ogg`, software
+      mixer (pitch, volume, looping crossfaded music), cpal (Windows/macOS) /
+      runtime-loaded ALSA (Linux) output with silent fallback, original
+      synthesized placeholder cues and music loops, music selection by
+      location/season/weather/time
 
 ## Not yet
-- [ ] Community bundles, museum
 - [ ] Festivals
 - [ ] Marriage, heart events beyond the generic event system
 - [ ] Real-content farmer sprite composition (currently placeholder farmer)
 - [ ] Real tree / building sprite layouts (placeholder art used)
-- [ ] Options menu (volume, zoom, key bindings), gamepad
-- [ ] Snow / wind visuals, lighting from lamps
+- [ ] Key rebinding, gamepad
+- [ ] Audio follow-ups: xWMA decoding, sound bank volume/pitch/categories,
+      footsteps, ambient sounds
 - [ ] Multiplayer

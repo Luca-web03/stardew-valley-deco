@@ -3,6 +3,7 @@
 pub mod hud;
 pub mod input_map;
 pub mod menus;
+pub mod music;
 pub mod saves;
 
 use std::path::PathBuf;
@@ -82,6 +83,8 @@ pub struct ValleyGame {
     pub new_game_seed: Option<u64>,
     cursor_tile: Option<TilePos>,
     pub last_save: Option<PathBuf>,
+    /// Music track last requested from the engine ("" = silence).
+    music: Option<String>,
 }
 
 impl ValleyGame {
@@ -102,6 +105,7 @@ impl ValleyGame {
             new_game_seed: None,
             cursor_tile: None,
             last_save: None,
+            music: None,
         }
     }
 
@@ -152,6 +156,25 @@ impl ValleyGame {
             let _ = std::fs::create_dir_all(d);
         }
         let _ = std::fs::write(p, serde_json::to_string_pretty(&self.options).unwrap_or_default());
+    }
+
+    /// Ask the engine for the right music track when it changes.
+    fn update_music(&mut self, ctx: &mut EngineCtx) {
+        let want = match (&self.screen, &self.world) {
+            (Screen::Playing, Some(w)) => music::track_for_world(w, self.music.as_deref()),
+            (Screen::Playing, None) => None,
+            _ => Some(music::TITLE_MUSIC.to_string()),
+        };
+        let Some(track) = want else { return };
+        if self.music.as_deref() == Some(track.as_str()) {
+            return;
+        }
+        if track.is_empty() {
+            ctx.audio.stop_music();
+        } else {
+            ctx.audio.cmds.push(engine::SoundCmd::Music { track: track.clone(), volume: self.options.music_volume });
+        }
+        self.music = Some(track);
     }
 
     /// Camera in *world-view* pixels (the screen divided by the zoom).
@@ -1924,6 +1947,12 @@ impl GameModule for ValleyGame {
             Screen::Create { .. } => self.update_create(ctx),
             Screen::Playing => self.update_playing(ctx),
         }
+        self.update_music(ctx);
+    }
+
+    fn suspend(&mut self, ctx: &mut EngineCtx) {
+        ctx.audio.stop_music();
+        self.music = None;
     }
 
     fn command(&mut self, _ctx: &mut EngineCtx, cmd: &str) -> String {

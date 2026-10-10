@@ -2,11 +2,13 @@
 //! sequence for screenshots and smoke tests.
 //!
 //! Usage:
-//!   valley [--content <unpacked Content dir>] [--saves <dir>] [--new <name>] [--seed N]
+//!   valley [--content <unpacked Content dir>] [--saves <dir>] [--new <name>] [--seed N] [--mute]
 //!   valley --headless [--script "<steps>"] [--screenshot out.png] ...
+//!   valley --audio-info | --audio-test [cues] | --export-cue <cue> <out.wav>
 //!
 //! The content folder can also be set with the VALLEY_CONTENT env var.
 
+mod audio;
 mod headless;
 mod window;
 
@@ -27,12 +29,18 @@ pub struct Args {
     pub seed: Option<u64>,
     pub width: u32,
     pub height: u32,
+    /// Never open an audio device.
+    pub mute: bool,
+    pub audio_info: bool,
+    pub audio_test: Option<String>,
+    pub export_cue: Option<(String, PathBuf)>,
 }
 
 fn parse_args() -> Args {
     let mut a = Args {
         content: std::env::var_os("VALLEY_CONTENT").map(PathBuf::from),
         saves: std::env::var_os("VALLEY_SAVES").map(PathBuf::from).unwrap_or_else(default_save_dir),
+        mute: std::env::var_os("VALLEY_MUTE").is_some_and(|v| !v.is_empty() && v != "0"),
         width: 1280,
         height: 720,
         ..Default::default()
@@ -47,6 +55,14 @@ fn parse_args() -> Args {
             "--screenshot" => a.screenshot = it.next().map(PathBuf::from),
             "--new" => a.new_game = it.next(),
             "--seed" => a.seed = it.next().and_then(|s| s.parse().ok()),
+            "--mute" => a.mute = true,
+            "--audio-info" => a.audio_info = true,
+            "--audio-test" => a.audio_test = Some(it.next().filter(|s| !s.starts_with("--")).unwrap_or_default()),
+            "--export-cue" => {
+                if let (Some(cue), Some(out)) = (it.next(), it.next()) {
+                    a.export_cue = Some((cue, PathBuf::from(out)));
+                }
+            }
             "--size" => {
                 if let Some((w, h)) = it.next().and_then(|s| s.split_once('x').map(|(w, h)| (w.to_string(), h.to_string()))) {
                     a.width = w.parse().unwrap_or(1280);
@@ -90,6 +106,15 @@ pub fn build_game(args: &Args) -> ValleyGame {
 
 fn main() {
     let args = parse_args();
+    if args.audio_info {
+        std::process::exit(audio::print_info(args.content.as_deref()));
+    }
+    if let Some((cue, out)) = &args.export_cue {
+        std::process::exit(audio::export_cue(args.content.as_deref(), cue, out));
+    }
+    if let Some(cues) = &args.audio_test {
+        std::process::exit(audio::play_test(args.content.as_deref(), cues));
+    }
     if args.headless {
         std::process::exit(headless::run(&args));
     }
