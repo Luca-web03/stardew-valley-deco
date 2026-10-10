@@ -179,6 +179,9 @@ pub fn farmhouse() -> Map {
     b.set_props("Back", 9, 4, BED_TOP, &[("Bed", "T")]);
     b.set_props("Back", 9, 5, BED_BOTTOM, &[("Bed", "T")]);
     b.set("Buildings", 2, 2, TV);
+    // Kitchen counter.
+    b.set_props("Buildings", 6, 2, COUNTER, &[("Action", "kitchen")]);
+    b.set_props("Buildings", 7, 2, COUNTER, &[("Action", "kitchen")]);
     b.set_props("Buildings", 3, 4, TABLE, &[]);
     b.fill("Back", 3, 6, 3, 2, RUG);
     b.prop("Warp", "5 10 Farm 21 10");
@@ -208,6 +211,7 @@ pub fn town() -> Map {
     // Mara's house.
     b.house(9, 2, 6, "Warp 0 0 Town");
     b.set_props("Buildings", 18, 11, SIGN, &[("Action", "Message \"Welcome to town!\"")]);
+    b.set_props("Buildings", 20, 11, SIGN, &[("Action", "Billboard")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }

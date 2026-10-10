@@ -102,6 +102,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_IronNode": obj("Stone", "Litter", 0, 0, ICON_IRON_NODE, -300),
         "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
+        "Dev_Salad": {
+            "Name": "Garden Salad", "DisplayName": "Garden Salad", "Description": "Crunchy and light. Makes you a little quicker.",
+            "Type": "Cooking", "Category": -7, "Price": 90, "SpriteIndex": ICON_SALAD, "Edibility": 30,
+            "Buffs": [{ "Id": "food", "Duration": 240, "CustomAttributes": { "Speed": 1 } }]
+        },
+        "Dev_Stew": {
+            "Name": "Miner's Stew", "DisplayName": "Miner's Stew", "Description": "Hearty fuel for a long dig.",
+            "Type": "Cooking", "Category": -7, "Price": 140, "SpriteIndex": ICON_STEW, "Edibility": 50,
+            "Buffs": [{ "Id": "food", "Duration": 360, "CustomAttributes": { "MiningLevel": 2, "Defense": 1 } }]
+        },
         "Dev_Dust": obj("Wing Dust", "Basic", -28, 8, ICON_DUST, -300),
         "Dev_Sprinkler": {
             "Name": "Sprinkler", "DisplayName": "Sprinkler", "Description": "Waters the 4 adjacent tiles every morning.",
@@ -277,6 +287,18 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false"
         })),
         ("Strings/Objects", strings),
+        ("Data/CookingRecipes", json!({
+            "Garden Salad": "Dev_Turnip 1 Dev_Bean 1/1 1/Dev_Salad/default/",
+            "Miner's Stew": "Dev_Pumpkin 1 Dev_Goo 2/1 1/Dev_Stew/default/"
+        })),
+        ("Data/mail", json!({
+            "spring_2": "Hi @,^The general store has fresh seeds every season, and I set aside a few for you.^- Tobin%item object Dev_TurnipSeeds 10 %%[#]Seeds for a new farmer",
+            "spring_5": "@,^The caves north of town are full of ore, and of things that bite. Come prepared!^- Mara[#]A warning"
+        })),
+        ("Data/Quests", json!({
+            "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
+            "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
+        })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",
             "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"

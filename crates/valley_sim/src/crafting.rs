@@ -29,6 +29,19 @@ pub fn parse_recipe(name: &str, s: &str) -> Option<Recipe> {
     Some(Recipe { name: name.to_string(), ingredients, output_id, output_count, big, unlock })
 }
 
+/// Cooking recipes use the same layout without the big-craftable field:
+/// "ingredients/unused/output/unlock/...".
+pub fn parse_cooking(name: &str, s: &str) -> Option<Recipe> {
+    let f: Vec<&str> = s.split('/').collect();
+    let mut r = parse_recipe(name, &format!("{}/{}/{}/false/{}", f.first()?, f.get(1).unwrap_or(&""), f.get(2)?, f.get(3).unwrap_or(&"")))?;
+    r.big = false;
+    Some(r)
+}
+
+pub fn parse_all_cooking(raw: &std::collections::HashMap<String, String>) -> BTreeMap<String, Recipe> {
+    raw.iter().filter_map(|(k, v)| parse_cooking(k, v).map(|r| (k.clone(), r))).collect()
+}
+
 pub fn parse_all(raw: &std::collections::HashMap<String, String>) -> BTreeMap<String, Recipe> {
     raw.iter().filter_map(|(k, v)| parse_recipe(k, v).map(|r| (k.clone(), r))).collect()
 }

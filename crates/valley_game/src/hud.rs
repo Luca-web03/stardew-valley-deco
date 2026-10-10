@@ -61,6 +61,16 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
     ui.out.fill(FRect::new(r.x + 16.0, r.y + 108.0, r.w - 32.0, 28.0), Color::rgb(90, 50, 30), ui.depth + 0.0001);
     ui.text(&money, Vec2::new(r.x + 28.0, r.y + 114.0), 2.0, Color::rgb(250, 220, 90));
 
+    // Active buffs under the clock.
+    let mut by = r.y + r.h + 8.0;
+    for b in &w.farmer.buffs {
+        let line = format!("{} ({}m)", b.attrs.describe().join(" "), b.minutes_left);
+        let m = ui.measure(&line, 2.0);
+        ui.out.fill(FRect::new(sw - m.x - 28.0, by, m.x + 16.0, 28.0), Color::rgba(70, 36, 20, 200), ui.depth);
+        ui.text(&line, Vec2::new(sw - m.x - 20.0, by + 6.0), 2.0, ui::TEXT_LIGHT);
+        by += 32.0;
+    }
+
     // Energy bar.
     let max = w.farmer.max_stamina as f32;
     let frac = (w.farmer.stamina / max).clamp(0.0, 1.0);

@@ -55,6 +55,12 @@ pub enum WorldEvent {
     OpenChest(TilePos),
     /// Choose a mine floor (multiples of 5 up to `deepest`).
     ElevatorMenu { deepest: i32 },
+    OpenCooking,
+    OpenBillboard,
+    /// Show a letter from the mailbox.
+    Letter { id: String, letter: crate::mail::Letter },
+    QuestCompleted(String),
+    NewQuest(String),
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -130,6 +136,11 @@ pub struct World {
     pub mine_ladder_spawned: bool,
     /// Where the up-ladder returns to.
     pub mine_entrance: (String, TilePos),
+    pub cooking: BTreeMap<String, crate::crafting::Recipe>,
+    pub mail_data: HashMap<String, String>,
+    pub quest_data: HashMap<String, String>,
+    /// Today's help-wanted request (if any, not yet accepted).
+    pub daily_quest: Option<crate::quests::Quest>,
 }
 
 impl World {
@@ -204,6 +215,10 @@ impl World {
             mine_stones_left: 0,
             mine_ladder_spawned: false,
             mine_entrance: ("Mine".into(), TilePos::new(5, 5)),
+            cooking: crate::crafting::parse_all_cooking(&cm.load_string_dict("Data/CookingRecipes")),
+            mail_data: cm.load_string_dict("Data/mail"),
+            quest_data: cm.load_string_dict("Data/Quests"),
+            daily_quest: None,
         };
         w.mine_items = crate::mines::MineItems::resolve(&w.items);
         w.build_location_edges();
@@ -211,6 +226,11 @@ impl World {
         w.spawn_npcs(cm);
         w.populate_new_farm();
         w.farmer.mailbox.push("welcome".into());
+        for starter in ["Dev_Q1"] {
+            if w.quest_data.contains_key(starter) {
+                w.add_quest(starter);
+            }
+        }
         let wake = w.wake_tile();
         w.current = if w.locations.contains_key("FarmHouse") { "FarmHouse".into() } else { w.locations.keys().next().cloned().unwrap_or_default() };
         w.farmer.set_tile(wake);
@@ -383,6 +403,8 @@ impl World {
         self.unlock_recipes();
         self.run_sprinklers();
         self.spawn_forage();
+        self.deliver_dated_mail();
+        self.roll_daily_quest();
         for loc in self.locations.values_mut() {
             if loc.outdoors && raining {
                 for t in loc.state.terrain.values_mut() {
@@ -463,6 +485,7 @@ impl World {
         self.advance_machines(overnight);
 
         let old_season = self.clock.season;
+        self.tick_quest_days();
         self.clock.next_day();
         self.weather = self.weather_tomorrow;
         let mut rng = self.day_rng(1);
@@ -564,6 +587,10 @@ impl World {
                 ClockEvent::TenMinutes => {
                     self.update_npc_schedules();
                     self.advance_machines(10);
+                    for b in self.farmer.buffs.iter_mut() {
+                        b.minutes_left -= 10;
+                    }
+                    self.farmer.buffs.retain(|b| b.minutes_left > 0);
                     if self.clock.time == 2400 || self.clock.time == 2500 {
                         self.hud("It's getting late...");
                     }
@@ -660,7 +687,7 @@ impl World {
         }
 
         // Movement (each axis separately so the farmer slides along walls).
-        let speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED };
+        let speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.farmer.buff_totals().speed as f32 * 0.5 };
         let mut moved = false;
         if input.move_x != 0 || input.move_y != 0 {
             self.farmer.facing = if input.move_y < 0 {
@@ -798,6 +825,7 @@ impl World {
         }
         self.in_bed = self.location().tile_prop("Back", t, "Bed").is_some();
         self.sound("doorClose");
+        self.quest_visit(target);
         self.emit(WorldEvent::Warped { from, to: target.to_string() });
     }
 
@@ -832,6 +860,10 @@ impl World {
             n.location == self.current && (n.tile() == target || (n.tile().manhattan(me) <= 1 && n.tile() != me && cursor.map_or(true, |c| c == n.tile())))
         });
         if let Some(i) = npc_idx {
+            let name = self.npcs[i].name.clone();
+            if self.try_quest_delivery(&name) {
+                return true;
+            }
             self.interact_npc(i);
             return true;
         }
@@ -951,6 +983,14 @@ impl World {
                 self.open_mailbox();
                 true
             }
+            "kitchen" | "Kitchen" => {
+                self.emit(WorldEvent::OpenCooking);
+                true
+            }
+            "Billboard" => {
+                self.emit(WorldEvent::OpenBillboard);
+                true
+            }
             "Mine" | "MineLadder" | "Descend" => {
                 let me = self.farmer.tile();
                 self.mine_entrance = (self.current.clone(), me);
@@ -986,15 +1026,30 @@ impl World {
             return;
         }
         let id = self.farmer.mailbox.remove(0);
-        let text = match id.as_str() {
+        let raw = self.mail_data.get(&id).cloned().unwrap_or_else(|| match id.as_str() {
             "welcome" => format!(
-                "Dear {},^Welcome to {} Farm! The soil is ready, the seeds are at the general store in town, and the shipping bin by the house will sell anything you put in it overnight.^Good luck!",
-                self.farmer.name, self.farmer.farm_name
+                "Dear @,^Welcome to {} Farm! The soil is ready, the seeds are at the general store in town, and the shipping bin by the house will sell anything you put in it overnight.^Good luck!",
+                self.farmer.farm_name
             ),
             other => other.to_string(),
-        };
-        self.farmer.mail_received.push(id);
-        self.emit(WorldEvent::Message(text.replace('^', "\n")));
+        });
+        let letter = crate::mail::parse(&raw, &self.items, &self.farmer.name);
+        for item in &letter.items {
+            self.give_item(item.clone());
+        }
+        if letter.money > 0 {
+            self.farmer.money += letter.money;
+        }
+        if let Some(r) = &letter.recipe {
+            if self.cooking.contains_key(r) {
+                self.farmer.cooking_recipes.entry(r.clone()).or_insert(0);
+            } else if self.recipes.contains_key(r) {
+                self.farmer.crafting_recipes.entry(r.clone()).or_insert(0);
+            }
+        }
+        self.farmer.mail_received.push(id.clone());
+        self.farmer.letters_read.push(id.clone());
+        self.emit(WorldEvent::Letter { id, letter });
     }
 
     /// Buy `count` of a shop entry. Returns false if unaffordable / no space.
@@ -1139,6 +1194,14 @@ impl World {
             self.farmer.exhausted = false;
         }
         self.farmer.health = (self.farmer.health + info.health(quality)).min(self.farmer.max_health);
+        if let Some(b) = &info.data.buffs {
+            for buff in crate::buffs::parse_buffs(b, &info.display_name) {
+                // A new food buff replaces any buff with the same id.
+                self.farmer.buffs.retain(|x| x.id != buff.id);
+                self.hud(format!("{}: {}", info.display_name, buff.attrs.describe().join(", ")));
+                self.farmer.buffs.push(buff);
+            }
+        }
         self.farmer.freeze_ms = 1000;
         self.sound(if info.data.is_drink { "gulp" } else { "eat" });
     }
@@ -1224,6 +1287,9 @@ impl World {
             self.emit(WorldEvent::LevelUp(Skill::Farming, l));
         }
         let first = items[0].clone();
+        for it in &items {
+            self.quest_obtained(it);
+        }
         for it in items {
             if let Some(left) = self.farmer.inventory.add(it) {
                 let c = t.world_center();
@@ -1410,6 +1476,7 @@ impl World {
         self.farmer.inventory.add(item.clone());
         *self.farmer.crafting_recipes.entry(name.to_string()).or_insert(0) += 1;
         self.sound("crafting");
+        self.quest_crafted(&item);
         self.emit(WorldEvent::Pickup(item));
         true
     }

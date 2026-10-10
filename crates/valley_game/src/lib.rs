@@ -254,6 +254,8 @@ impl ValleyGame {
             self.update_menu(ctx);
         } else if input_map::menu_pressed(&ctx.input) {
             self.menus.push(Menu::Inventory { tab: InvTab::Items, held: None, hovered: None });
+        } else if input_map::journal_pressed(&ctx.input) {
+            self.menus.push(Menu::Journal { selected: 0 });
         } else if let Some(w) = self.world.as_mut() {
             // Toolbar clicks select slots instead of using tools.
             let mut input = input_map::player_input(&ctx.input, self.cursor_tile);
@@ -315,6 +317,11 @@ impl ValleyGame {
                 WorldEvent::LevelUp(skill, level) => self.toast(format!("{skill:?} level {level}!")),
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
+                WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
+                WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
+                WorldEvent::Letter { letter, .. } => self.menus.push(Menu::Letter { letter, shown: 0.0 }),
+                WorldEvent::QuestCompleted(t) => self.toast(format!("Quest complete: {t}")),
+                WorldEvent::NewQuest(t) => self.toast(format!("New quest: {t} (F: journal)")),
                 WorldEvent::ElevatorMenu { deepest } => {
                     let mut levels = vec![1];
                     levels.extend((5..=deepest).step_by(5));
@@ -549,6 +556,66 @@ impl ValleyGame {
                     close = true;
                 }
             }
+            Menu::Cooking { hovered } => {
+                let names = self.world.as_ref().map(known_cooking).unwrap_or_default();
+                let rects = recipe_rects(sw, sh);
+                *hovered = rects.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < names.len());
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        let name = names[i].clone();
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(w) = g.world.as_mut() {
+                                w.cook(&name);
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::Letter { letter, shown } => {
+                let len = letter.text.chars().count() as f32;
+                *shown = (*shown + 4.0).min(len);
+                if confirm || ctx.input.pressed(Key::Escape) {
+                    if *shown < len {
+                        *shown = len;
+                    } else {
+                        close = true;
+                    }
+                }
+            }
+            Menu::Billboard => {
+                let accept = billboard_accept_rect(sw, sh);
+                if ctx.input.mouse_pressed(MouseButton::Left) && accept.contains(ctx.input.mouse) {
+                    action = Some(Box::new(|g: &mut ValleyGame, _| {
+                        if let Some(w) = g.world.as_mut() {
+                            w.accept_daily_quest();
+                        }
+                    }));
+                } else if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) || ctx.input.pressed(Key::Enter) {
+                    close = true;
+                }
+            }
+            Menu::Journal { selected } => {
+                let n = self.world.as_ref().map(|w| w.farmer.quests.len()).unwrap_or(0);
+                if n > 0 {
+                    if ctx.input.pressed(Key::Down) || ctx.input.pressed(Key::S) {
+                        *selected = (*selected + 1) % n;
+                    }
+                    if ctx.input.pressed(Key::Up) || ctx.input.pressed(Key::W) {
+                        *selected = (*selected + n - 1) % n;
+                    }
+                    for (i, r) in journal_rows(sw, sh).iter().enumerate().take(n) {
+                        if r.contains(ctx.input.mouse) && ctx.input.mouse_pressed(MouseButton::Left) {
+                            *selected = i;
+                        }
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || input_map::journal_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
             Menu::DayEnd { ms, .. } => {
                 *ms += 16;
                 if (*ms > 600 && confirm) || *ms > 15000 {
@@ -737,6 +804,20 @@ fn menu_frame(sw: f32, sh: f32) -> FRect {
 fn inventory_tab_rects(sw: f32, sh: f32) -> Vec<FRect> {
     let f = menu_frame(sw, sh);
     (0..TABS.len()).map(|i| FRect::new(f.x + 16.0 + i as f32 * 166.0, f.y - 52.0, 156.0, 48.0)).collect()
+}
+
+fn known_cooking(w: &World) -> Vec<String> {
+    w.farmer.cooking_recipes.keys().filter(|k| w.cooking.contains_key(*k)).cloned().collect()
+}
+
+fn billboard_accept_rect(sw: f32, sh: f32) -> FRect {
+    let f = menu_frame(sw, sh);
+    FRect::new(f.x + f.w - 260.0, f.y + f.h - 90.0, 220.0, 60.0)
+}
+
+fn journal_rows(sw: f32, sh: f32) -> Vec<FRect> {
+    let f = menu_frame(sw, sh);
+    (0..8).map(|i| FRect::new(f.x + 32.0, f.y + 40.0 + i as f32 * 60.0, 360.0, 52.0)).collect()
 }
 
 fn known_recipes(w: &World) -> Vec<String> {
@@ -1012,6 +1093,124 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             };
             if let Some(item) = hovered_item {
                 draw_tooltip(ui, w, &item, sw, sh);
+            }
+        }
+        Menu::Cooking { hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Cooking", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            let names = known_cooking(w);
+            if names.is_empty() {
+                ui.text("You don't know any recipes yet.", Vec2::new(f.x + 64.0, f.y + 64.0), 2.0, ui::TEXT);
+            }
+            for (i, (r, name)) in recipe_rects(sw, sh).iter().zip(&names).enumerate() {
+                let recipe = &w.cooking[name];
+                let can = recipe.can_craft(&w.items, &w.farmer);
+                ui.slot(*r, *hovered == Some(i));
+                let (tex, src) = item_sprite(rc, w, &recipe.output());
+                let inner = FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0);
+                if can {
+                    ui.icon(tex, src, inner);
+                } else {
+                    ui.icon_tinted(tex, src, inner, Color::rgba(90, 90, 90, 140));
+                }
+            }
+            if let Some(i) = hovered {
+                if let Some(name) = names.get(*i) {
+                    draw_recipe_tooltip(rc, ui, w, &w.cooking[name], sw);
+                }
+            }
+        }
+        Menu::Letter { letter, shown } => {
+            let r = FRect::new(sw / 2.0 - 380.0, 40.0, 760.0, sh - 80.0);
+            ui.fill(FRect::new(r.x + 8.0, r.y + 8.0, r.w, r.h), Color::rgba(0, 0, 0, 90));
+            ui.out.fill(r, Color::rgb(250, 240, 215), ui.depth + 0.0001);
+            ui.out.outline(r, 6.0, Color::rgb(200, 170, 120), ui.depth + 0.0002);
+            let t: String = letter.text.chars().take(*shown as usize).collect();
+            let mut y = r.y + 40.0;
+            for line in ui.wrap(&t, r.w - 80.0, 2.0) {
+                ui.text(&line, Vec2::new(r.x + 40.0, y), 2.0, ui::TEXT);
+                y += 26.0;
+            }
+            let mut x = r.x + 40.0;
+            for item in &letter.items {
+                let slot = FRect::new(x, r.y + r.h - 110.0, 64.0, 64.0);
+                ui.slot(slot, false);
+                hud::draw_item_in_slot(rc, ui, w, item, slot);
+                x += 76.0;
+            }
+            if letter.money > 0 {
+                ui.text(&format!("+{}g", letter.money), Vec2::new(x + 10.0, r.y + r.h - 90.0), 3.0, ui::TEXT);
+            }
+            if let Some(title) = &letter.title {
+                ui.text(title, Vec2::new(r.x + 40.0, r.y + r.h - 34.0), 2.0, Color::rgb(140, 100, 60));
+            }
+        }
+        Menu::Billboard => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text(&format!("{} - Year {}", w.clock.season.name(), w.clock.year), Vec2::new(f.x + 32.0, f.y + 28.0), 3.0, ui::TEXT);
+            // Calendar grid: 4 weeks x 7 days.
+            for d in 0..28 {
+                let cell = FRect::new(f.x + 32.0 + (d % 7) as f32 * 68.0, f.y + 70.0 + (d / 7) as f32 * 62.0, 64.0, 58.0);
+                ui.slot(cell, d + 1 == w.clock.day);
+                ui.text(&(d + 1).to_string(), Vec2::new(cell.x + 4.0, cell.y + 4.0), 2.0, ui::TEXT);
+                for npc in &w.npcs {
+                    if let Some((season, day)) = &npc.birthday {
+                        if valley_sim::time::Season::parse(season) == Some(w.clock.season) && *day == d + 1 {
+                            let initial: String = npc.display_name.chars().take(3).collect();
+                            ui.text(&initial, Vec2::new(cell.x + 6.0, cell.y + 32.0), 2.0, Color::rgb(200, 60, 90));
+                        }
+                    }
+                }
+            }
+            let qx = f.x + 540.0;
+            ui.text("Help Wanted", Vec2::new(qx, f.y + 70.0), 3.0, ui::TEXT);
+            match &w.daily_quest {
+                Some(q) => {
+                    for (i, line) in ui.wrap(&q.description, f.w - 580.0, 2.0).iter().enumerate() {
+                        ui.text(line, Vec2::new(qx, f.y + 120.0 + i as f32 * 26.0), 2.0, ui::TEXT);
+                    }
+                    ui.text(&format!("Reward: {}g", q.reward_money), Vec2::new(qx, f.y + 300.0), 2.0, ui::TEXT);
+                    ui.button(billboard_accept_rect(sw, sh), "Accept", false);
+                }
+                None => ui.text("No requests today.", Vec2::new(qx, f.y + 120.0), 2.0, ui::TEXT),
+            }
+        }
+        Menu::Journal { selected } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Journal", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            if w.farmer.quests.is_empty() {
+                ui.text("No active quests.", Vec2::new(f.x + 48.0, f.y + 60.0), 2.0, ui::TEXT);
+            }
+            for (i, (r, q)) in journal_rows(sw, sh).iter().zip(&w.farmer.quests).enumerate() {
+                ui.slot(*r, i == *selected);
+                ui.text(&q.title, Vec2::new(r.x + 12.0, r.y + 16.0), 2.0, ui::TEXT);
+            }
+            if let Some(q) = w.farmer.quests.get(*selected) {
+                let x = f.x + 420.0;
+                let mut y = f.y + 48.0;
+                ui.text(&q.title, Vec2::new(x, y), 3.0, ui::TEXT);
+                y += 44.0;
+                for line in ui.wrap(&q.description, f.w - 460.0, 2.0) {
+                    ui.text(&line, Vec2::new(x, y), 2.0, ui::TEXT);
+                    y += 26.0;
+                }
+                y += 16.0;
+                for line in ui.wrap(&q.hint, f.w - 460.0, 2.0) {
+                    ui.text(&line, Vec2::new(x, y), 2.0, Color::rgb(120, 80, 40));
+                    y += 26.0;
+                }
+                if let Some(p) = q.progress_text() {
+                    ui.text(&format!("Progress: {p}"), Vec2::new(x, y + 16.0), 2.0, ui::TEXT);
+                }
+                if q.days_left > 0 {
+                    ui.text(&format!("Days left: {}", q.days_left), Vec2::new(x, f.y + f.h - 80.0), 2.0, ui::TEXT);
+                }
+                if q.reward_money > 0 {
+                    ui.text(&format!("Reward: {}g", q.reward_money), Vec2::new(x, f.y + f.h - 50.0), 2.0, ui::TEXT);
+                }
             }
         }
         Menu::DayEnd { report, .. } => {

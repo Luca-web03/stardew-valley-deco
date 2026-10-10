@@ -5,6 +5,7 @@
 //! simulated in tests. Mechanics are reimplemented from publicly documented
 //! behaviour; constants that are best-effort approximations are marked as such.
 
+pub mod buffs;
 pub mod collision;
 pub mod combat;
 pub mod crafting;
@@ -19,9 +20,12 @@ pub mod input;
 pub mod inventory;
 pub mod item;
 pub mod location;
+pub mod mail;
 pub mod npc;
 pub mod objects;
 pub mod pathfind;
+pub mod progress;
+pub mod quests;
 pub mod save;
 pub mod schedule;
 pub mod shop;

@@ -63,6 +63,17 @@ pub enum Menu {
         tile: valley_sim::TilePos,
         hovered: Option<(bool, usize)>,
     },
+    Cooking {
+        hovered: Option<usize>,
+    },
+    Letter {
+        letter: valley_sim::mail::Letter,
+        shown: f32,
+    },
+    Billboard,
+    Journal {
+        selected: usize,
+    },
 }
 
 /// Characters revealed per tick by the typewriter effect.

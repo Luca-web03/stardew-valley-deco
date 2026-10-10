@@ -121,6 +121,15 @@ pub struct Farmer {
     /// Deepest mine level reached.
     #[serde(default)]
     pub deepest_mine_level: i32,
+    #[serde(default)]
+    pub buffs: Vec<crate::buffs::Buff>,
+    #[serde(default)]
+    pub cooking_recipes: BTreeMap<String, i32>,
+    #[serde(default)]
+    pub quests: Vec<crate::quests::Quest>,
+    /// Letters already read (ids), for the collection tab.
+    #[serde(default)]
+    pub letters_read: Vec<String>,
 }
 
 impl Farmer {
@@ -159,6 +168,10 @@ impl Farmer {
             invincible_ms: 0,
             knockback: Vec2::ZERO,
             deepest_mine_level: 0,
+            buffs: Vec::new(),
+            cooking_recipes: BTreeMap::new(),
+            quests: Vec::new(),
+            letters_read: Vec::new(),
         }
     }
 
@@ -211,6 +224,28 @@ impl Farmer {
         if self.stamina <= 0.0 {
             self.exhausted = true;
         }
+    }
+
+    /// Sum of all active buff attributes.
+    pub fn buff_totals(&self) -> crate::buffs::BuffAttrs {
+        let mut t = crate::buffs::BuffAttrs::default();
+        for b in &self.buffs {
+            t.add(&b.attrs);
+        }
+        t
+    }
+
+    /// Skill level including buffs.
+    pub fn effective_level(&self, s: Skill) -> i32 {
+        let b = self.buff_totals();
+        self.skills.level(s)
+            + match s {
+                Skill::Farming => b.farming,
+                Skill::Fishing => b.fishing,
+                Skill::Mining => b.mining,
+                Skill::Foraging => b.foraging,
+                Skill::Combat => b.combat,
+            }
     }
 
     pub fn is_busy(&self) -> bool {

@@ -51,3 +51,7 @@ pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput
     }
     p
 }
+
+pub fn journal_pressed(i: &InputState) -> bool {
+    i.pressed(Key::F)
+}

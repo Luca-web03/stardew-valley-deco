@@ -248,6 +248,8 @@ impl World {
                 self.emit(WorldEvent::LevelUp(Skill::Combat, l));
             }
             self.monsters_killed += 1;
+            self.quest_killed(&m.info.name.clone());
+            self.quest_killed(&m.info.display_name.clone());
             for (id, chance) in &m.info.drops {
                 if rng.chance(*chance) {
                     if let Some(item) = self.items.create(id, 1) {

@@ -320,6 +320,8 @@ pub const ICON_IRON_NODE: i32 = 29;
 pub const ICON_GOLD_NODE: i32 = 30;
 pub const ICON_GOO: i32 = 31;
 pub const ICON_DUST: i32 = 32;
+pub const ICON_SALAD: i32 = 33;
+pub const ICON_STEW: i32 = 34;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -509,6 +511,23 @@ pub fn objects() -> Image {
         for (x, y) in [(5, 6), (9, 5), (7, 9), (10, 10), (4, 11)] {
             c.rect(x, y, 2, 2, Color::rgb(200, 190, 210));
         }
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_SALAD, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 11.0, 6.5, 3.5, Color::rgb(235, 235, 240));
+        c.ellipse(8.0, 9.0, 5.0, 2.5, Color::rgb(90, 180, 70));
+        c.px(6, 8, Color::rgb(230, 70, 60));
+        c.px(10, 9, Color::rgb(240, 200, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_STEW, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 11.0, 6.5, 4.0, Color::rgb(120, 90, 70));
+        c.ellipse(8.0, 9.5, 5.0, 2.0, Color::rgb(200, 120, 60));
+        c.px(6, 9, Color::rgb(240, 160, 80));
+        c.rect(7, 3, 1, 3, Color::rgb(220, 220, 220));
+        c.rect(10, 2, 1, 3, Color::rgb(220, 220, 220));
         c.auto_outline(OUTLINE);
     }
     {
