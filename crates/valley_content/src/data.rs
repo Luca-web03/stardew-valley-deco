@@ -247,7 +247,7 @@ pub struct LocationData {
     pub max_spawned_forage_at_once: i32,
     pub min_daily_forage_spawn: i32,
     pub max_daily_forage_spawn: i32,
-    pub fish: Option<serde_json::Value>,
+    pub fish: Vec<SpawnFishData>,
     pub artifact_spots: Option<serde_json::Value>,
 }
 
@@ -379,4 +379,15 @@ pub struct SpawnForageData {
     pub season: Option<String>,
     pub chance: Option<f64>,
     pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct SpawnFishData {
+    pub id: Option<String>,
+    pub item_id: Option<String>,
+    pub season: Option<String>,
+    pub chance: Option<f64>,
+    pub condition: Option<String>,
+    pub fish_area_id: Option<String>,
 }

@@ -113,6 +113,8 @@ pub struct World {
     /// Raw schedule tables per NPC name.
     pub schedule_data: HashMap<String, HashMap<String, String>>,
     pub recipes: BTreeMap<String, crate::crafting::Recipe>,
+    pub fish: BTreeMap<String, crate::fishing::FishInfo>,
+    pub fishing: crate::fishing::FishingState,
 }
 
 impl World {
@@ -174,6 +176,8 @@ impl World {
             last_report: None,
             schedule_data: HashMap::new(),
             recipes: crate::crafting::parse_all(&cm.load_string_dict("Data/CraftingRecipes")),
+            fish: cm.load_string_dict("Data/Fish").iter().filter_map(|(k, v)| crate::fishing::parse_fish(k, v).map(|f| (k.clone(), f))).collect(),
+            fishing: crate::fishing::FishingState::Idle,
         };
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
@@ -480,6 +484,7 @@ impl World {
         self.farmer.set_tile(wake);
         self.farmer.facing = Dir::Down;
         self.farmer.tool_use = None;
+        self.fishing = crate::fishing::FishingState::Idle;
         self.in_bed = true;
         self.paused = false;
         self.start_day();
@@ -586,6 +591,12 @@ impl World {
 
         if self.farmer.tool_use.is_some() {
             self.advance_tool_use(dt);
+            self.farmer.moving = false;
+            return;
+        }
+
+        if self.fishing.active() {
+            self.update_fishing(input.use_tool, input.use_held || input.use_tool, dt);
             self.farmer.moving = false;
             return;
         }

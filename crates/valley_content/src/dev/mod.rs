@@ -86,6 +86,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Twig": obj("Twig", "Litter", 0, 0, ICON_TWIG, -300),
         "Dev_Rock": obj("Stone", "Litter", 0, 0, ICON_ROCK, -300),
         "Dev_Juice": obj("Juice", "ArtisanGoods", -26, 50, ICON_JUICE, 15),
+        "Dev_Perch": obj("Pond Perch", "Fish", -4, 45, ICON_PERCH, 8),
+        "Dev_Darter": obj("River Darter", "Fish", -4, 90, ICON_DARTER, 10),
+        "Dev_Driftwood": obj("Driftwood", "Basic", -20, 0, ICON_DRIFTWOOD, -300),
         "Dev_Sprinkler": {
             "Name": "Sprinkler", "DisplayName": "Sprinkler", "Description": "Waters the 4 adjacent tiles every morning.",
             "Type": "Crafting", "Category": -8, "Price": 50, "SpriteIndex": ICON_SPRINKLER, "ContextTags": ["sprinkler_cross"]
@@ -138,6 +141,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Fiber_Name": "Fiber", "Fiber_Description": "Plant fibers.",
         "Sap_Name": "Sap", "Sap_Description": "Sticky tree sap.",
         "Bread_Name": "Bread", "Bread_Description": "A warm loaf.",
+        "PondPerch_Name": "Pond Perch", "PondPerch_Description": "A calm fish from still water.",
+        "RiverDarter_Name": "River Darter", "RiverDarter_Description": "Quick and hard to catch.",
+        "Driftwood_Name": "Driftwood", "Driftwood_Description": "Soggy and useless.",
         "WildBerry_Name": "Wild Berry", "WildBerry_Description": "Found growing wild.",
         "Weeds_Name": "Weeds", "Weeds_Description": "", "Twig_Name": "Twig", "Twig_Description": ""
     });
@@ -173,13 +179,18 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "pumpkin", "ItemId": "(O)Dev_PumpkinSeeds", "Condition": "SEASON Fall" },
                 { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 },
                 { "Id": "fert", "ItemId": "(O)Dev_Fertilizer", "Price": 10 },
-                { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" }
+                { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" },
+                { "Id": "rod", "ItemId": "(T)FishingRod", "Price": 200 }
             ]
         }
     });
     let locations = json!({
         "Farm": { "DisplayName": "Farm", "DefaultArrivalTile": { "X": 20, "Y": 12 },
-                  "CreateOnLoad": { "MapPath": "Maps\\Farm", "AlwaysActive": true } },
+                  "CreateOnLoad": { "MapPath": "Maps\\Farm", "AlwaysActive": true },
+                  "Fish": [
+                      { "Id": "perch", "ItemId": "(O)Dev_Perch", "Chance": 0.7 },
+                      { "Id": "junk", "ItemId": "(O)Dev_Driftwood", "Chance": 1.0 }
+                  ] },
         "FarmHouse": { "DisplayName": "Farmhouse", "DefaultArrivalTile": { "X": 5, "Y": 8 },
                        "CreateOnLoad": { "MapPath": "Maps\\FarmHouse" } },
         "Town": { "DisplayName": "Town", "DefaultArrivalTile": { "X": 2, "Y": 15 },
@@ -188,7 +199,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       { "Id": "berry", "ItemId": "(O)Dev_Berry", "Season": "Spring", "Chance": 0.8 },
                       { "Id": "berry_summer", "ItemId": "(O)Dev_Berry", "Season": "Summer", "Chance": 0.8 }
                   ],
-                  "MinDailyForageSpawn": 1, "MaxDailyForageSpawn": 3, "MaxSpawnedForageAtOnce": 6 },
+                  "MinDailyForageSpawn": 1, "MaxDailyForageSpawn": 3, "MaxSpawnedForageAtOnce": 6,
+                  "Fish": [
+                      { "Id": "darter", "ItemId": "(O)Dev_Darter", "Chance": 0.5 },
+                      { "Id": "perch", "ItemId": "(O)Dev_Perch", "Chance": 0.5 },
+                      { "Id": "junk", "ItemId": "(O)Dev_Driftwood", "Chance": 1.0 }
+                  ] },
         "SeedShop": { "DisplayName": "General Store", "DefaultArrivalTile": { "X": 6, "Y": 9 },
                       "CreateOnLoad": { "MapPath": "Maps\\SeedShop" } },
     });
@@ -234,6 +250,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/BigCraftables", bigs),
         ("Data/Machines", machines),
         ("Data/CraftingRecipes", recipes),
+        ("Data/Fish", json!({
+            "Dev_Perch": "Pond Perch/25/smooth/4/14/600 2600/spring summer fall/both/x/1/.4/.1/0/false",
+            "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false"
+        })),
         ("Strings/Objects", strings),
         ("Data/Crops", crops),
         ("Data/Tools", tools),

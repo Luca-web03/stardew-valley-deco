@@ -11,6 +11,7 @@ pub mod crop;
 pub mod machines;
 pub mod dialogue;
 pub mod farmer;
+pub mod fishing;
 pub mod gsq;
 pub mod input;
 pub mod inventory;

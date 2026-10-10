@@ -307,6 +307,9 @@ pub const ICON_JUICE: i32 = 16;
 pub const ICON_SPRINKLER: i32 = 17;
 pub const ICON_FERTILIZER: i32 = 18;
 pub const ICON_SPEEDGRO: i32 = 19;
+pub const ICON_PERCH: i32 = 20;
+pub const ICON_DARTER: i32 = 21;
+pub const ICON_DRIFTWOOD: i32 = 22;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -439,6 +442,22 @@ pub fn objects() -> Image {
         c.rect(3, 4, 10, 11, Color::rgb(180, 150, 100));
         c.rect(3, 4, 10, 2, Color::rgb(140, 110, 70));
         c.rect(6, 8, 4, 4, Color::rgb(100, 70, 40));
+        c.auto_outline(OUTLINE);
+    }
+    for (idx, body, fin) in [(ICON_PERCH, Color::rgb(120, 170, 90), Color::rgb(220, 120, 60)), (ICON_DARTER, Color::rgb(90, 140, 210), Color::rgb(230, 230, 250))] {
+        let mut c = Cell::at(&mut img, idx, OBJ_COLS, 16, 16);
+        c.ellipse(7.5, 8.5, 5.5, 3.5, body);
+        c.rect(12, 6, 3, 2, fin);
+        c.rect(12, 9, 3, 2, fin);
+        c.rect(6, 4, 3, 2, fin);
+        c.px(4, 7, OUTLINE);
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_DRIFTWOOD, OBJ_COLS, 16, 16);
+        for i in 0..10 {
+            c.rect(3 + i, 10 - i / 3, 2, 3, Color::rgb(170, 150, 120));
+        }
         c.auto_outline(OUTLINE);
     }
     {

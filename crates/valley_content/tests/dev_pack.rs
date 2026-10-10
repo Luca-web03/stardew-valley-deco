@@ -27,7 +27,7 @@ fn placeholder_pack_loads_through_real_loaders() {
     let chars = cm.load_dict::<CharacterData>("Data/Characters");
     assert_eq!(chars["Mara"].home[0].location, "Town");
     let shops = cm.load_dict::<ShopData>("Data/Shops");
-    assert_eq!(shops["SeedShop"].items.len(), 6);
+    assert_eq!(shops["SeedShop"].items.len(), 7);
     assert_eq!(cm.load_string_dict("Characters/schedules/Mara").len(), 2);
     assert!(cm.warnings.is_empty(), "{:?}", cm.warnings);
 }

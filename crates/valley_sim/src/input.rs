@@ -8,8 +8,10 @@ pub struct PlayerInput {
     /// -1, 0 or 1 per axis.
     pub move_x: i32,
     pub move_y: i32,
-    /// Use the held tool / item (left click, C).
+    /// Use the held tool / item (left click, C) — pressed this tick.
     pub use_tool: bool,
+    /// The use button is being held down (fishing rod charge, minigame).
+    pub use_held: bool,
     /// Check / interact / eat / plant / harvest (right click, X).
     pub action: bool,
     /// Tile the mouse cursor points at, if any (for click targeting).

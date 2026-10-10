@@ -215,6 +215,8 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
         out.sprite(Sprite::new(tex, src, FRect::new(p.x - size / 2.0, p.y - size / 2.0 - d.z * 4.0 + bob - 8.0, size, size), sort_depth(d.pos.y + 1.0, map_h)));
     }
 
+    draw_fishing_world(rc, out, w, cam, map_h);
+
     draw_layer(rc, out, cam, loc, "Front", DEPTH_FRONT, season, ms);
     draw_layer(rc, out, cam, loc, "AlwaysFront", DEPTH_ALWAYS_FRONT, season, ms);
 
@@ -353,4 +355,49 @@ pub fn big_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId, IR
     let (tw, _) = rc.textures.size(tex);
     let cols = (tw / 16).max(1) as i32;
     (tex, IRect::new((idx % cols) * 16, (idx / cols) * 32, 16, 32))
+}
+
+/// Fishing line, bobber and bite marker (world space).
+fn draw_fishing_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
+    use valley_sim::fishing::FishingState;
+    let white = rc.assets.white(rc.textures);
+    let f = &w.farmer;
+    let p = cam.to_screen(f.pos);
+    let depth = sort_depth(f.pos.y + TILE_F, map_h) + 0.0003;
+    // Rod held up while fishing.
+    if w.fishing.active() {
+        if let Some(rod) = f.inventory.get(f.current_slot) {
+            let (tex, src) = item_sprite(rc, w, rod);
+            let mut s = Sprite::new(tex, src, FRect::new(p.x, p.y - 40.0, TILE_F, TILE_F), depth);
+            s.flip_x = f.facing == Dir::Left;
+            out.sprite(s);
+        }
+    }
+    if let FishingState::Charging { power, .. } = &w.fishing {
+        let bar = FRect::new(p.x + TILE_F + 8.0, p.y - TILE_F, 16.0, TILE_F * 1.5);
+        out.fill(bar, Color::rgb(60, 40, 30), DEPTH_OVERLAY + 0.002);
+        let h = (bar.h - 4.0) * power;
+        let c = Color::rgb(230, 60, 40).lerp(Color::rgb(80, 210, 60), *power);
+        out.fill(FRect::new(bar.x + 2.0, bar.y + bar.h - 2.0 - h, bar.w - 4.0, h), c, DEPTH_OVERLAY + 0.003);
+    }
+    if let Some(b) = w.bobber_pos() {
+        let bp = cam.to_screen(b);
+        let rod_tip = Vec2::new(p.x + TILE_F / 2.0 + f.facing.delta().0 as f32 * 40.0, p.y - 36.0);
+        // Line as a series of dots.
+        for i in 0..24 {
+            let t = i as f32 / 23.0;
+            let sag = (t * std::f32::consts::PI).sin() * 16.0;
+            let q = rod_tip + (bp - rod_tip) * t;
+            out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(q.x, q.y + sag), 2.0, Color::rgba(240, 240, 240, 200), depth);
+        }
+        let bob = if matches!(w.fishing, FishingState::Nibble { .. }) { ((w.game_ms / 60) % 2) as f32 * 4.0 } else { ((w.game_ms as f32) / 400.0).sin() * 2.0 };
+        out.fill(FRect::new(bp.x - 6.0, bp.y - 6.0 + bob, 12.0, 12.0), Color::rgb(230, 50, 40), depth + 0.0001);
+        out.fill(FRect::new(bp.x - 6.0, bp.y + bob, 12.0, 6.0), Color::rgb(245, 245, 245), depth + 0.0002);
+        if matches!(w.fishing, FishingState::Nibble { .. }) {
+            let font_tex = rc.textures.id("__engine/font8x8");
+            if let Some(ft) = font_tex {
+                out.draw_tinted(ft, IRect::new((33 % 16) * 8, (33 / 16) * 8, 8, 8), Vec2::new(p.x + 16.0, p.y - 120.0), 5.0, Color::YELLOW, DEPTH_OVERLAY + 0.01);
+            }
+        }
+    }
 }

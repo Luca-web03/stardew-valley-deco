@@ -32,6 +32,7 @@ pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput
         p.move_y += 1;
     }
     p.use_tool = i.pressed(Key::C) || i.mouse_pressed(MouseButton::Left);
+    p.use_held = i.held(Key::C) || i.mouse_held(MouseButton::Left);
     p.action = i.pressed(Key::X) || i.mouse_pressed(MouseButton::Right);
     // Mouse targets the clicked tile; keyboard uses the faced tile.
     if i.mouse_pressed(MouseButton::Left) || i.mouse_pressed(MouseButton::Right) {

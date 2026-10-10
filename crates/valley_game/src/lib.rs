@@ -659,6 +659,8 @@ impl ValleyGame {
 
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
         hud::draw_hud(&mut rc, &mut ui, w, sw, sh, &self.toasts);
+        ui.depth = DEPTH_HUD + 0.5;
+        hud::draw_fishing_overlay(&mut rc, &mut ui, w, sw, sh);
 
         ui.depth = DEPTH_HUD + 1.0;
         for m in &self.menus {

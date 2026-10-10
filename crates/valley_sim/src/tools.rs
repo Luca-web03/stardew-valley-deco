@@ -37,7 +37,7 @@ impl World {
         match self.farmer.current_item().cloned() {
             Some(Item::Tool(t)) => {
                 if t.kind == ToolKind::FishingRod {
-                    self.hud("Fishing isn't available yet.");
+                    self.start_fishing();
                     return true;
                 }
                 let level = self.farmer.skills.level(governing_skill(t.kind));
