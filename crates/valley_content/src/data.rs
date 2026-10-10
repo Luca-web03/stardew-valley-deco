@@ -248,7 +248,7 @@ pub struct LocationData {
     pub min_daily_forage_spawn: i32,
     pub max_daily_forage_spawn: i32,
     pub fish: Vec<SpawnFishData>,
-    pub artifact_spots: Option<serde_json::Value>,
+    pub artifact_spots: Vec<ArtifactSpotDrop>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -546,4 +546,60 @@ impl Default for FarmAnimalData {
             can_get_pregnant: false,
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct FruitTreeFruit {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub season: Option<String>,
+    pub chance: Option<f64>,
+    pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct FruitTreeData {
+    pub display_name: String,
+    pub seasons: Vec<String>,
+    pub fruit: Vec<FruitTreeFruit>,
+    pub texture: Option<String>,
+    pub texture_sprite_row: i32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct TapItem {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub days_until_ready: i32,
+    pub min_stack: i32,
+    pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct WildTreeData {
+    pub seed_item_id: Option<String>,
+    pub seed_plantable: bool,
+    pub growth_chance: f32,
+    pub tap_items: Vec<TapItem>,
+}
+
+impl Default for WildTreeData {
+    fn default() -> Self {
+        Self { seed_item_id: None, seed_plantable: true, growth_chance: 0.2, tap_items: vec![] }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct ArtifactSpotDrop {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub chance: Option<f64>,
+    pub condition: Option<String>,
+    pub min_stack: i32,
+    pub max_stack: i32,
 }

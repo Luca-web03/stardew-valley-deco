@@ -175,6 +175,9 @@ impl World {
     }
 
     fn use_hoe(&mut self, t: TilePos) {
+        if self.dig_artifact_spot(t) {
+            return;
+        }
         let loc = self.location();
         if loc.is_clear(t) && loc.is_diggable(t) {
             self.location_mut().state.terrain.insert(t, TerrainFeature::HoeDirt(HoeDirt::new()));
@@ -227,7 +230,16 @@ impl World {
         {
             let mut rng = self.rng.clone();
             let loc = self.location_mut();
-            if let Some(TerrainFeature::Tree(tree)) = loc.state.terrain.get_mut(&t) {
+            if let Some(TerrainFeature::FruitTree(ft)) = loc.state.terrain.get_mut(&t) {
+                hit = true;
+                ft.shake = 12;
+                ft.health -= damage;
+                if ft.health <= 0 {
+                    remove = true;
+                    drops.push((Item::object("388", rng.range(8, 13)), 1));
+                    sound = "treecrack";
+                }
+            } else if let Some(TerrainFeature::Tree(tree)) = loc.state.terrain.get_mut(&t) {
                 hit = true;
                 tree.shake = 12;
                 if tree.stage < 1 {

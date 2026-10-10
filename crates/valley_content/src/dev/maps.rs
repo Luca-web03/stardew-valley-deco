@@ -150,6 +150,10 @@ pub fn farm() -> Map {
     for x in 30..34 {
         b.set("Back", x, 9, FLOWERS);
     }
+    // Greenhouse shed by the pond.
+    b.fill("Front", 30, 26, 4, 1, ROOF);
+    b.fill("Buildings", 30, 27, 4, 2, WALL);
+    b.set_props("Buildings", 31, 28, DOOR, &[("Action", "Warp 4 7 Greenhouse")]);
     b.prop("Warp", &format!("{} 13 Town 1 15 {} 14 Town 1 16", w, w));
     b.prop("ShippingBinTile", "27 9");
     b.prop("FarmHouseEntry", "21 9");
@@ -304,6 +308,26 @@ pub fn animal_house(id: &str, w: i32, h: i32) -> Map {
     b.map
 }
 
+pub fn greenhouse() -> Map {
+    let (w, h) = (10, 9);
+    let mut b = B::new("Greenhouse", w, h, outdoor_sheet());
+    b.fill("Back", 0, 0, w, h, PATH);
+    b.fill("Back", 1, 1, w - 2, h - 3, DIRT);
+    for x in 0..w {
+        b.set("Buildings", x, 0, WALL);
+        if x != 4 {
+            b.set("Buildings", x, h - 1, WALL);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, WALL);
+        b.set("Buildings", w - 1, y, WALL);
+    }
+    b.prop("Outdoors", "F");
+    b.prop("Warp", "4 8 Farm 31 29");
+    b.map
+}
+
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10)]
+    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse()]
 }

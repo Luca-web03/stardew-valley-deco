@@ -334,6 +334,12 @@ pub const ICON_QUARTZ: i32 = 43;
 pub const ICON_AMBERITE: i32 = 44;
 pub const ICON_BOUQUET: i32 = 45;
 pub const ICON_PENDANT: i32 = 46;
+pub const ICON_PLUM_SAPLING: i32 = 47;
+pub const ICON_PLUM: i32 = 48;
+pub const ICON_TREE_SEED: i32 = 49;
+pub const ICON_SYRUP: i32 = 50;
+pub const ICON_ARTIFACT_SPOT: i32 = 51;
+pub const ICON_OLD_COIN: i32 = 52;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -558,6 +564,48 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_PLUM_SAPLING, OBJ_COLS, 16, 16);
+        c.rect(7, 6, 2, 9, Color::rgb(120, 80, 50));
+        c.ellipse(8.0, 5.0, 4.0, 3.0, Color::rgb(90, 160, 70));
+        c.rect(4, 13, 8, 2, Color::rgb(130, 100, 70));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_PLUM, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 5.0, 5.0, Color::rgb(130, 60, 140));
+        c.px(6, 8, Color::rgb(200, 150, 210));
+        c.rect(8, 3, 1, 3, Color::rgb(90, 60, 40));
+        c.rect(9, 3, 3, 2, Color::rgb(90, 160, 70));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_TREE_SEED, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 4.0, 4.5, Color::rgb(170, 120, 70));
+        c.rect(5, 5, 6, 3, Color::rgb(120, 85, 50));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_SYRUP, OBJ_COLS, 16, 16);
+        c.rect(6, 2, 4, 3, Color::rgb(220, 220, 220));
+        c.rect(4, 5, 8, 10, Color::rgb(170, 90, 30));
+        c.rect(5, 7, 2, 4, Color::rgb(220, 150, 80));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_ARTIFACT_SPOT, OBJ_COLS, 16, 16);
+        for (x, y) in [(5, 10), (8, 9), (11, 11)] {
+            c.rect(x, y, 1, 4, Color::rgb(120, 80, 60));
+            c.px(x, y - 1, Color::rgb(150, 100, 80));
+        }
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_OLD_COIN, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 5.0, 5.0, Color::rgb(190, 160, 80));
+        c.ellipse(8.0, 9.0, 3.0, 3.0, Color::rgb(160, 130, 60));
+        c.px(8, 9, Color::rgb(220, 200, 120));
+        c.auto_outline(OUTLINE);
+    }
+    {
         let mut c = Cell::at(&mut img, ICON_BOUQUET, OBJ_COLS, 16, 16);
         c.rect(7, 9, 2, 6, Color::rgb(70, 140, 50));
         for (x, y, col) in [(5, 5, Color::rgb(240, 90, 120)), (9, 4, Color::rgb(250, 220, 90)), (7, 7, Color::rgb(130, 140, 250)), (10, 7, Color::rgb(240, 120, 60))] {
@@ -661,6 +709,14 @@ pub fn craftables() -> Image {
         c.rect(5, 20, 6, 6, Color::rgb(40, 30, 30));
         c.rect(6, 22, 4, 3, Color::rgb(250, 140, 40));
         c.rect(6, 4, 3, 4, Color::rgb(90, 85, 85));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Tapper: a small bucket with a spout.
+        let mut c = Cell::at(&mut img, 3, 8, 16, 32);
+        c.rect(4, 18, 8, 9, Color::rgb(150, 100, 56));
+        c.rect(4, 18, 8, 2, Color::rgb(180, 130, 80));
+        c.rect(7, 13, 2, 5, Color::rgb(160, 160, 170));
         c.auto_outline(OUTLINE);
     }
     img

@@ -108,6 +108,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
         "Dev_Bouquet": obj("Bouquet", "Basic", 0, 100, ICON_BOUQUET, -300),
+        "Dev_PlumSapling": obj("Plum Sapling", "Basic", -74, 300, ICON_PLUM_SAPLING, -300),
+        "Dev_Plum": obj("Plum", "Basic", -79, 70, ICON_PLUM, 15),
+        "Dev_TreeSeed": obj("Tree Seed", "Basic", -74, 5, ICON_TREE_SEED, -300),
+        "Dev_Syrup": obj("Tree Syrup", "Basic", -27, 150, ICON_SYRUP, 20),
+        "Dev_ArtifactSpot": obj("Artifact Spot", "Litter", 0, 0, ICON_ARTIFACT_SPOT, -300),
+        "Dev_OldCoin": obj("Old Coin", "Arch", 0, 120, ICON_OLD_COIN, -300),
         "Dev_Pendant": obj("Promise Pendant", "Basic", 0, 2500, ICON_PENDANT, -300),
         "Dev_CopperBar": obj("Copper Bar", "Basic", -15, 60, ICON_COPPER_BAR, -300),
         "Dev_IronBar": obj("Iron Bar", "Basic", -15, 120, ICON_IRON_BAR, -300),
@@ -149,6 +155,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                         "Price": 50, "SpriteIndex": 1 },
         "Dev_Furnace": { "Name": "Furnace", "DisplayName": "Furnace", "Description": "Smelts ore into bars. Needs coal.",
                          "Price": 50, "SpriteIndex": 2 },
+        "Dev_Tapper": { "Name": "Tapper", "DisplayName": "Tapper", "Description": "Place on a grown tree to collect syrup.",
+                        "Price": 50, "SpriteIndex": 3 },
     });
     let machines = json!({
         "(BC)Dev_Juicer": {
@@ -180,6 +188,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Sprinkler": "390 5 388 5/Home/Dev_Sprinkler/false/default/",
         "Fertilizer": "771 2/Home/Dev_Fertilizer 5/false/l 1/",
         "Furnace": "Dev_CopperOre 15 390 20/Home/Dev_Furnace/true/default/",
+        "Tapper": "388 30 Dev_CopperBar 1/Home/Dev_Tapper/true/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -210,6 +219,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Amberite_Name": "Amberite", "Amberite_Description": "A warm, glowing stone.",
         "Bouquet_Name": "Bouquet", "Bouquet_Description": "Give it to someone you'd like to date.",
         "PromisePendant_Name": "Promise Pendant", "PromisePendant_Description": "Give it to the one you want to marry.",
+        "PlumSapling_Name": "Plum Sapling", "PlumSapling_Description": "Grows into a plum tree in four weeks. Fruits in summer.",
+        "Plum_Name": "Plum", "Plum_Description": "Sweet and juicy.",
+        "TreeSeed_Name": "Tree Seed", "TreeSeed_Description": "Plant it to grow a tree.",
+        "TreeSyrup_Name": "Tree Syrup", "TreeSyrup_Description": "Sticky and sweet.",
+        "ArtifactSpot_Name": "Artifact Spot", "ArtifactSpot_Description": "Something is buried here.",
+        "OldCoin_Name": "Old Coin", "OldCoin_Description": "A worn coin from long ago.",
         "Egg_Name": "Egg", "Egg_Description": "Fresh from the henhouse.",
         "GoatMilk_Name": "Goat Milk", "GoatMilk_Description": "Rich and creamy.",
         "Hay_Name": "Hay", "Hay_Description": "Dried grass for animal feed.",
@@ -260,6 +275,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" },
                 { "Id": "rod", "ItemId": "(T)FishingRod", "Price": 200 },
                 { "Id": "bouquet", "ItemId": "(O)Dev_Bouquet", "Price": 200 },
+                { "Id": "plum", "ItemId": "(O)Dev_PlumSapling", "Price": 1200 },
                 { "Id": "pendant", "ItemId": "(O)Dev_Pendant", "Price": 5000 }
             ]
         }
@@ -280,6 +296,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       { "Id": "berry_summer", "ItemId": "(O)Dev_Berry", "Season": "Summer", "Chance": 0.8 }
                   ],
                   "MinDailyForageSpawn": 1, "MaxDailyForageSpawn": 3, "MaxSpawnedForageAtOnce": 6,
+                  "ArtifactSpots": [
+                      { "Id": "coin", "ItemId": "(O)Dev_OldCoin", "Chance": 0.4 },
+                      { "Id": "seed", "ItemId": "(O)Dev_TreeSeed", "Chance": 0.5, "MinStack": 1, "MaxStack": 3 }
+                  ],
                   "Fish": [
                       { "Id": "darter", "ItemId": "(O)Dev_Darter", "Chance": 0.5 },
                       { "Id": "perch", "ItemId": "(O)Dev_Perch", "Chance": 0.5 },
@@ -289,6 +309,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "CreateOnLoad": { "MapPath": "Maps\\SeedShop" } },
         "Mine": { "DisplayName": "Mines", "DefaultArrivalTile": { "X": 5, "Y": 8 },
                   "CreateOnLoad": { "MapPath": "Maps\\Mine" } },
+        "Greenhouse": { "DisplayName": "Greenhouse", "DefaultArrivalTile": { "X": 4, "Y": 7 },
+                        "CreateOnLoad": { "MapPath": "Maps\\Greenhouse" } },
     });
     let characters = json!({
         "Mara": { "DisplayName": "Mara", "BirthSeason": "Spring", "BirthDay": 9, "HomeRegion": "Town",
@@ -385,6 +407,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
         })),
         ("Data/Festivals/FestivalDates", json!({ "fall16": "Harvest Fair" })),
+        ("Data/FruitTrees", json!({
+            "Dev_PlumSapling": { "DisplayName": "Plum Tree", "Seasons": ["Summer"], "Fruit": [{ "ItemId": "(O)Dev_Plum" }], "TextureSpriteRow": 0 }
+        })),
+        ("Data/WildTrees", json!({
+            "1": { "SeedItemId": "(O)Dev_TreeSeed", "GrowthChance": 0.2, "TapItems": [{ "ItemId": "(O)Dev_Syrup", "DaysUntilReady": 5 }] }
+        })),
         ("Data/Festivals/fall16", json!({
             "name": "Harvest Fair",
             "conditions": "Town/900 1500",

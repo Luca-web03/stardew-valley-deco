@@ -179,6 +179,8 @@ pub struct World {
     /// MarriageDialogue<Name> tables.
     pub spouse_dialogue: HashMap<String, HashMap<String, String>>,
     pub pending_question: Option<(String, dialogue::Question)>,
+    pub fruit_trees: BTreeMap<String, valley_content::data::FruitTreeData>,
+    pub wild_trees: BTreeMap<String, valley_content::data::WildTreeData>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -287,6 +289,8 @@ impl World {
             festival_done_today: false,
             spouse_dialogue: HashMap::new(),
             pending_question: None,
+            fruit_trees: cm.load_dict("Data/FruitTrees"),
+            wild_trees: cm.load_dict("Data/WildTrees"),
         };
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
             let data = cm.load_string_dict(&format!("Data/Festivals/{key}"));
@@ -665,6 +669,7 @@ impl World {
         let season = self.clock.season;
         let crops = self.items.crops.clone();
         let items = self.items.clone();
+        let wild_growth: HashMap<String, f32> = self.wild_trees.iter().map(|(k, d)| (k.clone(), d.growth_chance)).collect();
         let new_season = old_season != season;
         for loc in self.locations.values_mut() {
             let outdoors = loc.outdoors;
@@ -683,10 +688,12 @@ impl World {
                         d.watered = d.watered && retention > 0.0 && rng.chance(retention);
                     }
                     TerrainFeature::Tree(tree) => {
-                        if !tree.stump && tree.stage < crate::terrain::TREE_MATURE && rng.chance(0.2) {
+                        let chance = wild_growth.get(&tree.kind).copied().unwrap_or(0.2) as f64;
+                        if !tree.stump && tree.stage < crate::terrain::TREE_MATURE && rng.chance(chance) {
                             tree.stage += 1;
                         }
                     }
+                    TerrainFeature::FruitTree(_) => {}
                     TerrainFeature::Grass(_) => {}
                 }
             }
@@ -695,6 +702,7 @@ impl World {
             }
         }
         self.animals_overnight();
+        self.orchard_overnight();
         self.spawn_daily_debris();
         self.leave_mines();
         self.dropped.clear();
@@ -1081,6 +1089,10 @@ impl World {
         if self.pet_animal(target) {
             return true;
         }
+        // Trees: tappers and fruit.
+        if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) {
+            return true;
+        }
         if self.interact_building(target) {
             return true;
         }
@@ -1152,6 +1164,9 @@ impl World {
             }
         }
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
+            if self.fruit_trees.contains_key(&id) || self.wild_trees.values().any(|d| d.seed_item_id.as_deref().map(|s| crate::item::split_qualified(s).1) == Some(id.as_str())) {
+                return self.plant_tree(target);
+            }
             if self.items.is_seed(&id) {
                 return self.plant(target, &id);
             }

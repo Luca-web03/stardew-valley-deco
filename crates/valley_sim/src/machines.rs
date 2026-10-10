@@ -143,7 +143,12 @@ impl World {
     pub fn pickup_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
         match &o.kind {
-            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } => return false,
+            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::ArtifactSpot => return false,
+            ObjKind::Tapper { .. } => {
+                if let Some(TerrainFeature::Tree(tr)) = self.location_mut().terrain_mut(t) {
+                    tr.tapped = false;
+                }
+            }
             ObjKind::Chest(inv) if inv.slots.iter().any(|s| s.is_some()) => {
                 if let Some(o) = self.location_mut().state.objects.get_mut(&t) {
                     o.shake = 20;

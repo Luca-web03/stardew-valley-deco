@@ -18,6 +18,10 @@ pub enum ObjKind {
     MineRock { rock: crate::mines::RockKind, health: i32 },
     /// Mine ladder (down to the next level, or up to the entrance).
     Ladder { down: bool },
+    /// Tapper on a tree: produces `item` every `days` days.
+    Tapper { output: Option<Item>, days_left: i32 },
+    /// Diggable artifact spot.
+    ArtifactSpot,
     /// Any other placed item.
     Placed,
 }

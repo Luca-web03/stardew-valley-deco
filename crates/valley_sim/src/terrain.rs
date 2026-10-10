@@ -60,11 +60,47 @@ pub struct Grass {
     pub weeds: i32,
 }
 
+/// Days for a fruit tree sapling to mature (documented).
+pub const FRUIT_TREE_DAYS: i32 = 28;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FruitTree {
+    /// Sapling item id (key into Data/FruitTrees).
+    pub kind: String,
+    pub days_until_mature: i32,
+    /// Fruit currently hanging (max 3).
+    pub fruit: Vec<String>,
+    /// Days since maturity (quality rises with age).
+    pub age_after_mature: i32,
+    pub health: i32,
+    #[serde(skip)]
+    pub shake: i32,
+}
+
+impl FruitTree {
+    pub fn new(kind: &str) -> Self {
+        Self { kind: kind.into(), days_until_mature: FRUIT_TREE_DAYS, fruit: vec![], age_after_mature: 0, health: 10, shake: 0 }
+    }
+    pub fn mature(&self) -> bool {
+        self.days_until_mature <= 0
+    }
+    /// Fruit quality from years since maturity (documented: +1 level per year).
+    pub fn fruit_quality(&self) -> crate::item::Quality {
+        crate::item::Quality::from_level(match self.age_after_mature / 112 {
+            0 => 0,
+            1 => 1,
+            2 => 2,
+            _ => 4,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TerrainFeature {
     HoeDirt(HoeDirt),
     Tree(Tree),
     Grass(Grass),
+    FruitTree(FruitTree),
 }
 
 impl TerrainFeature {
@@ -72,6 +108,7 @@ impl TerrainFeature {
         match self {
             TerrainFeature::HoeDirt(_) | TerrainFeature::Grass(_) => true,
             TerrainFeature::Tree(t) => t.stage < 1 && !t.stump,
+            TerrainFeature::FruitTree(f) => f.days_until_mature > FRUIT_TREE_DAYS - 7,
         }
     }
     pub fn hoe_dirt(&self) -> Option<&HoeDirt> {

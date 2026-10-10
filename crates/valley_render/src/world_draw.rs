@@ -176,6 +176,30 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Fruit trees: tree art tinted by species row, fruit drawn on the canopy.
+    for (p, t) in &loc.state.terrain {
+        let TerrainFeature::FruitTree(ft) = t else { continue };
+        let tex = rc.assets.tex(rc.cm, rc.textures, &lay.tree_texture("fruit", season));
+        let [cx, cy, cw, ch] = lay.trees.canopy;
+        let base = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        let depth = sort_depth((p.y * TILE + TILE - 2) as f32, map_h);
+        let growth = if ft.mature() { 1.0 } else { 0.3 + 0.6 * (1.0 - ft.days_until_mature as f32 / valley_sim::terrain::FRUIT_TREE_DAYS as f32) };
+        let (wpx, hpx) = (cw as f32 * ZOOM * growth * 0.85, ch as f32 * ZOOM * growth * 0.85);
+        let shake = shake_off(ft.shake);
+        let canopy = FRect::new(base.x + TILE_F / 2.0 - wpx / 2.0 + shake, base.y + TILE_F - hpx, wpx, hpx);
+        let row = w.fruit_trees.get(&ft.kind).map(|d| d.texture_sprite_row).unwrap_or(0);
+        let tint = [Color::rgb(255, 235, 235), Color::rgb(235, 255, 235), Color::rgb(235, 235, 255), Color::rgb(255, 250, 220)][(row.rem_euclid(4)) as usize];
+        let mut s = Sprite::new(tex, IRect::new(cx, cy, cw, ch), canopy, depth);
+        s.tint = tint;
+        out.sprite(s);
+        for (k, id) in ft.fruit.iter().enumerate() {
+            let (ftex, fsrc) = object_sprite(rc, w, id);
+            let fx = canopy.x + canopy.w * (0.25 + 0.25 * k as f32);
+            let fy = canopy.y + canopy.h * (0.25 + 0.1 * (k % 2) as f32);
+            out.sprite(Sprite::new(ftex, fsrc, FRect::new(fx - 20.0, fy, 40.0, 40.0), depth + 0.0001));
+        }
+    }
+
     // Trees.
     for (p, t) in &loc.state.terrain {
         let TerrainFeature::Tree(tree) = t else { continue };
