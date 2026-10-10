@@ -393,6 +393,9 @@ pub fn dunes() -> Map {
     for (x, y) in [(6, 5), (9, 11), (14, 4), (26, 13), (3, 12), (22, 19), (17, 12)] {
         b.set("Buildings", x, y, BOULDER);
     }
+    // Games parlor door.
+    b.fill("Buildings", 20, 1, 5, 3, SANDSTONE);
+    b.set_props("Buildings", 22, 3, DOOR, &[("Action", "Warp 6 8 Dev_Parlor")]);
     // Cave mouth into the deep cavern.
     b.fill("Buildings", 6, 1, 5, 3, SANDSTONE);
     b.set_props("Buildings", 8, 3, 29, &[("Action", "Mine 121")]);
@@ -400,6 +403,32 @@ pub fn dunes() -> Map {
     b.set_props("Buildings", 5, 15, SIGN, &[("Action", "Port.Travel Town 36 18 0")]);
     b.set_props("Buildings", 14, 15, MINECART, &[("Action", "MinecartTransport Default Dunes")]);
     b.set_props("Buildings", 20, 15, SIGN, &[("Action", "OpenShop Dev_DuneTrader")]);
+    b.map
+}
+
+/// A small games parlor off the dunes (original placeholder).
+pub fn parlor() -> Map {
+    let (w, h) = (12, 10);
+    let mut b = B::new("Dev_Parlor", w, h, indoor_sheet());
+    b.fill("Back", 0, 0, w, h, VOID);
+    b.fill("Back", 1, 3, w - 2, h - 4, RUG);
+    b.fill("Buildings", 1, 1, w - 2, 1, IWALL_TOP);
+    b.fill("Buildings", 1, 2, w - 2, 1, IWALL);
+    for y in 1..h - 1 {
+        b.set("Buildings", 0, y, IWALL_TOP);
+        b.set("Buildings", w - 1, y, IWALL_TOP);
+    }
+    for x in 0..w {
+        b.set("Buildings", x, 0, IWALL_TOP);
+        if x != 6 {
+            b.set("Buildings", x, h - 1, IWALL_TOP);
+        }
+    }
+    for (x, action) in [(2, "Port.Reels"), (3, "Port.Reels"), (5, "Port.HighLow"), (8, "Port.CoinCounter"), (9, "OpenShop Dev_PrizeCounter")] {
+        b.set_props("Buildings", x, 4, if action.starts_with("OpenShop") || action == "Port.CoinCounter" { COUNTER } else { TABLE }, &[("Action", action)]);
+    }
+    b.set("Back", 6, h - 1, MAT);
+    b.prop("Warp", "6 9 Dev_Dunes 22 4");
     b.map
 }
 
@@ -417,5 +446,5 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market(), parlor()]
 }

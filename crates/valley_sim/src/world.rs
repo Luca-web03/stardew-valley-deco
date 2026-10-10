@@ -76,6 +76,9 @@ pub enum WorldEvent {
     TvMenu(Vec<crate::minecarts::Channel>),
     /// Open the sewing machine.
     OpenTailoring,
+    /// Casino games.
+    OpenReels,
+    OpenHighLow,
     /// Offer a paid trip (bus, boat...) to another location.
     TravelPrompt { location: String, tile: TilePos, fare: i32 },
     Warped { from: String, to: String },
@@ -208,6 +211,8 @@ pub struct World {
     pub passive_maps: BTreeMap<String, valley_content::Map>,
     /// Maps swapped out for today's festivals (location -> original).
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
+    /// Casino rounds played (seeds the games).
+    pub casino_plays: u64,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -357,6 +362,7 @@ impl World {
             passive_festivals,
             passive_maps,
             festival_original_maps: BTreeMap::new(),
+            casino_plays: 0,
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -1386,6 +1392,20 @@ impl World {
         match cmd {
             "Tailoring" => self.open_tailoring(),
             "Theater" | "Port.Theater" => self.watch_movie(),
+            "Port.Reels" => {
+                self.emit(WorldEvent::OpenReels);
+                true
+            }
+            "Port.HighLow" => {
+                self.emit(WorldEvent::OpenHighLow);
+                true
+            }
+            "Port.CoinCounter" => {
+                if self.buy_coins() {
+                    self.hud(format!("Qi coins: {}", self.farmer.qi_coins));
+                }
+                true
+            }
             "MinecartTransport" => {
                 let network = toks.get(1).copied().unwrap_or("Default");
                 self.open_minecart(network, toks.get(2).copied())

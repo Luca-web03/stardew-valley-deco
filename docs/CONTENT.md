@@ -97,6 +97,8 @@ Other conventions:
 | Harvest huts: building id `Junimo Hut` or `Port.HarvestHut`; gathers ripe hand-harvested crops within 8 tiles each night into its storage | `valley_sim::harvest_huts` |
 | Movies: `Data/Movies` (`Seasons`, `YearModulus`/`YearRemainder`, `Title`, `Tags`, `Scenes[].Text`), `Data/MoviesReactions` (`NPCName`, `Reactions[].Tag/Response`); tickets = object `809` or placeholder `Dev_Ticket`; theater door = `Theater` tile action; concessions not implemented | `valley_sim::movies` |
 | Passive festivals: `Data/PassiveFestivals` (`Season`, `StartDay`/`EndDay`, `Condition`, `StartMessage`, `MapReplacements` location -> map asset); setup/cleanup methods are code in the original and not run | `valley_sim::passive_festivals` |
+| Casino: original games "Lucky Reels" (`Port.Reels`) and "High-Low" (`Port.HighLow`) played with Qi coins; `Port.CoinCounter` sells 100 coins for 1000g; prize shops use `Currency: 2` | `valley_sim::casino` |
+| Perfection: engine-defined weighted score (shipping, fish, cooking, crafting, friends, skills, museum, bundles) | `valley_sim::perfection` |
 
 ## Mods
 

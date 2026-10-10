@@ -344,6 +344,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "cap", "ItemId": "(H)Dev_Cap", "Price": 600, "AvailableStock": 1 }
             ]
         },
+        "Dev_PrizeCounter": {
+            "Currency": 2,
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "charm", "ItemId": "(O)Dev_DuneCharm", "Price": 300 },
+                { "Id": "beanie", "ItemId": "(H)Dev_Beanie", "Price": 1500 },
+                { "Id": "stripes", "ItemId": "(S)Dev_Stripes", "Price": 1000 }
+            ]
+        },
         "Dev_BoxOffice": {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [{ "Id": "ticket", "ItemId": "(O)Dev_Ticket", "Price": 500 }]
@@ -421,6 +430,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                        "CreateOnLoad": { "MapPath": "Maps\\FarmHouse" } },
         "Dev_Dunes": { "DisplayName": "Sunscorch Dunes", "DefaultArrivalTile": { "X": 6, "Y": 16 },
                        "CreateOnLoad": { "MapPath": "Maps\\Dev_Dunes" } },
+        "Dev_Parlor": { "DisplayName": "Dune Parlor", "DefaultArrivalTile": { "X": 6, "Y": 8 },
+                        "CreateOnLoad": { "MapPath": "Maps\\Dev_Parlor" } },
         "Town": { "DisplayName": "Town", "DefaultArrivalTile": { "X": 2, "Y": 15 },
                   "CreateOnLoad": { "MapPath": "Maps\\Town" },
                   "Forage": [

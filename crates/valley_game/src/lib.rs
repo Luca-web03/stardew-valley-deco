@@ -570,6 +570,8 @@ impl ValleyGame {
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::OpenTailoring => self.menus.push(Menu::Tailoring { left: None, right: None }),
+                WorldEvent::OpenReels => self.menus.push(Menu::Reels { bet: 10, last: None }),
+                WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::MinecartMenu { network, prompt, choices } => {
                     let mut options: Vec<String> = choices.iter().map(|(_, l)| l.clone()).collect();
@@ -1026,6 +1028,59 @@ impl ValleyGame {
                     }
                 }
                 if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::Reels { bet, last } => {
+                let [spin, toggle] = casino_buttons(sw, sh);
+                if ctx.input.mouse_pressed(MouseButton::Left) && toggle.contains(ctx.input.mouse) {
+                    *bet = if *bet == 10 { 100 } else { 10 };
+                } else if (ctx.input.mouse_pressed(MouseButton::Left) && spin.contains(ctx.input.mouse)) || ctx.input.pressed(Key::Space) {
+                    match self.world.as_mut().and_then(|w| w.spin_reels(*bet)) {
+                        Some(s) => *last = Some(s),
+                        None => self.toasts.push(("Not enough Qi coins.".into(), 2000)),
+                    }
+                } else if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::HighLow { bet, game, last } => {
+                let [a, b] = casino_buttons(sw, sh);
+                let cash = FRect::new(b.x + b.w + 20.0, b.y, 180.0, b.h);
+                let click = |r: FRect| ctx.input.mouse_pressed(MouseButton::Left) && r.contains(ctx.input.mouse);
+                match *game {
+                    None => {
+                        if click(b) {
+                            *bet = if *bet == 10 { 100 } else { 10 };
+                        } else if click(a) {
+                            match self.world.as_mut().and_then(|w| w.highlow_start(*bet)) {
+                                Some(g) => {
+                                    *game = Some(g);
+                                    *last = None;
+                                }
+                                None => self.toasts.push(("Not enough Qi coins.".into(), 2000)),
+                            }
+                        }
+                    }
+                    Some(g) => {
+                        let guess = if click(a) { Some(true) } else if click(b) { Some(false) } else { None };
+                        if let (Some(higher), Some(w)) = (guess, self.world.as_mut()) {
+                            let (card, next) = w.highlow_guess(g, higher);
+                            *last = Some((card, next.is_some()));
+                            *game = next;
+                        } else if click(cash) {
+                            if let Some(w) = self.world.as_mut() {
+                                w.highlow_cash_out(g);
+                            }
+                            *game = None;
+                        }
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    // Leaving mid-round keeps the pot.
+                    if let (Some(g), Some(w)) = (*game, self.world.as_mut()) {
+                        w.highlow_cash_out(g);
+                    }
                     close = true;
                 }
             }
@@ -1535,6 +1590,13 @@ fn question_box(sw: f32, sh: f32, n: usize) -> FRect {
     FRect::new(b.x, (sh - h - 20.0).max(10.0), b.w, h)
 }
 
+/// Two main buttons under casino games.
+fn casino_buttons(sw: f32, sh: f32) -> [FRect; 2] {
+    let f = menu_frame(sw, sh);
+    let y = f.y + f.h - 130.0;
+    [FRect::new(sw / 2.0 - 250.0, y, 200.0, 56.0), FRect::new(sw / 2.0 - 30.0, y, 200.0, 56.0)]
+}
+
 /// Sewing machine: fabric slot, second-item slot and the Sew button.
 fn tailoring_rects(sw: f32, sh: f32) -> (FRect, FRect, FRect) {
     let f = menu_frame(sw, sh);
@@ -1882,6 +1944,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                             ui.icon_tinted(tex, src, inner, Color::rgba(40, 30, 25, 160));
                         }
                     }
+                    ui.text(&format!("Perfection: {:.1}%", w.perfection()), Vec2::new(f.x + f.w - 300.0, f.y + 300.0), 2.0, ui::TEXT);
                     // Achievements: three columns, earned ones in gold.
                     let earned = w.farmer.achievements.len();
                     ui.text(&format!("Achievements ({earned}/{})", valley_sim::pets::ACHIEVEMENTS.len()), Vec2::new(f.x + 40.0, f.y + 300.0), 2.0, ui::TEXT);
@@ -2199,6 +2262,66 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                 }
             }
+        }
+        Menu::Reels { bet, last } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered("Lucky Reels", sw / 2.0, f.y + 28.0, 3.0, ui::TEXT);
+            let colors = [Color::rgb(80, 170, 80), Color::rgb(230, 220, 150), Color::rgb(230, 180, 60), Color::rgb(250, 230, 80), Color::rgb(90, 200, 230)];
+            let names = ["Leaf", "Moon", "Bell", "Star", "Gem"];
+            for i in 0..3 {
+                let r = FRect::new(sw / 2.0 - 230.0 + i as f32 * 160.0, f.y + 100.0, 140.0, 140.0);
+                ui.slot(r, false);
+                if let Some(s) = last {
+                    let sym = s.reels[i];
+                    ui.fill(FRect::new(r.x + 35.0, r.y + 25.0, 70.0, 70.0), colors[sym]);
+                    ui.text_centered(names[sym], r.x + r.w / 2.0, r.y + 108.0, 2.0, ui::TEXT);
+                }
+            }
+            if let Some(s) = last {
+                let msg = if s.won > 0 { format!("You won {} coins!", s.won) } else { "No luck this time.".to_string() };
+                ui.text_centered(&msg, sw / 2.0, f.y + 270.0, 2.0, ui::TEXT);
+            }
+            let [spin, toggle] = casino_buttons(sw, sh);
+            ui.button(spin, "Spin", false);
+            ui.button(toggle, &format!("Bet {bet}"), false);
+            ui.text(&format!("Qi coins: {}   Three of a kind pays 3x-50x; two leaves return the bet.", w.farmer.qi_coins), Vec2::new(f.x + 40.0, f.y + f.h - 48.0), 2.0, ui::TEXT);
+        }
+        Menu::HighLow { bet, game, last } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered("High-Low", sw / 2.0, f.y + 28.0, 3.0, ui::TEXT);
+            let label = |c: u8| match c {
+                1 => "A".to_string(),
+                11 => "J".to_string(),
+                12 => "Q".to_string(),
+                13 => "K".to_string(),
+                n => n.to_string(),
+            };
+            let card = FRect::new(sw / 2.0 - 60.0, f.y + 90.0, 120.0, 170.0);
+            ui.fill(card, Color::rgb(250, 248, 240));
+            ui.out.outline(card, 3.0, ui::FRAME, ui.depth + 0.001);
+            let shown = game.map(|g| g.card).or(last.map(|l| l.0));
+            if let Some(c) = shown {
+                ui.text_centered(&label(c), card.x + card.w / 2.0, card.y + 60.0, 5.0, Color::rgb(60, 40, 40));
+            }
+            let [a, b] = casino_buttons(sw, sh);
+            match game {
+                Some(g) => {
+                    ui.text_centered(&format!("Pot: {} coins (streak {})", g.pot, g.streak), sw / 2.0, f.y + 290.0, 2.0, ui::TEXT);
+                    ui.button(a, "Higher", false);
+                    ui.button(b, "Lower", false);
+                    ui.button(FRect::new(b.x + b.w + 20.0, b.y, 180.0, b.h), "Cash out", false);
+                }
+                None => {
+                    if let Some((_, false)) = last {
+                        ui.text_centered("Wrong guess - the pot is lost.", sw / 2.0, f.y + 290.0, 2.0, ui::TEXT);
+                    }
+                    ui.button(a, "Deal", false);
+                    ui.button(b, &format!("Bet {bet}"), false);
+                }
+            }
+            ui.text(&format!("Qi coins: {}   Guess right to double the pot; ties lose.", w.farmer.qi_coins), Vec2::new(f.x + 40.0, f.y + f.h - 48.0), 2.0, ui::TEXT);
         }
         Menu::Tailoring { left, right } => {
             let f = menu_frame(sw, sh);
