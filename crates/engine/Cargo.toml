@@ -9,3 +9,4 @@ publish.workspace = true
 [dependencies]
 png.workspace = true
 font8x8.workspace = true
+serde.workspace = true

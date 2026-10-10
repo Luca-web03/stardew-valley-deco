@@ -35,6 +35,7 @@ version = "0.1.0"
 dependencies = [
  "font8x8",
  "png",
+ "serde",
 ]
 
 [[package]]
@@ -227,6 +228,12 @@ version = "0.1.0"
 [[package]]
 name = "valley_sim"
 version = "0.1.0"
+dependencies = [
+ "engine",
+ "serde",
+ "serde_json",
+ "valley_content",
+]
 
 [[package]]
 name = "zlib-rs"
