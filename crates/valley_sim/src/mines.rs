@@ -54,7 +54,7 @@ impl MineItems {
             copper_ore: pick(&["378", "Dev_CopperOre"]),
             iron_ore: pick(&["380", "Dev_IronOre"]),
             gold_ore: pick(&["384", "Dev_GoldOre"]),
-            geode: pick(&["535"]),
+            geode: pick(&["535", "Dev_Geode"]),
             rock_sprites,
             copper_node: pick(&["751", "Dev_CopperNode"]),
             iron_node: pick(&["290", "Dev_IronNode"]),
@@ -317,12 +317,12 @@ impl World {
             RockKind::Stone => {
                 self.spawn_drop(Item::object(&mi.stone, 1), c);
                 if let Some(coal) = &mi.coal {
-                    if rng.chance(0.05) {
+                    if rng.chance(if self.farmer.has_profession("prospector") { 0.10 } else { 0.05 }) {
                         self.spawn_drop(Item::object(coal, 1), c);
                     }
                 }
                 if let Some(g) = &mi.geode {
-                    if rng.chance(0.02 + level as f64 / 4000.0) {
+                    if rng.chance((0.02 + level as f64 / 4000.0) * if self.farmer.has_profession("excavator") { 2.0 } else { 1.0 }) {
                         self.spawn_drop(Item::object(g, 1), c);
                     }
                 }
@@ -334,7 +334,8 @@ impl World {
                     _ => mi.gold_ore.clone(),
                 };
                 if let Some(o) = ore {
-                    self.spawn_drop(Item::object(&o, rng.range(1, 4)), c);
+                    let bonus = if self.farmer.has_profession("miner") { 1 } else { 0 };
+                    self.spawn_drop(Item::object(&o, rng.range(1, 4) + bonus), c);
                 }
             }
         }

@@ -107,6 +107,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
+        "Dev_CopperBar": obj("Copper Bar", "Basic", -15, 60, ICON_COPPER_BAR, -300),
+        "Dev_IronBar": obj("Iron Bar", "Basic", -15, 120, ICON_IRON_BAR, -300),
+        "Dev_GoldBar": obj("Gold Bar", "Basic", -15, 250, ICON_GOLD_BAR, -300),
+        "Dev_IridiumBar": obj("Iridium Bar", "Basic", -15, 1000, ICON_IRIDIUM_BAR, -300),
+        "Dev_Geode": obj("Rock Nodule", "Basic", 0, 50, ICON_GEODE, -300),
+        "Dev_Quartz": obj("Clear Quartz", "Minerals", -2, 40, ICON_QUARTZ, -300),
+        "Dev_Amberite": obj("Amberite", "Minerals", -12, 80, ICON_AMBERITE, -300),
         "Dev_Milk": obj("Goat Milk", "Basic", -6, 120, ICON_MILK, 15),
         "Dev_Hay": obj("Hay", "Basic", 0, 25, ICON_HAY, -300),
         "Dev_Salad": {
@@ -138,6 +145,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                      "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
         "Dev_Juicer": { "Name": "Juicer", "DisplayName": "Juicer", "Description": "Turns produce into juice.",
                         "Price": 50, "SpriteIndex": 1 },
+        "Dev_Furnace": { "Name": "Furnace", "DisplayName": "Furnace", "Description": "Smelts ore into bars. Needs coal.",
+                         "Price": 50, "SpriteIndex": 2 },
     });
     let machines = json!({
         "(BC)Dev_Juicer": {
@@ -152,6 +161,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "MinutesUntilReady": 120
             }],
             "InvalidItemMessage": "The juicer only takes fruit and vegetables."
+        },
+        "(BC)Dev_Furnace": {
+            "OutputRules": [
+                { "Id": "copper", "Triggers": [{ "RequiredItemId": "(O)Dev_CopperOre", "RequiredCount": 5 }], "OutputItem": [{ "ItemId": "(O)Dev_CopperBar" }], "MinutesUntilReady": 30 },
+                { "Id": "iron", "Triggers": [{ "RequiredItemId": "(O)Dev_IronOre", "RequiredCount": 5 }], "OutputItem": [{ "ItemId": "(O)Dev_IronBar" }], "MinutesUntilReady": 120 },
+                { "Id": "gold", "Triggers": [{ "RequiredItemId": "(O)Dev_GoldOre", "RequiredCount": 5 }], "OutputItem": [{ "ItemId": "(O)Dev_GoldBar" }], "MinutesUntilReady": 300 }
+            ],
+            "AdditionalConsumedItems": [{ "ItemId": "(O)Dev_Coal", "RequiredCount": 1 }],
+            "InvalidItemMessage": "The furnace needs 5 ore."
         }
     });
     let recipes = json!({
@@ -159,6 +177,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Juicer": "388 15 390 10/Home/Dev_Juicer/true/default/",
         "Sprinkler": "390 5 388 5/Home/Dev_Sprinkler/false/default/",
         "Fertilizer": "771 2/Home/Dev_Fertilizer 5/false/l 1/",
+        "Furnace": "Dev_CopperOre 15 390 20/Home/Dev_Furnace/true/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -180,6 +199,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Coal_Name": "Coal", "Coal_Description": "Burns hot.",
         "MudGoo_Name": "Mud Goo", "MudGoo_Description": "Left behind by a mud blob.",
         "WingDust_Name": "Wing Dust", "WingDust_Description": "Shimmering scales from a cave moth.",
+        "CopperBar_Name": "Copper Bar", "CopperBar_Description": "A bar of smelted copper.",
+        "IronBar_Name": "Iron Bar", "IronBar_Description": "A bar of smelted iron.",
+        "GoldBar_Name": "Gold Bar", "GoldBar_Description": "A bar of smelted gold.",
+        "IridiumBar_Name": "Iridium Bar", "IridiumBar_Description": "A bar of an exotic metal.",
+        "RockNodule_Name": "Rock Nodule", "RockNodule_Description": "Something rattles inside. A blacksmith can crack it open.",
+        "ClearQuartz_Name": "Clear Quartz", "ClearQuartz_Description": "A clear crystal.",
+        "Amberite_Name": "Amberite", "Amberite_Description": "A warm, glowing stone.",
         "Egg_Name": "Egg", "Egg_Description": "Fresh from the henhouse.",
         "GoatMilk_Name": "Goat Milk", "GoatMilk_Description": "Rich and creamy.",
         "Hay_Name": "Hay", "Hay_Description": "Dried grass for animal feed.",

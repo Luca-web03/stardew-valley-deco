@@ -26,6 +26,7 @@ pub mod mail;
 pub mod npc;
 pub mod objects;
 pub mod pathfind;
+pub mod professions;
 pub mod progress;
 pub mod quests;
 pub mod save;

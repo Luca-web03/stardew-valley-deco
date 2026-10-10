@@ -217,6 +217,15 @@ impl World {
                 continue;
             }
             let mut dmg = rng.range(min.max(0), max.max(min) + 1);
+            let crit = if self.farmer.has_profession("scout") { crit * 1.5 } else { crit };
+            let mut mult = 1.0 + self.farmer.buff_totals().attack as f32 * 0.03;
+            if self.farmer.has_profession("fighter") {
+                mult *= 1.1;
+            }
+            if self.farmer.has_profession("brute") {
+                mult *= 1.15;
+            }
+            dmg = (dmg as f32 * mult).round() as i32;
             let is_crit = rng.chance(crit as f64);
             if is_crit {
                 dmg = (dmg as f32 * crit_mult) as i32;
@@ -365,7 +374,8 @@ impl World {
     }
 
     pub fn farmer_defense(&self) -> i32 {
-        self.farmer
+        self.farmer.buff_totals().defense
+            + self.farmer
             .inventory
             .get(self.farmer.current_slot)
             .and_then(|i| i.weapon_id())

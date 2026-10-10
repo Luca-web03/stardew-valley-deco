@@ -2,7 +2,7 @@
 
 use engine::Vec2;
 
-use crate::farmer::{Skill, ToolUse, TOOL_HIT_MS, TOOL_TOTAL_MS};
+use crate::farmer::{Skill, ToolCharge, ToolUse, TOOL_HIT_MS, TOOL_TOTAL_MS};
 use crate::item::{Item, ToolKind};
 use crate::objects::{DebrisKind, ObjKind};
 use crate::terrain::{HoeDirt, TerrainFeature, STUMP_HEALTH};
@@ -41,7 +41,11 @@ impl World {
                     self.start_fishing();
                     return true;
                 }
-                let level = self.farmer.skills.level(governing_skill(t.kind));
+                if matches!(t.kind, ToolKind::Hoe | ToolKind::WateringCan) && t.level > 0 {
+                    self.farmer.tool_charge = Some(ToolCharge { kind: t.kind, slot, max_power: t.level, ms: 0 });
+                    return true;
+                }
+                let level = self.farmer.effective_level(governing_skill(t.kind));
                 let cost = stamina_cost(t.kind, level);
                 if cost > 0.0 {
                     let was_exhausted = self.farmer.exhausted;
@@ -50,7 +54,7 @@ impl World {
                         self.emit(WorldEvent::Exhausted);
                     }
                 }
-                self.farmer.tool_use = Some(ToolUse { kind: t.kind, slot, target, elapsed_ms: 0, applied: false });
+                self.farmer.tool_use = Some(ToolUse { kind: t.kind, slot, target, elapsed_ms: 0, applied: false, power: 0 });
                 self.sound(match t.kind {
                     ToolKind::Scythe => "swordswipe",
                     _ => "woosh",
@@ -64,13 +68,68 @@ impl World {
         }
     }
 
+    /// Continue or release a charge. Returns true while charging.
+    pub(crate) fn update_tool_charge(&mut self, held: bool, dt: u32) -> bool {
+        let Some(mut c) = self.farmer.tool_charge.take() else { return false };
+        if held {
+            let before = c.power();
+            c.ms += dt;
+            if c.power() > before {
+                self.sound("toolCharge");
+            }
+            self.farmer.tool_charge = Some(c);
+            return true;
+        }
+        let power = c.power();
+        let level = self.farmer.effective_level(governing_skill(c.kind));
+        let cost = stamina_cost(c.kind, level) * (power + 1) as f32;
+        let was = self.farmer.exhausted;
+        self.farmer.spend_stamina(cost);
+        if self.farmer.exhausted && !was {
+            self.emit(WorldEvent::Exhausted);
+        }
+        let target = self.farmer.facing_tile();
+        self.farmer.tool_use = Some(ToolUse { kind: c.kind, slot: c.slot, target, elapsed_ms: 0, applied: false, power });
+        self.sound("woosh");
+        true
+    }
+
+    /// Tiles affected by a charged swing (documented area shapes).
+    pub fn charged_area(&self, origin: TilePos, power: i32) -> Vec<TilePos> {
+        let f = self.farmer.facing;
+        let (dx, dy) = f.delta();
+        let (sx, sy) = (dy.abs(), dx.abs()); // sideways axis
+        let line = |len: i32| -> Vec<TilePos> { (0..len).map(|i| TilePos::new(origin.x + dx * i, origin.y + dy * i)).collect() };
+        match power {
+            0 => vec![origin],
+            1 => line(3),
+            2 => line(5),
+            p => {
+                let len = if p == 3 { 3 } else { 6 };
+                let mut v = Vec::new();
+                for i in 0..len {
+                    for side in -1..=1 {
+                        v.push(TilePos::new(origin.x + dx * i + sx * side, origin.y + dy * i + sy * side));
+                    }
+                }
+                v
+            }
+        }
+    }
+
     pub(crate) fn advance_tool_use(&mut self, dt: u32) {
         let Some(mut u) = self.farmer.tool_use.take() else { return };
         u.elapsed_ms += dt;
         if !u.applied && u.elapsed_ms >= TOOL_HIT_MS {
             u.applied = true;
             self.farmer.tool_use = Some(u.clone());
-            self.apply_tool(u.kind, u.slot, u.target);
+            if u.power > 0 {
+                for t in self.charged_area(u.target, u.power) {
+                    self.apply_tool(u.kind, u.slot, t);
+                }
+            } else {
+                self.apply_tool(u.kind, u.slot, u.target);
+            }
             u = match self.farmer.tool_use.take() {
                 Some(x) => x,
                 None => return,
@@ -215,8 +274,12 @@ impl World {
                 self.emit(WorldEvent::LevelUp(Skill::Foraging, l));
             }
         }
+        let forester = self.farmer.has_profession("forester");
         for (item, _) in drops {
-            let stack = item.stack();
+            let mut stack = item.stack();
+            if forester && item.object_id() == Some("388") {
+                stack = (stack as f32 * 1.25).round() as i32;
+            }
             // Pop wood out a few pieces at a time so they spread visually.
             let id = item.object_id().unwrap_or_default().to_string();
             let mut left = stack;

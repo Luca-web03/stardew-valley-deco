@@ -383,6 +383,14 @@ impl ValleyGame {
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
                 WorldEvent::Music(track) => ctx.audio.music(&track),
+                WorldEvent::OpenBlacksmith => {
+                    let collected = self.world.as_mut().is_some_and(|w| w.collect_tool_upgrade());
+                    if collected {
+                        self.toast("Picked up your upgraded tool!");
+                    } else {
+                        self.menus.push(Menu::Blacksmith { hovered: None });
+                    }
+                }
                 WorldEvent::Fade { to_black } => self.fade = if to_black { Fade { alpha: 0.0, target: 1.0 } } else { Fade { alpha: 1.0, target: 0.0 } },
                 WorldEvent::EventEnded => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::OpenAnimalShop(list) => self.menus.push(Menu::AnimalShop { list, hovered: None }),
@@ -729,7 +737,68 @@ impl ValleyGame {
                 *ms += 16;
                 if (*ms > 600 && confirm) || *ms > 15000 {
                     close = true;
-                    action = Some(Box::new(|g: &mut ValleyGame, _| g.fade = Fade { alpha: 1.0, target: 0.0 }));
+                    action = Some(Box::new(|g: &mut ValleyGame, _| {
+                        g.fade = Fade { alpha: 1.0, target: 0.0 };
+                        let pending = g.world.as_mut().map(|w| std::mem::take(&mut w.farmer.pending_levelups)).unwrap_or_default();
+                        // Show the highest level per skill, newest last.
+                        for (skill, level) in pending.into_iter().rev() {
+                            if !g.menus.iter().any(|m| matches!(m, Menu::LevelUp { skill: s, .. } if *s == skill)) {
+                                g.menus.insert(0, Menu::LevelUp { skill, level, hovered: None });
+                            }
+                        }
+                    }));
+                }
+            }
+            Menu::Blacksmith { hovered } => {
+                let rows = shop_rows(sw, sh);
+                let tools = self.world.as_ref().map(upgradable_tools).unwrap_or_default();
+                *hovered = rows.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < tools.len());
+                let geode = blacksmith_geode_rect(sw, sh);
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        let slot = tools[i];
+                        close = true;
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            let r = g.world.as_mut().map(|w| w.start_tool_upgrade(slot));
+                            match r {
+                                Some(Ok(())) => g.toast("Come back in 2 days."),
+                                Some(Err(e)) => g.toast(e),
+                                None => {}
+                            }
+                        }));
+                    } else if geode.contains(ctx.input.mouse) {
+                        action = Some(Box::new(|g: &mut ValleyGame, _| {
+                            let slot = g.world.as_ref().map(|w| w.farmer.current_slot).unwrap_or(0);
+                            let r = g.world.as_mut().map(|w| w.crack_geode(slot));
+                            if let Some(Err(e)) = r {
+                                g.toast(e);
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::LevelUp { skill, level, hovered } => {
+                let owned = self.world.as_ref().map(|w| w.farmer.professions.clone()).unwrap_or_default();
+                let choices = if *level == 5 || *level == 10 { valley_sim::professions::choices(*skill, *level, &owned) } else { vec![] };
+                let rects = levelup_choice_rects(sw, sh);
+                *hovered = rects.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < choices.len());
+                if choices.is_empty() {
+                    if confirm {
+                        close = true;
+                    }
+                } else if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        let id = choices[i].id;
+                        close = true;
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(w) = g.world.as_mut() {
+                                w.choose_profession(id);
+                            }
+                        }));
+                    }
                 }
             }
         }
@@ -951,6 +1020,27 @@ fn menu_frame(sw: f32, sh: f32) -> FRect {
 fn inventory_tab_rects(sw: f32, sh: f32) -> Vec<FRect> {
     let f = menu_frame(sw, sh);
     (0..TABS.len()).map(|i| FRect::new(f.x + 16.0 + i as f32 * 166.0, f.y - 52.0, 156.0, 48.0)).collect()
+}
+
+/// Inventory slots holding upgradable tools.
+fn upgradable_tools(w: &World) -> Vec<usize> {
+    use valley_sim::item::ToolKind;
+    (0..w.farmer.inventory.capacity())
+        .filter(|&i| {
+            matches!(w.farmer.inventory.get(i), Some(valley_sim::item::Item::Tool(t)) if matches!(t.kind, ToolKind::Hoe | ToolKind::WateringCan | ToolKind::Axe | ToolKind::Pickaxe) && t.level < 4)
+        })
+        .take(4)
+        .collect()
+}
+
+fn blacksmith_geode_rect(sw: f32, sh: f32) -> FRect {
+    let f = menu_frame(sw, sh);
+    FRect::new(f.x + 32.0, f.y + f.h - 96.0, 320.0, 60.0)
+}
+
+fn levelup_choice_rects(sw: f32, sh: f32) -> Vec<FRect> {
+    let f = menu_frame(sw, sh);
+    (0..2).map(|i| FRect::new(f.x + 40.0 + i as f32 * (f.w / 2.0 - 20.0), f.y + 160.0, f.w / 2.0 - 60.0, 260.0)).collect()
 }
 
 fn known_cooking(w: &World) -> Vec<String> {
@@ -1336,6 +1426,45 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 let ps = format!("{}g", d.build_cost);
                 let m = ui.measure(&ps, 3.0);
                 ui.text(&ps, Vec2::new(r.x + r.w - m.x - 24.0, r.y + 26.0), 3.0, if d.build_cost > w.farmer.money { Color::RED } else { ui::TEXT });
+            }
+        }
+        Menu::Blacksmith { hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Forge", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            for (i, (r, slot)) in shop_rows(sw, sh).iter().zip(upgradable_tools(w)).enumerate() {
+                ui.slot(*r, *hovered == Some(i));
+                let Some(item) = w.farmer.inventory.get(slot) else { continue };
+                let (tex, src) = item_sprite(rc, w, item);
+                ui.icon(tex, src, FRect::new(r.x + 8.0, r.y + 6.0, 64.0, 64.0));
+                ui.text(&format!("Upgrade {}", w.items.display_name(item)), Vec2::new(r.x + 96.0, r.y + 12.0), 3.0, ui::TEXT);
+                if let Some((money, bar, n)) = item.tool().and_then(|t| w.upgrade_cost(t.level)) {
+                    let bar_name = bar.as_deref().and_then(|b| w.items.object(b)).map(|o| o.display_name.clone()).unwrap_or_else(|| "bars".into());
+                    ui.text(&format!("{money}g + {n} {bar_name}  (2 days)"), Vec2::new(r.x + 96.0, r.y + 48.0), 2.0, ui::TEXT);
+                }
+            }
+            if let Some((t, d)) = &w.farmer.tool_upgrade {
+                ui.text(&format!("Working on: {} ({} day(s) left)", w.items.display_name(&valley_sim::item::Item::Tool(t.clone())), d.max(&0)), Vec2::new(f.x + 32.0, f.y + f.h - 140.0), 2.0, ui::TEXT);
+            }
+            ui.button(blacksmith_geode_rect(sw, sh), "Crack held geode (25g)", false);
+        }
+        Menu::LevelUp { skill, level, hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered(&format!("{skill:?} Level {level}"), sw / 2.0, f.y + 40.0, 4.0, ui::TEXT);
+            let choices = if *level == 5 || *level == 10 { valley_sim::professions::choices(*skill, *level, &w.farmer.professions) } else { vec![] };
+            if choices.is_empty() {
+                ui.text_centered("Your skills are improving.", sw / 2.0, f.y + 140.0, 3.0, ui::TEXT);
+                ui.text_centered("(click to continue)", sw / 2.0, f.y + f.h - 60.0, 2.0, ui::TEXT);
+            } else {
+                ui.text_centered("Choose a profession:", sw / 2.0, f.y + 100.0, 3.0, ui::TEXT);
+                for (i, (r, p)) in levelup_choice_rects(sw, sh).iter().zip(&choices).enumerate() {
+                    ui.slot(*r, *hovered == Some(i));
+                    ui.text_centered(p.name, r.x + r.w / 2.0, r.y + 30.0, 3.0, ui::TEXT);
+                    for (k, line) in ui.wrap(p.description, r.w - 40.0, 2.0).iter().enumerate() {
+                        ui.text(line, Vec2::new(r.x + 20.0, r.y + 90.0 + k as f32 * 26.0), 2.0, ui::TEXT);
+                    }
+                }
             }
         }
         Menu::Billboard => {

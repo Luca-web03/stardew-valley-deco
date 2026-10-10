@@ -373,6 +373,22 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
         out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
     }
 
+    // Charge meter above the head while charging an upgraded tool.
+    if let Some(c) = &f.tool_charge {
+        let white = rc.assets.white(rc.textures);
+        let n = c.max_power + 1;
+        for i in 0..n {
+            let filled = i <= c.power();
+            let col = if filled { Color::rgb(250, 220, 60) } else { Color::rgba(60, 40, 30, 200) };
+            out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(p.x + 4.0 + i as f32 * 14.0, p.y - 92.0), 10.0, col, DEPTH_OVERLAY + 0.01);
+        }
+        let area = w.charged_area(f.facing_tile(), c.power());
+        for t in area {
+            let tp = cam.to_screen(Vec2::new((t.x * TILE) as f32, (t.y * TILE) as f32));
+            out.outline(FRect::new(tp.x + 2.0, tp.y + 2.0, TILE_F - 4.0, TILE_F - 4.0), 3.0, Color::rgba(255, 255, 255, 140), DEPTH_OVERLAY + 0.005);
+        }
+    }
+
     // Weapon swing: the blade sweeps an arc in front of the farmer.
     if let Some(sw) = &w.weapon_swing {
         if let Some(item) = f.inventory.get(sw.slot) {

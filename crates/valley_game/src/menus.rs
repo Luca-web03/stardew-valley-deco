@@ -82,6 +82,14 @@ pub enum Menu {
         list: Vec<String>,
         hovered: Option<usize>,
     },
+    Blacksmith {
+        hovered: Option<usize>,
+    },
+    LevelUp {
+        skill: valley_sim::farmer::Skill,
+        level: i32,
+        hovered: Option<usize>,
+    },
 }
 
 /// Characters revealed per tick by the typewriter effect.

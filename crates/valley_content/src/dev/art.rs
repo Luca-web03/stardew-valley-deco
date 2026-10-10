@@ -325,6 +325,13 @@ pub const ICON_STEW: i32 = 34;
 pub const ICON_EGG: i32 = 35;
 pub const ICON_MILK: i32 = 36;
 pub const ICON_HAY: i32 = 37;
+pub const ICON_COPPER_BAR: i32 = 38;
+pub const ICON_IRON_BAR: i32 = 39;
+pub const ICON_GOLD_BAR: i32 = 40;
+pub const ICON_IRIDIUM_BAR: i32 = 41;
+pub const ICON_GEODE: i32 = 42;
+pub const ICON_QUARTZ: i32 = 43;
+pub const ICON_AMBERITE: i32 = 44;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -516,6 +523,38 @@ pub fn objects() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
+    for (idx, col) in [
+        (ICON_COPPER_BAR, Color::rgb(220, 130, 80)),
+        (ICON_IRON_BAR, Color::rgb(200, 205, 220)),
+        (ICON_GOLD_BAR, Color::rgb(250, 210, 70)),
+        (ICON_IRIDIUM_BAR, Color::rgb(170, 90, 220)),
+    ] {
+        let mut c = Cell::at(&mut img, idx, OBJ_COLS, 16, 16);
+        for y in 0..5 {
+            c.rect(3 + y / 2, 6 + y, 10 - y, 1, shade(col, 20 - y * 10));
+        }
+        c.rect(3, 11, 10, 2, shade(col, -40));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_GEODE, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 6.0, 5.0, Color::rgb(150, 130, 110));
+        c.ellipse(6.0, 7.0, 2.0, 1.5, Color::rgb(180, 160, 140));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_QUARTZ, OBJ_COLS, 16, 16);
+        c.rect(6, 3, 4, 10, Color::rgb(235, 240, 250));
+        c.rect(7, 2, 2, 1, Color::rgb(235, 240, 250));
+        c.rect(8, 3, 1, 9, Color::rgb(200, 210, 230));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_AMBERITE, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 4.5, 5.0, Color::rgb(240, 160, 40));
+        c.px(7, 7, Color::rgb(255, 230, 160));
+        c.auto_outline(OUTLINE);
+    }
     {
         let mut c = Cell::at(&mut img, ICON_EGG, OBJ_COLS, 16, 16);
         c.ellipse(8.0, 9.0, 4.0, 5.5, Color::rgb(240, 225, 200));
@@ -574,7 +613,7 @@ pub fn objects() -> Image {
     img
 }
 
-/// Big craftables: 16x32 cells, 8 columns. 0 = storage box, 1 = juicer.
+/// Big craftables: 16x32 cells, 8 columns. 0 = storage box, 1 = juicer, 2 = furnace.
 pub fn craftables() -> Image {
     let mut img = Image::new(128, 32);
     let wood = Color::rgb(160, 104, 56);
@@ -592,6 +631,15 @@ pub fn craftables() -> Image {
         c.rect(3, 6, 10, 4, Color::rgb(200, 200, 210));
         c.rect(5, 14, 6, 8, Color::rgb(240, 140, 60));
         c.rect(2, 26, 12, 2, Color::rgb(80, 100, 120));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 2, 8, 16, 32);
+        c.rect(2, 12, 12, 18, Color::rgb(120, 110, 110));
+        c.rect(3, 8, 10, 4, Color::rgb(140, 130, 128));
+        c.rect(5, 20, 6, 6, Color::rgb(40, 30, 30));
+        c.rect(6, 22, 4, 3, Color::rgb(250, 140, 40));
+        c.rect(6, 4, 3, 4, Color::rgb(90, 85, 85));
         c.auto_outline(OUTLINE);
     }
     img

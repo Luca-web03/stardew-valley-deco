@@ -68,6 +68,7 @@ pub enum WorldEvent {
     Music(String),
     Fade { to_black: bool },
     EventEnded,
+    OpenBlacksmith,
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -305,6 +306,9 @@ impl World {
     }
 
     pub fn emit(&mut self, e: WorldEvent) {
+        if let WorldEvent::LevelUp(skill, level) = &e {
+            self.farmer.pending_levelups.push((*skill, *level));
+        }
         self.events.push(e);
     }
 
@@ -529,8 +533,9 @@ impl World {
         // Shipping.
         let mut shipped = Vec::new();
         let mut earned = 0;
-        for item in self.shipping_bin.drain(..) {
-            let price = self.items.sell_price(&item) * item.stack();
+        let bin: Vec<Item> = self.shipping_bin.drain(..).collect();
+        for item in bin {
+            let price = self.sell_value(&item) * item.stack();
             earned += price;
             shipped.push((item, price));
         }
@@ -577,6 +582,13 @@ impl World {
 
         let old_season = self.clock.season;
         self.tick_quest_days();
+        if let Some((tool, days)) = self.farmer.tool_upgrade.as_mut() {
+            *days -= 1;
+            if *days <= 0 {
+                let name = tool.kind.data_key().to_string();
+                self.farmer.mailbox.push(format!("port_tool_ready_{name}"));
+            }
+        }
         self.clock.next_day();
         self.weather = self.weather_tomorrow;
         let mut rng = self.day_rng(1);
@@ -629,6 +641,7 @@ impl World {
         self.farmer.set_tile(wake);
         self.farmer.facing = Dir::Down;
         self.farmer.tool_use = None;
+        self.farmer.tool_charge = None;
         self.fishing = crate::fishing::FishingState::Idle;
         self.in_bed = true;
         self.paused = false;
@@ -751,6 +764,11 @@ impl World {
 
         if self.weapon_swing.is_some() {
             self.advance_weapon_swing(dt);
+            self.farmer.moving = false;
+            return;
+        }
+
+        if self.update_tool_charge(input.use_held, dt) {
             self.farmer.moving = false;
             return;
         }
@@ -985,7 +1003,9 @@ impl World {
             return true;
         }
         if let Some(PlacedObject { kind: ObjKind::Forage, item_id, .. }) = self.location().object(target).cloned() {
-            let item = Item::object(&item_id, 1);
+            let botanist = self.farmer.has_profession("botanist") && self.location().outdoors;
+            let n = if self.farmer.has_profession("gatherer") && self.rng.chance(0.2) { 2 } else { 1 };
+            let item = if botanist { Item::object_q(&item_id, n, crate::item::Quality::Iridium) } else { Item::object(&item_id, n) };
             if self.farmer.inventory.can_fit(&item) {
                 self.location_mut().state.objects.remove(&target);
                 self.give_item(item);
@@ -1119,6 +1139,10 @@ impl World {
                 self.watch_tv();
                 true
             }
+            "Blacksmith" => {
+                self.emit(WorldEvent::OpenBlacksmith);
+                true
+            }
             "kitchen" | "Kitchen" => {
                 self.emit(WorldEvent::OpenCooking);
                 true
@@ -1177,6 +1201,7 @@ impl World {
                 "Dear @,^Welcome to {} Farm! The soil is ready, the seeds are at the general store in town, and the shipping bin by the house will sell anything you put in it overnight.^Good luck!",
                 self.farmer.farm_name
             ),
+            other if other.starts_with("port_tool_ready_") => "@,^Your tool is ready. Come by the forge to pick it up.^- The blacksmith".to_string(),
             other => other.to_string(),
         });
         let letter = crate::mail::parse(&raw, &self.items, &self.farmer.name);
@@ -1223,7 +1248,7 @@ impl World {
         if item.tool().is_some() {
             return false;
         }
-        let price = self.items.sell_price(&item) * item.stack();
+        let price = self.sell_value(&item) * item.stack();
         self.farmer.inventory.take(slot);
         self.farmer.money += price;
         self.sound("purchaseClick");
@@ -1612,6 +1637,32 @@ impl World {
 
     pub fn npcs_here(&self) -> impl Iterator<Item = &Npc> {
         self.npcs.iter().filter(move |n| n.location == self.current)
+    }
+
+    /// Unit sell value including quality and profession bonuses.
+    pub fn sell_value(&self, item: &Item) -> i32 {
+        let base = self.items.sell_price(item);
+        let cat = item.object_id().and_then(|id| self.items.object(id)).map(|o| o.data.category).unwrap_or(0);
+        (base as f32 * crate::professions::price_multiplier(&self.farmer.professions, cat)).floor() as i32
+    }
+
+    /// Choose a profession offered for a pending level-up.
+    pub fn choose_profession(&mut self, id: &str) {
+        if self.farmer.has_profession(id) {
+            return;
+        }
+        self.farmer.professions.push(id.to_string());
+        match id {
+            "fighter" => {
+                self.farmer.max_health += 15;
+                self.farmer.health += 15;
+            }
+            "defender" => {
+                self.farmer.max_health += 25;
+                self.farmer.health += 25;
+            }
+            _ => {}
+        }
     }
 
     /// The TV: tomorrow's weather and today's luck.

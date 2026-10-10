@@ -210,3 +210,83 @@ impl World {
         }
     }
 }
+
+impl World {
+    /// Upgrade cost: (money, bar item candidates, bars) for the next level.
+    pub fn upgrade_cost(&self, level: i32) -> Option<(i32, Option<String>, i32)> {
+        let (money, bars): (i32, &[&str]) = match level {
+            0 => (2000, &["334", "Dev_CopperBar"]),
+            1 => (5000, &["335", "Dev_IronBar"]),
+            2 => (10000, &["336", "Dev_GoldBar"]),
+            3 => (25000, &["337", "Dev_IridiumBar"]),
+            _ => return None,
+        };
+        let bar = bars.iter().find(|b| self.items.objects.contains_key(**b)).map(|s| s.to_string());
+        Some((money, bar, 5))
+    }
+
+    /// Hand a tool to the blacksmith for upgrading (2 days).
+    pub fn start_tool_upgrade(&mut self, slot: usize) -> Result<(), String> {
+        if self.farmer.tool_upgrade.is_some() {
+            return Err("The blacksmith is already working on a tool.".into());
+        }
+        let Some(Item::Tool(tool)) = self.farmer.inventory.get(slot).cloned() else { return Err("That isn't a tool.".into()) };
+        if matches!(tool.kind, crate::item::ToolKind::Scythe | crate::item::ToolKind::FishingRod | crate::item::ToolKind::MilkPail | crate::item::ToolKind::Shears) {
+            return Err("That tool can't be upgraded here.".into());
+        }
+        let (money, bar, n) = self.upgrade_cost(tool.level).ok_or("That tool is already as good as it gets.")?;
+        let bar = bar.ok_or("Upgrades need metal bars.")?;
+        if self.farmer.money < money || self.farmer.inventory.count(&bar) < n {
+            return Err(format!("Needs {money}g and {n} bars."));
+        }
+        self.farmer.money -= money;
+        self.farmer.inventory.remove_object(&bar, n);
+        self.farmer.inventory.take(slot);
+        let mut up = tool.clone();
+        up.level += 1;
+        up.water = up.water_capacity();
+        self.farmer.tool_upgrade = Some((up, 2));
+        self.sound("purchase");
+        Ok(())
+    }
+
+    /// Collect a finished upgrade.
+    pub fn collect_tool_upgrade(&mut self) -> bool {
+        match &self.farmer.tool_upgrade {
+            Some((_, d)) if *d <= 0 => {
+                let (tool, _) = self.farmer.tool_upgrade.take().unwrap();
+                self.give_item(Item::Tool(tool));
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Crack the held geode: returns the item found.
+    pub fn crack_geode(&mut self, slot: usize) -> Result<Item, String> {
+        let Some(id) = self.farmer.inventory.get(slot).and_then(|i| i.object_id()).map(String::from) else { return Err("Hold a geode.".into()) };
+        let info = self.items.object(&id).cloned().ok_or("Hold a geode.")?;
+        let is_geode = info.data.name.to_ascii_lowercase().contains("geode") || matches!(id.as_str(), "535" | "536" | "537" | "749" | "Dev_Geode");
+        if !is_geode {
+            return Err("That isn't a geode.".into());
+        }
+        if self.farmer.money < 25 {
+            return Err("Not enough money.".into());
+        }
+        let mut rng = engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, self.game_ms as i64, slot as i64, 9]));
+        let pool: Vec<String> = self
+            .items
+            .objects
+            .iter()
+            .filter(|(_, o)| matches!(o.data.category, -2 | -12 | -15) && o.data.price > 0)
+            .map(|(k, _)| k.clone())
+            .collect();
+        let found = rng.pick(&pool).cloned().ok_or("This geode is empty.")?;
+        self.farmer.money -= 25;
+        self.farmer.inventory.reduce(slot, 1);
+        let item = Item::object(&found, 1);
+        self.give_item(item.clone());
+        self.sound("stoneCrack");
+        Ok(item)
+    }
+}

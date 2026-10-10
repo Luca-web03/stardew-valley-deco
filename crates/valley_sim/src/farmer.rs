@@ -75,6 +75,27 @@ pub struct ToolUse {
     pub target: TilePos,
     pub elapsed_ms: u32,
     pub applied: bool,
+    /// Charge level for area tools (0 = single tile).
+    #[serde(default)]
+    pub power: i32,
+}
+
+/// Holding the button with an upgraded hoe / watering can.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ToolCharge {
+    pub kind: ToolKind,
+    pub slot: usize,
+    pub max_power: i32,
+    pub ms: u32,
+}
+
+/// Milliseconds of holding per charge level (approximation).
+pub const CHARGE_STEP_MS: u32 = 600;
+
+impl ToolCharge {
+    pub fn power(&self) -> i32 {
+        ((self.ms / CHARGE_STEP_MS) as i32).min(self.max_power)
+    }
 }
 
 /// Tool swing timing (approximate): effect lands at HIT, swing ends at TOTAL.
@@ -108,6 +129,8 @@ pub struct Farmer {
     #[serde(default)]
     pub crafting_recipes: BTreeMap<String, i32>,
     pub tool_use: Option<ToolUse>,
+    #[serde(default)]
+    pub tool_charge: Option<ToolCharge>,
     /// Animation clock while moving (ms).
     pub walk_ms: u32,
     pub moving: bool,
@@ -130,6 +153,14 @@ pub struct Farmer {
     /// Letters already read (ids), for the collection tab.
     #[serde(default)]
     pub letters_read: Vec<String>,
+    #[serde(default)]
+    pub professions: Vec<String>,
+    /// Level-ups earned today, shown after sleeping: (skill, new level).
+    #[serde(default)]
+    pub pending_levelups: Vec<(Skill, i32)>,
+    /// Tool at the blacksmith: (tool, days left).
+    #[serde(default)]
+    pub tool_upgrade: Option<(crate::item::Tool, i32)>,
 }
 
 impl Farmer {
@@ -161,6 +192,7 @@ impl Farmer {
             events_seen: Vec::new(),
             crafting_recipes: BTreeMap::new(),
             tool_use: None,
+            tool_charge: None,
             walk_ms: 0,
             moving: false,
             exhausted: false,
@@ -172,6 +204,9 @@ impl Farmer {
             cooking_recipes: BTreeMap::new(),
             quests: Vec::new(),
             letters_read: Vec::new(),
+            professions: Vec::new(),
+            pending_levelups: Vec::new(),
+            tool_upgrade: None,
         }
     }
 
@@ -246,6 +281,10 @@ impl Farmer {
                 Skill::Foraging => b.foraging,
                 Skill::Combat => b.combat,
             }
+    }
+
+    pub fn has_profession(&self, id: &str) -> bool {
+        self.professions.iter().any(|p| p == id)
     }
 
     pub fn is_busy(&self) -> bool {
