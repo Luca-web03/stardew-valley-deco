@@ -17,42 +17,46 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Desktop window (macroquad) and headless scripted runner with screenshots
 
 ## Gameplay
-- [x] Time, calendar, weather (approx. chances), night darkening, rain
-- [x] Farmer movement/collision, warps, doors, bed, passing out
+- [x] Time, calendar, weather (approx. chances), storms with lightning,
+      night darkening and light pools, rain / snow / wind visuals
+- [x] Farmer movement/collision, warps, doors, bed, passing out, footsteps,
+      appearance customization
 - [x] Tools: hoe, can, axe, pickaxe, scythe, rod, milk pail, shears;
       stamina; upgrades at the forge; charged area swings
 - [x] Crops: phases, watering, regrowth, seasons, quality formula,
-      fertilizer (quality / speed / retention), sprinklers
-- [x] Debris, trees (chop, stump, growth — approx.), forage spawning
+      fertilizer (quality / speed / retention), sprinklers, greenhouse
+- [x] Trees (chop, stump, growth — approx.), tree seeds, tappers,
+      fruit trees, debris, grass, forage, artifact spots
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell)
-- [x] Crafting, placeables, chests, data-driven machines (Data/Machines)
+- [x] Crafting, placeables, chests, data-driven machines (Data/Machines),
+      furniture
 - [x] Cooking, food buffs
-- [x] Fishing (cast, bite, minigame, size/quality/XP) from Data/Fish
-- [x] Mines: levels, rocks/ores, ladders, elevator; monsters, weapons,
-      combat, fainting
-- [x] Farm buildings (construction, interiors) and animals (feeding,
-      petting, produce, friendship)
-- [x] NPCs: schedules, routing across locations, dialogue, gifts,
-      friendship
-- [x] Mail, quests, help-wanted board, journal
-- [x] Cutscene events (core command subset)
+- [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots
+- [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,
+      weapons, rings, boots, combat, fainting
+- [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
+      friendship), farmhouse upgrades
+- [x] NPCs: schedules, routing across locations, dialogue with questions,
+      gifts, friendship, dating, marriage, spouse
+- [x] Mail, quests, help-wanted board, journal, bundles, museum,
+      collections
+- [x] Cutscene events (core command subset), festivals
 - [x] Skills, professions, level-up screen
 - [x] Saves (JSON), title screen, character creation, load list
-- [x] Community bundles (Data/Bundles) and museum donations (Data/MuseumRewards)
-- [x] Options: zoom, music/sound volume; snow/wind particles, night light pools
+- [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
+      debug overlay (F3)
 - [x] Audio: XACT wave banks (PCM 8/16-bit, MS-ADPCM), best-effort sound bank
       cue mapping + `Audio/cues.json` override, loose `.wav`/`.ogg`, software
-      mixer (pitch, volume, looping crossfaded music), cpal (Windows/macOS) /
-      runtime-loaded ALSA (Linux) output with silent fallback, original
-      synthesized placeholder cues and music loops, music selection by
-      location/season/weather/time
+      mixer, platform output with silent fallback, original synthesized
+      placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Festivals
-- [ ] Marriage, heart events beyond the generic event system
-- [ ] Real-content farmer sprite composition (currently placeholder farmer)
-- [ ] Real tree / building sprite layouts (placeholder art used)
-- [ ] Key rebinding, gamepad
-- [ ] Audio follow-ups: xWMA decoding, sound bank volume/pitch/categories,
-      footsteps, ambient sounds
+- [ ] Pets, children, special orders, achievements, trash cans, slingshot,
+      weapon special moves, traveling cart
+- [ ] Special-area mechanics beyond generic maps (desert, island, skull
+      cavern, volcano)
+- [ ] Real-content farmer sprite composition (generated placeholder farmer
+      used; any simple sheet can be configured in `valley_layouts.json`)
+- [ ] Audio follow-ups: xWMA decoding (convert such tracks to
+      `Audio/<cue>.ogg`), sound bank volume/pitch/categories
 - [ ] Multiplayer
