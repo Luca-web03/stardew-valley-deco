@@ -65,3 +65,7 @@ Other conventions:
 | Pet sheet (32x32 frames, rows down/right/up/left; `Animals/dog`, else the placeholder `Animals/Dev_Dog`), bowl from the `PetBowlTile` map property | `valley_sim::pets` |
 | Trash cans: `Action Garbage <id>` tiles, loot from `Data/GarbageCans` (`GarbageCans`, `BeforeAll`, `AfterAll`, `BaseChance`) | `valley_sim::pets::search_garbage` |
 | Achievements: an engine-defined list of original milestones (real achievement rules live in game code) | `valley_sim::pets::ACHIEVEMENTS` |
+| Weapon special moves by `Type` (0/3 sword block, 1 dagger flurry, 2 club slam), slingshots are `Type` 4 | `valley_sim::arsenal` |
+| Slingshot ammo damage: `Port.AmmoDamage` custom field on any object, else well-known stone/wood/ore/coal ids | `valley_sim::arsenal::ammo_damage` |
+| Traveling cart: `TravelingCartTile` map property (top-left of a 3x2 footprint), Fridays and Sundays, `Traveler` shop or a generated stock | `valley_sim::cart` |
+| Shop item queries: plain ids, `RANDOM_ITEMS (O) [min] [max] [@requirePrice] [@isRandomSale]`, `RandomItemId`, `MaxItems`, `AvailableStock` (per day) | `valley_sim::shop` |

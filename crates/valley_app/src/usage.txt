@@ -15,9 +15,10 @@ Options:
                         tap:KEY         press KEY for one tick
                         click:X:Y       left click at screen X,Y
                         rclick:X:Y      right click at screen X,Y
-                        type:TEXT       type text (use _ for spaces)
+                        type:TEXT       type text (use _ for spaces, __ for _)
                         shot:FILE.png   save a screenshot now
-                        cmd:COMMAND     run a console command (_ = space),
+                        cmd:COMMAND     run a console command (_ = space,
+                                        __ = underscore),
                                         e.g. cmd:mine_3 cmd:give_388_50
   --screenshot <png>  Save a screenshot after the script finishes.
 

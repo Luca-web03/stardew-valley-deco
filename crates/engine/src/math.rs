@@ -83,6 +83,10 @@ impl IRect {
     pub fn contains(&self, x: i32, y: i32) -> bool {
         x >= self.x && x < self.right() && y >= self.y && y < self.bottom()
     }
+    /// Grow by `d` pixels on every side.
+    pub fn inflate(&self, d: i32) -> IRect {
+        IRect::new(self.x - d, self.y - d, self.w + d * 2, self.h + d * 2)
+    }
     pub fn center(&self) -> Vec2 {
         Vec2::new(self.x as f32 + self.w as f32 / 2.0, self.y as f32 + self.h as f32 / 2.0)
     }

@@ -1164,17 +1164,50 @@ pub fn monster_moth() -> Image {
     img
 }
 
-/// Weapons sheet (16x16, 8 columns): 0 = training sword.
+/// Weapons sheet (16x16, 8 columns): 0 = training sword, 1 = dagger,
+/// 2 = club, 3 = slingshot.
 pub fn weapons() -> Image {
     let mut img = Image::new(128, 16);
-    let mut c = Cell::at(&mut img, 0, 8, 16, 16);
-    for i in 0..9 {
-        c.rect(5 + i, 10 - i, 2, 2, Color::rgb(190, 195, 210));
+    let steel = Color::rgb(190, 195, 210);
+    let wood = Color::rgb(120, 80, 40);
+    {
+        let mut c = Cell::at(&mut img, 0, 8, 16, 16);
+        for i in 0..9 {
+            c.rect(5 + i, 10 - i, 2, 2, steel);
+        }
+        c.rect(3, 10, 5, 2, wood);
+        c.rect(4, 9, 2, 5, wood);
+        c.rect(2, 13, 2, 2, Color::rgb(150, 100, 50));
+        c.auto_outline(OUTLINE);
     }
-    c.rect(3, 10, 5, 2, Color::rgb(120, 80, 40));
-    c.rect(4, 9, 2, 5, Color::rgb(120, 80, 40));
-    c.rect(2, 13, 2, 2, Color::rgb(150, 100, 50));
-    c.auto_outline(OUTLINE);
+    {
+        let mut c = Cell::at(&mut img, 1, 8, 16, 16);
+        for i in 0..5 {
+            c.rect(7 + i, 8 - i, 2, 2, steel);
+        }
+        c.rect(5, 9, 4, 2, Color::rgb(90, 70, 50));
+        c.rect(3, 11, 3, 3, wood);
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 2, 8, 16, 16);
+        for i in 0..7 {
+            c.rect(3 + i, 12 - i, 2, 2, wood);
+        }
+        c.ellipse(11.5, 4.5, 3.5, 3.5, Color::rgb(140, 95, 55));
+        c.px(11, 3, Color::rgb(170, 120, 70));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 3, 8, 16, 16);
+        c.rect(7, 8, 2, 7, wood);
+        for i in 0..5 {
+            c.rect(6 - i, 8 - i, 2, 1, wood);
+            c.rect(8 + i, 8 - i, 2, 1, wood);
+        }
+        c.rect(2, 3, 12, 1, Color::rgb(200, 180, 150));
+        c.auto_outline(OUTLINE);
+    }
     img
 }
 
@@ -1300,6 +1333,43 @@ pub fn dog() -> Image {
             c.auto_outline(OUTLINE);
         }
     }
+    img
+}
+
+/// Traveling cart (48x32, 3x2 tiles). Original design: a wooden wagon
+/// with a striped awning, crates and two spoked wheels.
+pub fn cart() -> Image {
+    let mut img = Image::new(48, 32);
+    let mut c = Cell { ox: 0, oy: 0, w: 48, h: 32, img: &mut img };
+    let wood = Color::rgb(150, 100, 55);
+    // Awning on two poles.
+    c.rect(5, 4, 1, 12, Color::rgb(90, 60, 35));
+    c.rect(42, 4, 1, 12, Color::rgb(90, 60, 35));
+    for i in 0..10 {
+        let col = if i % 2 == 0 { Color::rgb(70, 140, 110) } else { Color::rgb(235, 225, 195) };
+        c.rect(3 + i * 4, 2, 4, 5, col);
+        c.px(4 + i * 4, 7, col);
+        c.px(5 + i * 4, 7, col);
+    }
+    // Crates and a sack on the bed.
+    c.rect(9, 12, 8, 6, Color::rgb(185, 140, 80));
+    c.rect(9, 14, 8, 1, shade(wood, -20));
+    c.rect(19, 10, 9, 8, Color::rgb(170, 125, 70));
+    c.rect(23, 10, 1, 8, shade(wood, -20));
+    c.ellipse(34.0, 15.0, 5.0, 3.5, Color::rgb(215, 195, 150));
+    // Wagon box.
+    c.rect(3, 17, 42, 8, wood);
+    for x in (3..45).step_by(7) {
+        c.rect(x, 17, 1, 8, shade(wood, -30));
+    }
+    c.rect(3, 17, 42, 1, shade(wood, 25));
+    // Wheels.
+    for wx in [11.0, 37.0] {
+        c.ellipse(wx, 27.0, 4.5, 4.5, Color::rgb(80, 55, 35));
+        c.ellipse(wx, 27.0, 2.5, 2.5, Color::rgb(130, 95, 60));
+        c.px(wx as i32, 27, Color::rgb(60, 40, 25));
+    }
+    c.auto_outline(OUTLINE);
     img
 }
 

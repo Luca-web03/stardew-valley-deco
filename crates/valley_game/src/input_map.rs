@@ -119,7 +119,8 @@ pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput
     p.use_held = held_any(i, &b.use_tool) || i.mouse_held(MouseButton::Left);
     p.action = pressed_any(i, &b.action) || i.mouse_pressed(MouseButton::Right);
     // Mouse targets the clicked tile; keyboard uses the faced tile.
-    if i.mouse_pressed(MouseButton::Left) || i.mouse_pressed(MouseButton::Right) {
+    // Holding the mouse button keeps tracking it (slingshot aiming).
+    if i.mouse_pressed(MouseButton::Left) || i.mouse_pressed(MouseButton::Right) || i.mouse_held(MouseButton::Left) {
         p.cursor_tile = cursor_tile;
     }
     p.walk = held_any(i, &b.walk);

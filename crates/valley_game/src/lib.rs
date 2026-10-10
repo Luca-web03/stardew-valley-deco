@@ -705,12 +705,22 @@ impl ValleyGame {
                 if ctx.input.mouse_pressed(MouseButton::Left) {
                     if let Some(i) = *hovered {
                         let entry = stock.entries[i].clone();
+                        let shop_id = stock.id.clone();
                         let n = if ctx.input.held(Key::LeftShift) { 5 } else if ctx.input.held(Key::LeftCtrl) { 25 } else { 1 };
                         action = Some(Box::new(move |g: &mut ValleyGame, _| {
-                            if let Some(w) = g.world.as_mut() {
-                                if !w.buy(&entry, n) && entry.price * n > w.farmer.money {
-                                    g.toast("Not enough money.");
+                            let Some(w) = g.world.as_mut() else { return };
+                            let money = w.farmer.money;
+                            if w.buy_from(&shop_id, &entry, n) {
+                                // Limited stock shrinks in the open menu too.
+                                if let Some(Menu::Shop { stock, .. }) = g.menus.last_mut() {
+                                    let bought = (money - w.farmer.money) / entry.price.max(1);
+                                    if let Some(e) = stock.entries.get_mut(i).filter(|e| e.stock > 0) {
+                                        e.stock = (e.stock - bought.max(1)).max(0);
+                                    }
+                                    stock.entries.retain(|e| e.stock != 0);
                                 }
+                            } else if entry.price * n > money {
+                                g.toast("Not enough money.");
                             }
                         }));
                     } else {

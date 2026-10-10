@@ -8,7 +8,6 @@
 use engine::{IRect, Rng, Vec2};
 
 use crate::collision::box_blocked;
-use crate::farmer::Skill;
 use crate::item::Item;
 use crate::world::{World, WorldEvent};
 use crate::{Dir, TilePos, TILE_F};
@@ -200,73 +199,9 @@ impl World {
     /// Apply a melee hit to every monster in the swing area.
     pub fn melee_hit(&mut self, min: i32, max: i32, knockback: f32, crit: f32, crit_mult: f32, aoe: i32) {
         let area = self.swing_area(aoe);
-        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, 31]));
-        let here = self.current.clone();
-        let center = self.farmer.center();
-        let mut hits = Vec::new();
-        for (i, m) in self.monsters.iter().enumerate() {
-            if m.location == here && m.invincible_ms == 0 && m.bbox().intersects(&area) {
-                hits.push(i);
-            }
-        }
-        let attack_bonus = self.total_attrs().attack;
-        let mut killed = Vec::new();
-        for i in hits {
-            let m = &mut self.monsters[i];
-            if rng.chance(m.info.miss_chance) {
-                self.floaters.push(Floater { location: here.clone(), pos: m.center(), text: "Miss".into(), color: engine::Color::WHITE, ms: 800 });
-                continue;
-            }
-            let mut dmg = rng.range(min.max(0), max.max(min) + 1);
-            let crit = if self.farmer.has_profession("scout") { crit * 1.5 } else { crit };
-            let mut mult = 1.0 + attack_bonus as f32 * 0.03;
-            if self.farmer.has_profession("fighter") {
-                mult *= 1.1;
-            }
-            if self.farmer.has_profession("brute") {
-                mult *= 1.15;
-            }
-            dmg = (dmg as f32 * mult).round() as i32;
-            let is_crit = rng.chance(crit as f64);
-            if is_crit {
-                dmg = (dmg as f32 * crit_mult) as i32;
-            }
-            dmg = (dmg - m.info.resilience).max(1);
-            m.health -= dmg;
-            m.invincible_ms = MONSTER_INVINCIBLE_MS;
-            let away = (m.center() - center).normalized();
-            m.knock = away * (8.0 * knockback.max(0.3));
-            self.floaters.push(Floater {
-                location: here.clone(),
-                pos: m.center() - Vec2::new(0.0, 40.0),
-                text: dmg.to_string(),
-                color: if is_crit { engine::Color::YELLOW } else { engine::Color::rgb(255, 120, 90) },
-                ms: 900,
-            });
-            if m.health <= 0 {
-                killed.push(i);
-            }
-        }
-        if !killed.is_empty() {
-            self.sound("monsterKilled");
-        } else {
+        let hit = crate::arsenal::Hit { min, max, knockback, crit, crit_mult, ignore_invincible: false };
+        if self.hit_area(area, hit) == 0 {
             self.sound("hitEnemy");
-        }
-        for i in killed.into_iter().rev() {
-            let m = self.monsters.remove(i);
-            if let Some(l) = self.farmer.skills.gain(Skill::Combat, m.info.exp) {
-                self.emit(WorldEvent::LevelUp(Skill::Combat, l));
-            }
-            self.monsters_killed += 1;
-            self.quest_killed(&m.info.name.clone());
-            self.quest_killed(&m.info.display_name.clone());
-            for (id, chance) in &m.info.drops {
-                if rng.chance(*chance) {
-                    if let Some(item) = self.items.create(id, 1) {
-                        self.spawn_drop(item, m.center());
-                    }
-                }
-            }
         }
     }
 
@@ -361,6 +296,11 @@ impl World {
         if self.farmer.invincible_ms > 0 {
             return;
         }
+        if self.is_blocking() {
+            self.sound("parry");
+            self.farmer.invincible_ms = PLAYER_INVINCIBLE_MS / 2;
+            return;
+        }
         let defense = self.farmer_defense();
         let dmg = (dmg - defense).max(1);
         self.farmer.health -= dmg;
@@ -394,6 +334,9 @@ impl World {
         self.farmer.stamina = self.farmer.stamina.max(self.farmer.max_stamina as f32 * 0.25);
         self.farmer.invincible_ms = 0;
         self.weapon_swing = None;
+        self.special = None;
+        self.sling = None;
+        self.projectiles.clear();
         self.farmer.tool_use = None;
         self.leave_mines();
         let wake = self.bed_tile;

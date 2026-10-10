@@ -179,6 +179,10 @@ impl Default for CharacterData {
 pub struct ShopItemData {
     pub id: String,
     pub item_id: String,
+    /// Pick one of these at random instead of `item_id`.
+    pub random_item_id: Option<Vec<String>>,
+    /// Cap on how many items an item query adds.
+    pub max_items: Option<i32>,
     #[serde(default = "neg1")]
     pub price: i32,
     pub condition: Option<String>,
@@ -194,6 +198,8 @@ impl Default for ShopItemData {
         Self {
             id: String::new(),
             item_id: String::new(),
+            random_item_id: None,
+            max_items: None,
             price: -1,
             condition: None,
             available_stock: -1,

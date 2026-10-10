@@ -109,13 +109,14 @@ pub fn run_script(host: &mut ModuleHost, script: &str) -> Result<(), String> {
                 host.tick();
             }
             ["type", text] => {
-                host.ctx.input.text = text.replace('_', " ");
+                host.ctx.input.text = unescape(text);
                 host.tick();
             }
             ["shot", path] => screenshot(host, path)?,
             ["cmd", c] => {
-                let r = host.command(&c.replace('_', " "));
-                eprintln!("> {} : {r}", c.replace('_', " "));
+                let c = unescape(c);
+                let r = host.command(&c);
+                eprintln!("> {c} : {r}");
             }
             _ => return Err(format!("bad script step {step}")),
         }
@@ -143,4 +144,9 @@ pub fn run(args: &Args) -> i32 {
         }
     }
     0
+}
+
+/// Script text: `_` is a space and `__` a literal underscore.
+fn unescape(s: &str) -> String {
+    s.replace("__", "\u{0}").replace('_', " ").replace('\u{0}', "_")
 }

@@ -149,6 +149,12 @@ pub struct World {
     pub monsters_killed: u32,
     pub floaters: Vec<crate::combat::Floater>,
     pub weapon_swing: Option<crate::combat::WeaponSwing>,
+    pub special: Option<crate::arsenal::SpecialMove>,
+    pub special_cooldown_ms: u32,
+    pub sling: Option<crate::arsenal::SlingPull>,
+    pub projectiles: Vec<crate::arsenal::Projectile>,
+    /// Limited-stock purchases today, keyed "shop:(T)id".
+    pub shop_sold: BTreeMap<String, i32>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -278,6 +284,11 @@ impl World {
             monsters_killed: 0,
             floaters: Vec::new(),
             weapon_swing: None,
+            special: None,
+            special_cooldown_ms: 0,
+            sling: None,
+            projectiles: Vec::new(),
+            shop_sold: BTreeMap::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -419,7 +430,7 @@ impl World {
         std::mem::take(&mut self.events)
     }
 
-    fn day_rng(&self, salt: i64) -> Rng {
+    pub(crate) fn day_rng(&self, salt: i64) -> Rng {
         Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, salt]))
     }
 
@@ -633,6 +644,7 @@ impl World {
         self.update_npc_schedules();
         self.spouse_morning();
         self.pet_morning();
+        self.cart_morning();
     }
 
     /// End the day (sleep or pass out) and start the next one.
@@ -748,6 +760,7 @@ impl World {
         self.grass_overnight();
         self.check_achievements();
         self.garbage_searched.clear();
+        self.shop_sold.clear();
         self.spawn_daily_debris();
         self.leave_mines();
         self.bombs.clear();
@@ -845,6 +858,7 @@ impl World {
         self.update_farmer(input, dt);
         self.update_npcs(dt);
         self.update_monsters(dt);
+        self.update_projectiles(dt);
         self.update_bombs(dt);
         self.update_animals(dt);
         self.update_pet(dt);
@@ -894,6 +908,11 @@ impl World {
 
         if self.weapon_swing.is_some() {
             self.advance_weapon_swing(dt);
+            self.farmer.moving = false;
+            return;
+        }
+
+        if self.update_special(dt) || self.update_sling(input.use_held, input.cursor_tile, dt) {
             self.farmer.moving = false;
             return;
         }
@@ -1135,8 +1154,8 @@ impl World {
             return true;
         }
 
-        // Farm animals, the pet and buildings.
-        if self.pet_animal(target) || self.pet_the_pet(target) {
+        // Farm animals, the pet, the traveling cart and buildings.
+        if self.pet_animal(target) || self.pet_the_pet(target) || self.cart_action(target) {
             return true;
         }
         // Trees: tappers and fruit.
@@ -1231,7 +1250,8 @@ impl World {
                 return true;
             }
         }
-        false
+        // Nothing to interact with: a held melee weapon does its special move.
+        self.begin_special_move()
     }
 
     fn is_shipping_bin(&self, t: TilePos) -> bool {
@@ -1360,7 +1380,8 @@ impl World {
         let mail = self.farmer.mail_received.clone();
         let seen = self.farmer.events_seen.clone();
         let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
-        let stock = shop::build_stock(id, &data, &self.items, &mut ctx);
+        let mut stock = shop::build_stock(id, &data, &self.items, &mut ctx);
+        self.apply_shop_sold(&mut stock);
         self.emit(WorldEvent::OpenShop(stock));
     }
 
@@ -1395,6 +1416,29 @@ impl World {
         self.farmer.mail_received.push(id.clone());
         self.farmer.letters_read.push(id.clone());
         self.emit(WorldEvent::Letter { id, letter });
+    }
+
+    /// Buy from a shop, honouring the entry's daily stock limit.
+    pub fn buy_from(&mut self, shop_id: &str, entry: &shop::ShopEntry, count: i32) -> bool {
+        let key = format!("{shop_id}:{}", entry.item.qualified_id());
+        let sold = self.shop_sold.get(&key).copied().unwrap_or(0);
+        let count = if entry.limit >= 0 { count.min(entry.limit - sold) } else { count };
+        if count <= 0 || !self.buy(entry, count) {
+            return false;
+        }
+        if entry.limit >= 0 {
+            *self.shop_sold.entry(key).or_insert(0) += count;
+        }
+        true
+    }
+
+    /// Remove what was already bought today from limited-stock entries.
+    pub fn apply_shop_sold(&self, stock: &mut shop::ShopStock) {
+        for e in stock.entries.iter_mut().filter(|e| e.limit >= 0) {
+            let bought = self.shop_sold.get(&format!("{}:{}", stock.id, e.item.qualified_id())).copied().unwrap_or(0);
+            e.stock = (e.limit - bought).max(0);
+        }
+        stock.entries.retain(|e| e.stock != 0);
     }
 
     /// Buy `count` of a shop entry. Returns false if unaffordable / no space.

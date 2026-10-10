@@ -37,6 +37,7 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
     m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
+    m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
@@ -80,7 +81,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })
     };
     use art::*;
-    let objects = json!({
+    let mut objects = json!({
         "Dev_TurnipSeeds": obj("Turnip Seeds", "Seeds", -74, 10, ICON_TURNIP_SEEDS, -300),
         "Dev_Turnip": obj("Turnip", "Basic", -75, 40, ICON_TURNIP, 12),
         "Dev_BeanSeeds": obj("Bean Seeds", "Seeds", -74, 30, ICON_BEAN_SEEDS, -300),
@@ -161,6 +162,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Type": "Basic", "Category": -19, "Price": 20, "SpriteIndex": ICON_SPEEDGRO, "CustomFields": { "FertilizerSpeed": "0.1" }
         },
     });
+    // Engine convention: slingshot ammo damage on the placeholder ores.
+    for (id, dmg) in [("Dev_CopperOre", "10"), ("Dev_IronOre", "20"), ("Dev_GoldOre", "30"), ("Dev_Coal", "15")] {
+        objects[id]["CustomFields"] = json!({ "Port.AmmoDamage": dmg });
+    }
     let bigs = json!({
         "Dev_Box": { "Name": "Storage Box", "DisplayName": "Storage Box", "Description": "Holds 36 items.",
                      "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
@@ -278,6 +283,23 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "MilkPail": tool("MilkPail", "Milk Pail", 6, 0),
     });
     let shops = json!({
+        "AdventureShop": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "sword", "ItemId": "(W)Dev_Sword", "Price": 250 },
+                { "Id": "dagger", "ItemId": "(W)Dev_Dagger", "Price": 350 },
+                { "Id": "club", "ItemId": "(W)Dev_Club", "Price": 900 },
+                { "Id": "sling", "ItemId": "(W)Dev_Slingshot", "Price": 500 },
+                { "Id": "bomb", "ItemId": "(O)Dev_Bomb", "Price": 150 }
+            ]
+        },
+        "Traveler": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "random", "ItemId": "RANDOM_ITEMS (O) @requirePrice @isRandomSale", "MaxItems": 6, "AvailableStock": 1 },
+                { "Id": "sapling", "RandomItemId": ["(O)Dev_PlumSapling", "(O)Dev_SpeedGro"], "Price": 900, "AvailableStock": 1 }
+            ]
+        },
         "Furniture": {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [
@@ -507,7 +529,19 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Sword": { "Name": "Training Sword", "DisplayName": "Training Sword",
                            "Description": "A light, dull blade. Better than nothing.",
                            "Type": 3, "MinDamage": 4, "MaxDamage": 8, "Knockback": 1.0, "Speed": 0,
-                           "CritChance": 0.02, "CritMultiplier": 3.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 0 }
+                           "CritChance": 0.02, "CritMultiplier": 3.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 0 },
+            "Dev_Dagger": { "Name": "Paring Knife", "DisplayName": "Paring Knife",
+                            "Description": "Short and quick. Hold still while it does the work.",
+                            "Type": 1, "MinDamage": 2, "MaxDamage": 5, "Knockback": 0.5, "Speed": 2,
+                            "CritChance": 0.04, "CritMultiplier": 3.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 1 },
+            "Dev_Club": { "Name": "Fence Post", "DisplayName": "Fence Post",
+                          "Description": "Heavy, slow and very convincing.",
+                          "Type": 2, "MinDamage": 8, "MaxDamage": 14, "Knockback": 1.5, "Speed": -4,
+                          "CritChance": 0.02, "CritMultiplier": 2.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 2 },
+            "Dev_Slingshot": { "Name": "Forked Stick", "DisplayName": "Forked Stick",
+                               "Description": "Fires stones and ore. Hold to pull back, release to shoot.",
+                               "Type": 4, "MinDamage": 1, "MaxDamage": 3, "Knockback": 0.5, "Speed": 0,
+                               "CritChance": 0.02, "CritMultiplier": 2.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 3 }
         })),
         ("Data/Crops", crops),
         ("Data/Tools", tools),

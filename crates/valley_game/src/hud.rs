@@ -96,6 +96,12 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
         ui.slot(r, slot == w.farmer.current_slot);
         if let Some(item) = w.farmer.inventory.get(slot) {
             draw_item_in_slot(rc, ui, w, item, r);
+            // Special-move cooldown shades the held weapon's slot.
+            if slot == w.farmer.current_slot && w.special_cooldown_ms > 0 && item.weapon_id().is_some() {
+                let total = valley_sim::arsenal::special_cooldown(w.held_weapon_type().unwrap_or(0));
+                let frac = (w.special_cooldown_ms as f32 / total as f32).min(1.0);
+                ui.out.fill(FRect::new(r.x, r.y + r.h * (1.0 - frac), r.w, r.h * frac), Color::rgba(40, 20, 10, 120), ui.depth + 0.002);
+            }
         }
     }
     if let Some(item) = w.farmer.current_item() {

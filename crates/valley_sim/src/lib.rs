@@ -33,6 +33,8 @@ pub mod objects;
 pub mod orchard;
 pub mod pathfind;
 pub mod pets;
+pub mod arsenal;
+pub mod cart;
 pub mod professions;
 pub mod progress;
 pub mod quests;

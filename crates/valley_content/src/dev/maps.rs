@@ -250,6 +250,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 30, 14, SIGN, &[("Action", "AnimalShop")]);
     b.set_props("Buildings", 32, 14, SIGN, &[("Action", "Carpenter")]);
     b.set_props("Buildings", 34, 14, SIGN, &[("Action", "Blacksmith")]);
+    b.set_props("Buildings", 36, 14, SIGN, &[("Action", "OpenShop AdventureShop")]);
     b.set_props("Buildings", 16, 11, SIGN, &[("Action", "Bundles")]);
     b.set_props("Buildings", 14, 11, SIGN, &[("Action", "Museum")]);
     b.set_props("Buildings", 12, 11, SIGN, &[("Action", "OpenShop Furniture")]);
@@ -265,6 +266,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 19, 9, GARBAGE, &[("Action", "Garbage Dev_Store")]);
     b.set_props("Buildings", 8, 8, GARBAGE, &[("Action", "Garbage Dev_House")]);
     b.prop("Warp", "-1 15 Farm 46 13 -1 16 Farm 46 14 3 0 Mine 5 8");
+    b.prop("TravelingCartTile", "28 18");
     b.map
 }
 

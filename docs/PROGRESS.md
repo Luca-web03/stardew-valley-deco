@@ -27,13 +27,16 @@ were not available; such values are isolated constants that can be tuned.
       fertilizer (quality / speed / retention), sprinklers, greenhouse
 - [x] Trees (chop, stump, growth — approx.), tree seeds, tappers,
       fruit trees, debris, grass, forage, artifact spots
-- [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell)
+- [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
+      random item queries, daily stock limits), traveling cart
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines),
       furniture
 - [x] Cooking, food buffs
 - [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots
 - [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,
       weapons, rings, boots, combat, fainting
+- [x] Weapon special moves (block, flurry, slam; approx. timings),
+      slingshot with ammo and projectiles
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
@@ -53,8 +56,7 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Children, special orders, slingshot, weapon special moves,
-      traveling cart
+- [ ] Children, special orders
 - [ ] Special-area mechanics beyond generic maps (desert, island, skull
       cavern, volcano)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer

@@ -61,6 +61,7 @@ impl World {
                 });
                 true
             }
+            Some(Item::Weapon { .. }) if self.held_weapon_type() == Some(crate::arsenal::TYPE_SLINGSHOT) => self.begin_sling_pull(cursor),
             Some(Item::Weapon { .. }) => self.begin_weapon_swing(),
             Some(Item::Object { id, .. }) if self.items.is_seed(&id) => self.plant(target, &id),
             Some(item) if self.is_placeable(&item) => self.place_current(target),

@@ -306,6 +306,29 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // The traveling cart.
+    if let Some(t) = w.cart_here(loc_name) {
+        let tex = rc.assets.tex(rc.cm, rc.textures, "LooseSprites/Dev_Cart");
+        let (tw, th) = rc.textures.size(tex);
+        let p = cam.to_screen(Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F));
+        let bottom = (t.y + valley_sim::cart::CART_H) as f32 * TILE_F;
+        let (dw, dh) = (tw as f32 * ZOOM, th as f32 * ZOOM);
+        let left = p.x + (valley_sim::cart::CART_W as f32 * TILE_F - dw) / 2.0;
+        let top = p.y + valley_sim::cart::CART_H as f32 * TILE_F - dh;
+        out.sprite(Sprite::new(tex, IRect::new(0, 0, tw as i32, th as i32), FRect::new(left, top, dw, dh), sort_depth(bottom - 1.0, map_h)));
+    }
+
+    // Slingshot shots.
+    for pr in w.projectiles.iter().filter(|p| p.location == loc_name) {
+        let item = valley_sim::item::Item::object(&pr.item_id, 1);
+        let (tex, src) = item_sprite(rc, w, &item);
+        let p = cam.to_screen(pr.pos);
+        let mut s = Sprite::new(tex, src, FRect::new(p.x - 16.0, p.y - 16.0, 32.0, 32.0), DEPTH_OVERLAY - 0.01);
+        s.origin = Vec2::new(16.0, 16.0);
+        s.rotation = pr.ms_left as f32 * 0.02;
+        out.sprite(s);
+    }
+
     // The farm pet.
     if let Some(pet) = w.pet.as_ref().filter(|p| p.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &pet.texture);
@@ -525,6 +548,71 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
             s.origin = Vec2::new(TILE_F / 2.0, TILE_F / 2.0);
             s.rotation = ang + std::f32::consts::FRAC_PI_4;
             out.sprite(s);
+        }
+    }
+
+    // Weapon special moves and the slingshot.
+    if let Some(mv) = &w.special {
+        use valley_sim::arsenal::SpecialMove;
+        let held = f.current_item().map(|i| item_sprite(rc, w, i));
+        let center = Vec2::new(p.x + TILE_F / 2.0, p.y + 16.0);
+        match mv {
+            SpecialMove::Block { ms_left } => {
+                // A shimmering guard in front of the farmer.
+                if let Some((ttex, src)) = held {
+                    let (dx, dy) = f.facing.delta();
+                    let pos = center + Vec2::new(dx as f32 * 28.0, dy as f32 * 20.0);
+                    let mut s = Sprite::new(ttex, src, FRect::new(pos.x - TILE_F / 2.0, pos.y - TILE_F / 2.0, TILE_F, TILE_F), depth + 0.0002);
+                    s.origin = Vec2::new(TILE_F / 2.0, TILE_F / 2.0);
+                    s.rotation = -std::f32::consts::FRAC_PI_4;
+                    out.sprite(s);
+                }
+                let a = (120.0 * (*ms_left as f32 / valley_sim::arsenal::BLOCK_MS as f32)) as u8 + 40;
+                out.outline(FRect::new(p.x - 4.0, p.y - 60.0, TILE_F + 8.0, TILE_F + 64.0), 3.0, Color::rgba(255, 255, 255, a), DEPTH_OVERLAY + 0.004);
+            }
+            SpecialMove::Flurry { next_ms, .. } => {
+                if let Some((ttex, src)) = held {
+                    let (dx, dy) = f.facing.delta();
+                    let jab = 20.0 + (*next_ms as f32 / 120.0) * 24.0;
+                    let pos = center + Vec2::new(dx as f32 * jab, dy as f32 * jab);
+                    let ang = (dy as f32).atan2(dx as f32) + std::f32::consts::FRAC_PI_4;
+                    let mut s = Sprite::new(ttex, src, FRect::new(pos.x - TILE_F / 2.0, pos.y - TILE_F / 2.0, TILE_F, TILE_F), if f.facing == Dir::Up { depth - 0.0002 } else { depth + 0.0002 });
+                    s.origin = Vec2::new(TILE_F / 2.0, TILE_F / 2.0);
+                    s.rotation = ang;
+                    out.sprite(s);
+                }
+            }
+            SpecialMove::Slam { windup_ms } => {
+                if let Some((ttex, src)) = held {
+                    let t = 1.0 - *windup_ms as f32 / valley_sim::arsenal::SLAM_WINDUP_MS as f32;
+                    let pos = center + Vec2::new(0.0, -40.0 - 16.0 * t);
+                    let mut s = Sprite::new(ttex, src, FRect::new(pos.x - TILE_F / 2.0, pos.y - TILE_F / 2.0, TILE_F, TILE_F), depth + 0.0002);
+                    s.origin = Vec2::new(TILE_F / 2.0, TILE_F / 2.0);
+                    s.rotation = -2.4 * t;
+                    out.sprite(s);
+                }
+            }
+        }
+    }
+    if let Some(pull) = &w.sling {
+        if let Some(item) = f.inventory.get(pull.slot) {
+            let (ttex, src) = item_sprite(rc, w, item);
+            out.draw(ttex, src, Vec2::new(p.x + 8.0, p.y - 24.0), ZOOM * 0.75, depth + 0.0002);
+        }
+        // Dotted aim line, longer as the pull builds.
+        let start = f.center() - Vec2::new(0.0, 24.0);
+        let dir = match pull.aim {
+            Some(a) if (a - start).length() > 4.0 => (a - start).normalized(),
+            _ => {
+                let (dx, dy) = f.facing.delta();
+                Vec2::new(dx as f32, dy as f32)
+            }
+        };
+        let power = pull.ms as f32 / valley_sim::arsenal::SLING_FULL_PULL_MS as f32;
+        let white = rc.assets.white(rc.textures);
+        for k in 1..=(2 + (power * 6.0) as i32) {
+            let q = cam.to_screen(start + dir * (k as f32 * 28.0));
+            out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(q.x - 3.0, q.y - 3.0), 6.0, Color::rgba(255, 255, 255, 170), DEPTH_OVERLAY + 0.003);
         }
     }
 
