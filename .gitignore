@@ -9,3 +9,6 @@
 *.xgs
 /saves
 /screenshots
+
+# Local agent worktrees
+/.claude/worktrees/
