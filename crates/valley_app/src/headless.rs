@@ -104,6 +104,10 @@ pub fn run_script(host: &mut ModuleHost, script: &str) -> Result<(), String> {
                 host.tick();
             }
             ["shot", path] => screenshot(host, path)?,
+            ["cmd", c] => {
+                let r = host.command(&c.replace('_', " "));
+                eprintln!("> {} : {r}", c.replace('_', " "));
+            }
             _ => return Err(format!("bad script step {step}")),
         }
         if host.ctx.quit_requested {

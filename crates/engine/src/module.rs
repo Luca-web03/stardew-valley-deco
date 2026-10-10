@@ -53,6 +53,10 @@ pub trait GameModule {
     fn resume(&mut self, _ctx: &mut EngineCtx) {}
     /// Called when another module takes over.
     fn suspend(&mut self, _ctx: &mut EngineCtx) {}
+    /// Debug/console command ("warp Town 5 5"); returns a human-readable result.
+    fn command(&mut self, _ctx: &mut EngineCtx, _cmd: &str) -> String {
+        "commands not supported".into()
+    }
 }
 
 /// Owns modules and drives the active one at a fixed tick rate.
@@ -144,6 +148,15 @@ impl ModuleHost {
             n += 1;
         }
         n
+    }
+
+    /// Send a console command to the active module.
+    pub fn command(&mut self, cmd: &str) -> String {
+        if self.modules.is_empty() {
+            return "no module".into();
+        }
+        self.ensure_init();
+        self.modules[self.active].command(&mut self.ctx, cmd)
     }
 
     pub fn draw(&mut self, out: &mut DrawList) {

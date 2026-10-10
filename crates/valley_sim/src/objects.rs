@@ -14,6 +14,10 @@ pub enum ObjKind {
     Machine { output: Option<Item>, minutes_left: i32, ready: bool },
     /// Waters nearby tilled soil each morning.
     Sprinkler { radius: SprinklerShape },
+    /// Breakable mine rock or ore node.
+    MineRock { rock: crate::mines::RockKind, health: i32 },
+    /// Mine ladder (down to the next level, or up to the entrance).
+    Ladder { down: bool },
     /// Any other placed item.
     Placed,
 }

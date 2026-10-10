@@ -391,3 +391,47 @@ pub struct SpawnFishData {
     pub condition: Option<String>,
     pub fish_area_id: Option<String>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct WeaponData {
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    /// 0 stabbing sword, 1 dagger, 2 club/hammer, 3 slashing sword.
+    #[serde(rename = "Type")]
+    pub kind: i32,
+    pub min_damage: i32,
+    pub max_damage: i32,
+    pub knockback: f32,
+    pub speed: i32,
+    pub precision: i32,
+    pub defense: i32,
+    pub area_of_effect: i32,
+    pub crit_chance: f32,
+    pub crit_multiplier: f32,
+    pub texture: String,
+    pub sprite_index: i32,
+}
+
+impl Default for WeaponData {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            display_name: String::new(),
+            description: String::new(),
+            kind: 3,
+            min_damage: 1,
+            max_damage: 3,
+            knockback: 1.0,
+            speed: 0,
+            precision: 0,
+            defense: 0,
+            area_of_effect: 0,
+            crit_chance: 0.02,
+            crit_multiplier: 3.0,
+            texture: "TileSheets\\weapons".into(),
+            sprite_index: 0,
+        }
+    }
+}

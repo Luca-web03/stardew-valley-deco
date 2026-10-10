@@ -23,7 +23,7 @@ pub fn default_buy_price(db: &ItemDb, item: &Item) -> i32 {
     match item {
         Item::Object { id, .. } => db.object(id).map(|o| o.data.price * 2).unwrap_or(0),
         Item::Big { id, .. } => db.big(id).map(|o| o.data.price * 2).unwrap_or(0),
-        Item::Tool(_) => 0,
+        Item::Tool(_) | Item::Weapon { .. } => 0,
     }
 }
 

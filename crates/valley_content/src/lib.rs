@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 //! Content pipeline.
 //!
 //! The game's own assets are never bundled with this project. At runtime the

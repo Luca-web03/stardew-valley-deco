@@ -114,6 +114,13 @@ pub struct Farmer {
     pub exhausted: bool,
     /// Ticks the farmer is frozen (eating, item hold-up, etc.).
     pub freeze_ms: u32,
+    #[serde(default)]
+    pub invincible_ms: u32,
+    #[serde(default)]
+    pub knockback: Vec2,
+    /// Deepest mine level reached.
+    #[serde(default)]
+    pub deepest_mine_level: i32,
 }
 
 impl Farmer {
@@ -149,6 +156,9 @@ impl Farmer {
             moving: false,
             exhausted: false,
             freeze_ms: 0,
+            invincible_ms: 0,
+            knockback: Vec2::ZERO,
+            deepest_mine_level: 0,
         }
     }
 

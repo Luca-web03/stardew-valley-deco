@@ -10,6 +10,7 @@ pub struct Assets {
     missing: Option<TexId>,
     shadow: Option<TexId>,
     white: Option<TexId>,
+    ladder: Option<TexId>,
 }
 
 impl Assets {
@@ -44,6 +45,39 @@ impl Assets {
                 }
             }
             store.insert("__shadow", img)
+        })
+    }
+
+    /// Engine-owned ladder sprites (16x16: down ladder at x 0, up ladder at x 16).
+    pub fn ladder(&mut self, store: &mut TextureStore) -> TexId {
+        *self.ladder.get_or_insert_with(|| {
+            let mut img = Image::new(32, 16);
+            let hole = Color::rgb(20, 14, 12);
+            let wood = Color::rgb(150, 100, 56);
+            for y in 2..15 {
+                for x in 2..14 {
+                    img.set(x, y, hole);
+                }
+            }
+            for ox in [0, 16] {
+                for y in 1..16 {
+                    img.set(ox + 4, y, wood);
+                    img.set(ox + 11, y, wood);
+                }
+                for y in (3..16).step_by(4) {
+                    for x in 4..12 {
+                        img.set(ox + x, y, wood);
+                    }
+                }
+            }
+            for y in 0..16 {
+                for x in 16..32 {
+                    if img.get(x, y) == hole {
+                        img.set(x as i32, y as i32, Color::TRANSPARENT);
+                    }
+                }
+            }
+            store.insert("__ladder", img)
         })
     }
 

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use valley_content::data::{BigCraftableData, CropData, MachineData, ObjectData, ToolData};
+use valley_content::data::{BigCraftableData, CropData, MachineData, ObjectData, ToolData, WeaponData};
 use valley_content::ContentManager;
 
 pub const MAX_STACK: i32 = 999;
@@ -144,6 +144,8 @@ pub enum Item {
     /// Placeable "big craftable" (chests, machines...), 16x32 sprite.
     Big { id: String, stack: i32 },
     Tool(Tool),
+    /// Melee weapon from Data/Weapons.
+    Weapon { id: String },
 }
 
 impl Item {
@@ -160,14 +162,14 @@ impl Item {
     pub fn stack(&self) -> i32 {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
-            Item::Tool(_) => 1,
+            Item::Tool(_) | Item::Weapon { .. } => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
-            Item::Tool(_) => {}
+            Item::Tool(_) | Item::Weapon { .. } => {}
         }
     }
 
@@ -227,7 +229,20 @@ impl Item {
             Item::Object { id, .. } => format!("(O){id}"),
             Item::Big { id, .. } => format!("(BC){id}"),
             Item::Tool(t) => format!("(T){}", t.kind.data_key()),
+            Item::Weapon { id } => format!("(W){id}"),
         }
+    }
+
+    pub fn weapon_id(&self) -> Option<&str> {
+        match self {
+            Item::Weapon { id } => Some(id),
+            _ => None,
+        }
+    }
+
+    /// Tools and weapons can't be sold, shipped or stacked.
+    pub fn is_equipment(&self) -> bool {
+        matches!(self, Item::Tool(_) | Item::Weapon { .. })
     }
 }
 
@@ -322,6 +337,7 @@ pub struct ItemDb {
     /// Keyed by seed object id.
     pub crops: BTreeMap<String, CropData>,
     pub tools: BTreeMap<String, ToolData>,
+    pub weapons: BTreeMap<String, WeaponData>,
     /// Preloaded string tables used at runtime (lowercased asset name).
     pub strings: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
@@ -351,6 +367,14 @@ impl ItemDb {
         }
         db.crops = cm.load_dict::<CropData>("Data/Crops");
         db.tools = cm.load_dict::<ToolData>("Data/Tools");
+        db.weapons = cm.load_dict::<WeaponData>("Data/Weapons");
+        for w in db.weapons.values_mut() {
+            w.display_name = cm.expand(&w.display_name);
+            if w.display_name.is_empty() {
+                w.display_name = w.name.clone();
+            }
+            w.description = cm.expand(&w.description);
+        }
         for t in db.tools.values_mut() {
             t.display_name = cm.expand(&t.display_name);
             if t.display_name.is_empty() {
@@ -406,6 +430,7 @@ impl ItemDb {
                 }
             }
             Item::Tool(_) => tags.push("category_tool".into()),
+            Item::Weapon { .. } => tags.push("category_weapon".into()),
         }
         tags
     }
@@ -432,6 +457,7 @@ impl ItemDb {
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Big { id, .. } => self.big(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Weapon { id } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
                 match t.level {
@@ -449,6 +475,7 @@ impl ItemDb {
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Big { id, .. } => self.big(id).map(|o| o.description.clone()).unwrap_or_default(),
+            Item::Weapon { id } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
     }
@@ -461,7 +488,7 @@ impl ItemDb {
                 (base as f32 * quality.price_mult()).floor() as i32
             }
             Item::Big { id, .. } => self.big(id).map(|b| b.data.price).unwrap_or(0),
-            Item::Tool(_) => 0,
+            Item::Tool(_) | Item::Weapon { .. } => 0,
         }
     }
 
@@ -476,6 +503,7 @@ impl ItemDb {
         match ty {
             "O" => self.objects.contains_key(id).then(|| Item::object(id, stack)),
             "BC" => self.bigs.contains_key(id).then(|| Item::big(id, stack)),
+            "W" => self.weapons.contains_key(id).then(|| Item::Weapon { id: id.to_string() }),
             "T" => ToolKind::from_key(id).map(|k| Item::Tool(Tool::new(k))),
             _ => None,
         }

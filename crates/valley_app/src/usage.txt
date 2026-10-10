@@ -16,4 +16,6 @@ Options:
                         rclick:X:Y      right click at screen X,Y
                         type:TEXT       type text (use _ for spaces)
                         shot:FILE.png   save a screenshot now
+                        cmd:COMMAND     run a console command (_ = space),
+                                        e.g. cmd:mine_3 cmd:give_388_50
   --screenshot <png>  Save a screenshot after the script finishes.

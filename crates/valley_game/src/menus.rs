@@ -9,6 +9,8 @@ pub enum QuestionKind {
     Sleep,
     Eat { slot: usize },
     QuitToTitle,
+    /// Mine elevator: option i goes to `levels[i]` (last option = cancel).
+    Elevator { levels: Vec<i32> },
 }
 
 #[derive(Clone, Debug, PartialEq)]

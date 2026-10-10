@@ -129,6 +129,11 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
     for (p, o) in &loc.state.objects {
         let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
         let depth = sort_depth((p.y * TILE + TILE - 4) as f32, map_h);
+        if let ObjKind::Ladder { down } = o.kind {
+            let tex = rc.assets.ladder(rc.textures);
+            out.draw(tex, IRect::new(if down { 0 } else { 16 }, 0, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.002);
+            continue;
+        }
         if o.big {
             let (tex, src) = big_sprite(rc, w, &o.item_id);
             let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
@@ -199,8 +204,53 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
         out.draw(tex, character_src(npc.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
     }
 
+    // Monsters.
+    for m in w.monsters.iter().filter(|m| m.location == w.current) {
+        let tex = rc.assets.tex(rc.cm, rc.textures, &format!("Characters/Monsters/{}", m.info.name));
+        let (tw, th) = rc.textures.size(tex);
+        let fh = if th % 24 == 0 && th >= 24 { 24 } else { 16 };
+        let frame = ((m.anim_ms / 150) % 4) as i32;
+        let row = if m.movement == valley_sim::combat::Movement::Walker && th as i32 >= fh * 4 {
+            match m.facing {
+                Dir::Down => 0,
+                Dir::Right => 1,
+                Dir::Up => 2,
+                Dir::Left => 3,
+            }
+        } else {
+            0
+        };
+        let cols = (tw as i32 / 16).max(1);
+        let src = IRect::new((frame % cols) * 16, row * fh, 16, fh);
+        let p = cam.to_screen(m.pos);
+        let depth = sort_depth(m.pos.y + TILE_F, map_h);
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
+        let h = fh as f32 * ZOOM;
+        let mut s = Sprite::new(tex, src, FRect::new(p.x, p.y + TILE_F - h - m.z, TILE_F, h), depth);
+        if m.invincible_ms > 0 && (m.invincible_ms / 50) % 2 == 0 {
+            s.tint = Color::rgb(255, 120, 120);
+        }
+        s.flip_x = m.movement != valley_sim::combat::Movement::Walker && m.facing == Dir::Left;
+        out.sprite(s);
+    }
+
     // Farmer.
     draw_farmer(rc, out, w, cam, map_h);
+
+    // Floating damage numbers.
+    if let Some(ft) = rc.textures.id("__engine/font8x8") {
+        for f in w.floaters.iter().filter(|f| f.location == w.current) {
+            let p = cam.to_screen(f.pos);
+            let alpha = (f.ms as f32 / 300.0).min(1.0);
+            for (i, ch) in f.text.chars().enumerate() {
+                let c = ch as i32;
+                let src = IRect::new((c % 16) * 8, (c / 16) * 8, 8, 8);
+                let pos = Vec2::new(p.x - f.text.len() as f32 * 12.0 + i as f32 * 24.0, p.y);
+                out.draw_tinted(ft, src, pos + Vec2::new(3.0, 3.0), 3.0, Color::rgba(0, 0, 0, (160.0 * alpha) as u8), DEPTH_OVERLAY + 0.02);
+                out.draw_tinted(ft, src, pos, 3.0, f.color.with_alpha(alpha), DEPTH_OVERLAY + 0.021);
+            }
+        }
+    }
 
     // Dropped items.
     for d in &w.dropped {
@@ -234,7 +284,32 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
         frame = if u.elapsed_ms < 150 { 1 } else { 3 };
     }
     out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
-    out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+    let blink = f.invincible_ms > 0 && (f.invincible_ms / 80) % 2 == 0;
+    if !blink {
+        out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+    }
+
+    // Weapon swing: the blade sweeps an arc in front of the farmer.
+    if let Some(sw) = &w.weapon_swing {
+        if let Some(item) = f.inventory.get(sw.slot) {
+            let (ttex, src) = item_sprite(rc, w, item);
+            let t = (sw.elapsed_ms as f32 / sw.total_ms as f32).clamp(0.0, 1.0);
+            let base = match f.facing {
+                Dir::Up => -std::f32::consts::FRAC_PI_2,
+                Dir::Right => 0.0,
+                Dir::Down => std::f32::consts::FRAC_PI_2,
+                Dir::Left => std::f32::consts::PI,
+            };
+            let ang = base - 1.2 + 2.4 * t;
+            let center = Vec2::new(p.x + TILE_F / 2.0, p.y + 16.0);
+            let reach = 52.0;
+            let tip = center + Vec2::new(ang.cos(), ang.sin()) * reach;
+            let mut s = Sprite::new(ttex, src, FRect::new(tip.x - TILE_F / 2.0, tip.y - TILE_F / 2.0, TILE_F, TILE_F), if f.facing == Dir::Up { depth - 0.0002 } else { depth + 0.0002 });
+            s.origin = Vec2::new(TILE_F / 2.0, TILE_F / 2.0);
+            s.rotation = ang + std::f32::consts::FRAC_PI_4;
+            out.sprite(s);
+        }
+    }
 
     // Tool swing.
     if let Some(u) = &f.tool_use {
@@ -332,6 +407,16 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
     match item {
         Item::Object { id, .. } => object_sprite(rc, w, id),
         Item::Big { id, .. } => big_sprite(rc, w, id),
+        Item::Weapon { id } => {
+            let (tex_name, idx) = match w.items.weapons.get(id) {
+                Some(d) => (if d.texture.is_empty() { "TileSheets/weapons".to_string() } else { d.texture.replace('\\', "/") }, d.sprite_index),
+                None => ("TileSheets/weapons".to_string(), 0),
+            };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let (tw, _) = rc.textures.size(tex);
+            let cols = (tw / 16).max(1) as i32;
+            (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
         Item::Tool(t) => {
             let (tex_name, idx) = match w.items.tools.get(t.kind.data_key()) {
                 Some(d) => (if d.texture.is_empty() { "TileSheets/tools".to_string() } else { d.texture.replace('\\', "/") }, d.menu_sprite_index),

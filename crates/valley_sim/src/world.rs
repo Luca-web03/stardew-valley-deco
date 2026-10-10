@@ -53,6 +53,8 @@ pub enum WorldEvent {
     Exhausted,
     /// Open the chest at this tile in the current location.
     OpenChest(TilePos),
+    /// Choose a mine floor (multiples of 5 up to `deepest`).
+    ElevatorMenu { deepest: i32 },
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -115,6 +117,19 @@ pub struct World {
     pub recipes: BTreeMap<String, crate::crafting::Recipe>,
     pub fish: BTreeMap<String, crate::fishing::FishInfo>,
     pub fishing: crate::fishing::FishingState,
+    pub monster_info: BTreeMap<String, crate::combat::MonsterInfo>,
+    pub monsters: Vec<crate::combat::Monster>,
+    pub next_monster_id: u32,
+    pub monsters_killed: u32,
+    pub floaters: Vec<crate::combat::Floater>,
+    pub weapon_swing: Option<crate::combat::WeaponSwing>,
+    /// Level maps from content (Maps/Mines/1..), empty = generate caves.
+    pub mine_maps: Vec<valley_content::Map>,
+    pub mine_items: crate::mines::MineItems,
+    pub mine_stones_left: i32,
+    pub mine_ladder_spawned: bool,
+    /// Where the up-ladder returns to.
+    pub mine_entrance: (String, TilePos),
 }
 
 impl World {
@@ -178,7 +193,19 @@ impl World {
             recipes: crate::crafting::parse_all(&cm.load_string_dict("Data/CraftingRecipes")),
             fish: cm.load_string_dict("Data/Fish").iter().filter_map(|(k, v)| crate::fishing::parse_fish(k, v).map(|f| (k.clone(), f))).collect(),
             fishing: crate::fishing::FishingState::Idle,
+            monster_info: cm.load_string_dict("Data/Monsters").iter().filter_map(|(k, v)| crate::combat::parse_monster(k, v).map(|m| (k.clone(), m))).collect(),
+            monsters: Vec::new(),
+            next_monster_id: 0,
+            monsters_killed: 0,
+            floaters: Vec::new(),
+            weapon_swing: None,
+            mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
+            mine_items: crate::mines::MineItems::default(),
+            mine_stones_left: 0,
+            mine_ladder_spawned: false,
+            mine_entrance: ("Mine".into(), TilePos::new(5, 5)),
         };
+        w.mine_items = crate::mines::MineItems::resolve(&w.items);
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
         w.spawn_npcs(cm);
@@ -476,7 +503,10 @@ impl World {
             }
         }
         self.spawn_daily_debris();
+        self.leave_mines();
         self.dropped.clear();
+        self.floaters.clear();
+        self.weapon_swing = None;
 
         // Wake up in the farmhouse.
         self.current = "FarmHouse".into();
@@ -547,6 +577,7 @@ impl World {
         }
         self.update_farmer(input, dt);
         self.update_npcs(dt);
+        self.update_monsters(dt);
         self.update_dropped(dt);
     }
 
@@ -583,8 +614,16 @@ impl World {
             self.farmer.current_slot = (base + (cur + input.scroll).rem_euclid(n)) as usize;
         }
 
+        self.apply_farmer_knockback(dt);
+
         if self.farmer.freeze_ms > 0 {
             self.farmer.freeze_ms = self.farmer.freeze_ms.saturating_sub(dt);
+            self.farmer.moving = false;
+            return;
+        }
+
+        if self.weapon_swing.is_some() {
+            self.advance_weapon_swing(dt);
             self.farmer.moving = false;
             return;
         }
@@ -817,7 +856,10 @@ impl World {
             return self.ship_current();
         }
 
-        // Placed objects (chests, machines).
+        // Placed objects (chests, machines, ladders).
+        if self.use_ladder(target) {
+            return true;
+        }
         if self.interact_object(target) {
             return true;
         }
@@ -907,6 +949,18 @@ impl World {
             }
             "Mailbox" => {
                 self.open_mailbox();
+                true
+            }
+            "Mine" | "MineLadder" | "Descend" => {
+                let me = self.farmer.tile();
+                self.mine_entrance = (self.current.clone(), me);
+                self.enter_mine_level(1);
+                true
+            }
+            "MineElevator" => {
+                let me = self.farmer.tile();
+                self.mine_entrance = (self.current.clone(), me);
+                self.emit(WorldEvent::ElevatorMenu { deepest: self.farmer.deepest_mine_level });
                 true
             }
             _ => false,

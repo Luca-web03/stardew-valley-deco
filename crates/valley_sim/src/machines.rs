@@ -96,7 +96,7 @@ impl World {
             Item::Object { id, .. } => {
                 sprinkler_shape(&self.items, id).is_some() || self.items.object(id).is_some_and(|o| o.data.category == category::CRAFTING_PLACEABLE)
             }
-            Item::Tool(_) => false,
+            Item::Tool(_) | Item::Weapon { .. } => false,
         }
     }
 
@@ -131,7 +131,7 @@ impl World {
                 };
                 PlacedObject::new(id, false, kind)
             }
-            Item::Tool(_) => return false,
+            Item::Tool(_) | Item::Weapon { .. } => return false,
         };
         self.location_mut().state.objects.insert(t, obj);
         self.farmer.inventory.reduce(slot, 1);
@@ -143,7 +143,7 @@ impl World {
     pub fn pickup_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
         match &o.kind {
-            ObjKind::Debris { .. } | ObjKind::Forage => return false,
+            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } => return false,
             ObjKind::Chest(inv) if inv.slots.iter().any(|s| s.is_some()) => {
                 if let Some(o) = self.location_mut().state.objects.get_mut(&t) {
                     o.shake = 20;

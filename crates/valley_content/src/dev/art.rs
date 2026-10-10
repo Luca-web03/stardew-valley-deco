@@ -310,6 +310,16 @@ pub const ICON_SPEEDGRO: i32 = 19;
 pub const ICON_PERCH: i32 = 20;
 pub const ICON_DARTER: i32 = 21;
 pub const ICON_DRIFTWOOD: i32 = 22;
+pub const ICON_COPPER_ORE: i32 = 23;
+pub const ICON_IRON_ORE: i32 = 24;
+pub const ICON_GOLD_ORE: i32 = 25;
+pub const ICON_COAL: i32 = 26;
+pub const ICON_MINE_ROCK: i32 = 27;
+pub const ICON_COPPER_NODE: i32 = 28;
+pub const ICON_IRON_NODE: i32 = 29;
+pub const ICON_GOLD_NODE: i32 = 30;
+pub const ICON_GOO: i32 = 31;
+pub const ICON_DUST: i32 = 32;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -451,6 +461,54 @@ pub fn objects() -> Image {
         c.rect(12, 9, 3, 2, fin);
         c.rect(6, 4, 3, 2, fin);
         c.px(4, 7, OUTLINE);
+        c.auto_outline(OUTLINE);
+    }
+    let ore_colors = [
+        (ICON_COPPER_ORE, ICON_COPPER_NODE, Color::rgb(210, 120, 70)),
+        (ICON_IRON_ORE, ICON_IRON_NODE, Color::rgb(200, 200, 215)),
+        (ICON_GOLD_ORE, ICON_GOLD_NODE, Color::rgb(245, 205, 60)),
+    ];
+    for (ore, node, col) in ore_colors {
+        {
+            let mut c = Cell::at(&mut img, ore, OBJ_COLS, 16, 16);
+            c.ellipse(8.0, 10.0, 5.5, 4.5, Color::rgb(110, 100, 95));
+            c.rect(5, 8, 2, 2, col);
+            c.rect(9, 10, 2, 2, col);
+            c.rect(7, 12, 2, 1, col);
+            c.auto_outline(OUTLINE);
+        }
+        {
+            let mut c = Cell::at(&mut img, node, OBJ_COLS, 16, 16);
+            c.ellipse(8.0, 10.0, 7.0, 5.5, Color::rgb(120, 112, 108));
+            for (x, y) in [(4, 7), (9, 9), (6, 12), (11, 6)] {
+                c.rect(x, y, 2, 2, col);
+            }
+            c.auto_outline(OUTLINE);
+        }
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_COAL, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 5.0, 4.0, Color::rgb(40, 40, 46));
+        c.px(6, 8, Color::rgb(90, 90, 100));
+        c.auto_outline(Color::rgb(10, 10, 12));
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_MINE_ROCK, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 7.0, 5.5, Color::rgb(105, 98, 110));
+        c.ellipse(6.0, 8.0, 3.0, 2.0, Color::rgb(140, 132, 145));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_GOO, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 5.0, 4.0, Color::rgb(130, 95, 60));
+        c.px(6, 8, Color::rgb(190, 160, 120));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_DUST, OBJ_COLS, 16, 16);
+        for (x, y) in [(5, 6), (9, 5), (7, 9), (10, 10), (4, 11)] {
+            c.rect(x, y, 2, 2, Color::rgb(200, 190, 210));
+        }
         c.auto_outline(OUTLINE);
     }
     {
@@ -772,5 +830,79 @@ pub fn debris_and_trees(season: &str) -> Image {
         c.ellipse(8.0, 6.0, 5.0, 2.0, Color::rgb(200, 160, 110));
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// Mine tilesheet: 0/1 floor, 2 rock wall, 3 wall face, 4 void.
+pub fn mine_sheet() -> Image {
+    let mut img = Image::new(128, 16);
+    Cell::at(&mut img, 0, 8, 16, 16).noise(Color::rgb(92, 80, 74), 6, 70);
+    {
+        let mut c = Cell::at(&mut img, 1, 8, 16, 16);
+        c.noise(Color::rgb(92, 80, 74), 6, 71);
+        c.rect(4, 6, 3, 2, Color::rgb(70, 60, 56));
+        c.rect(10, 11, 2, 2, Color::rgb(110, 98, 90));
+    }
+    Cell::at(&mut img, 2, 8, 16, 16).noise(Color::rgb(55, 46, 44), 8, 72);
+    {
+        let mut c = Cell::at(&mut img, 3, 8, 16, 16);
+        c.noise(Color::rgb(75, 64, 60), 8, 73);
+        c.rect(0, 0, 16, 3, Color::rgb(55, 46, 44));
+        c.rect(0, 13, 16, 3, Color::rgb(45, 38, 36));
+    }
+    Cell::at(&mut img, 4, 8, 16, 16).rect(0, 0, 16, 16, Color::BLACK);
+    img
+}
+
+/// Mud blob: 4 squash frames of 16x24 in a row (original design).
+pub fn monster_blob() -> Image {
+    let mut img = Image::new(64, 24);
+    let body = Color::rgb(140, 100, 60);
+    for f in 0..4 {
+        let mut c = Cell { ox: f * 16, oy: 0, w: 16, h: 24, img: &mut img };
+        let squash = [0.0, 1.0, 2.0, 1.0][f as usize];
+        c.ellipse(8.0, 18.0 - squash / 2.0, 7.0 + squash / 2.0, 5.5 - squash / 2.0, body);
+        c.ellipse(6.0, 16.0, 2.5, 1.5, shade(body, 40));
+        c.rect(5, 17, 1, 2, OUTLINE);
+        c.rect(10, 17, 1, 2, OUTLINE);
+        // Leaf sprout.
+        let top = (12.0 + squash) as i32;
+        c.rect(8, top - 3, 1, 3, Color::rgb(70, 140, 50));
+        c.rect(9, top - 4, 3, 2, Color::rgb(90, 170, 60));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// Cave moth: 4 wing frames of 16x24 (original design).
+pub fn monster_moth() -> Image {
+    let mut img = Image::new(64, 24);
+    for f in 0..4 {
+        let mut c = Cell { ox: f * 16, oy: 0, w: 16, h: 24, img: &mut img };
+        let flap = [0, 2, 4, 2][f as usize];
+        let wing = Color::rgb(150, 145, 160);
+        c.rect(7, 8, 2, 8, Color::rgb(80, 70, 80));
+        c.ellipse(4.0, 10.0 + flap as f32 / 2.0, 3.5, 4.0 - flap as f32 / 2.0, wing);
+        c.ellipse(12.0, 10.0 + flap as f32 / 2.0, 3.5, 4.0 - flap as f32 / 2.0, wing);
+        c.px(4, 10, Color::rgb(230, 140, 60));
+        c.px(11, 10, Color::rgb(230, 140, 60));
+        c.rect(6, 6, 1, 2, OUTLINE);
+        c.rect(9, 6, 1, 2, OUTLINE);
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// Weapons sheet (16x16, 8 columns): 0 = training sword.
+pub fn weapons() -> Image {
+    let mut img = Image::new(128, 16);
+    let mut c = Cell::at(&mut img, 0, 8, 16, 16);
+    for i in 0..9 {
+        c.rect(5 + i, 10 - i, 2, 2, Color::rgb(190, 195, 210));
+    }
+    c.rect(3, 10, 5, 2, Color::rgb(120, 80, 40));
+    c.rect(4, 9, 2, 5, Color::rgb(120, 80, 40));
+    c.rect(2, 13, 2, 2, Color::rgb(150, 100, 50));
+    c.auto_outline(OUTLINE);
     img
 }

@@ -56,6 +56,7 @@ impl World {
                 });
                 true
             }
+            Some(Item::Weapon { .. }) => self.begin_weapon_swing(),
             Some(Item::Object { id, .. }) if self.items.is_seed(&id) => self.plant(target, &id),
             Some(item) if self.is_placeable(&item) => self.place_current(target),
             _ => false,
@@ -99,6 +100,7 @@ impl World {
             ToolKind::Axe => self.use_axe(slot, t),
             ToolKind::Pickaxe => self.use_pickaxe(slot, t),
             ToolKind::Scythe => {
+                self.melee_hit(1, 3, 0.5, 0.02, 2.0, 0);
                 let side = match self.farmer.facing {
                     Dir::Up | Dir::Down => [Dir::Left, Dir::Right],
                     _ => [Dir::Up, Dir::Down],
@@ -224,7 +226,11 @@ impl World {
         }
     }
 
-    fn use_pickaxe(&mut self, _slot: usize, t: TilePos) {
+    fn use_pickaxe(&mut self, slot: usize, t: TilePos) {
+        let power = self.tool_level(slot) + 1;
+        if self.hit_mine_rock(t, power) {
+            return;
+        }
         if self.pickup_object(t) {
             return;
         }

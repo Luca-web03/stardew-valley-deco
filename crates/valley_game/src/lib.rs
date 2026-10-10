@@ -315,6 +315,13 @@ impl ValleyGame {
                 WorldEvent::LevelUp(skill, level) => self.toast(format!("{skill:?} level {level}!")),
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
+                WorldEvent::ElevatorMenu { deepest } => {
+                    let mut levels = vec![1];
+                    levels.extend((5..=deepest).step_by(5));
+                    let mut options: Vec<String> = levels.iter().map(|l| format!("Floor {l}")).collect();
+                    options.push("Cancel".into());
+                    self.menus.push(Menu::Question { text: "Which floor?".into(), options, selected: 0, kind: QuestionKind::Elevator { levels } });
+                }
             }
             if self.world.is_none() {
                 break;
@@ -380,7 +387,15 @@ impl ValleyGame {
                 if let Some(i) = chosen {
                     close = true;
                     let kind = kind.clone();
-                    if i == 0 {
+                    if let QuestionKind::Elevator { levels } = &kind {
+                        if let Some(&level) = levels.get(i) {
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.enter_mine_level(level);
+                                }
+                            }));
+                        }
+                    } else if i == 0 {
                         action = Some(Box::new(move |g: &mut ValleyGame, _ctx: &mut EngineCtx| match kind {
                             QuestionKind::Sleep => {
                                 g.fade = Fade { alpha: 0.0, target: 1.0 };
@@ -399,6 +414,7 @@ impl ValleyGame {
                                 g.menus.clear();
                                 g.screen = Screen::Title { hovered: None };
                             }
+                            QuestionKind::Elevator { .. } => {}
                         }));
                     }
                 }
@@ -698,8 +714,18 @@ fn dialogue_box(sw: f32, sh: f32) -> FRect {
 }
 
 fn question_option_rects(sw: f32, sh: f32, n: usize) -> Vec<FRect> {
+    let b = question_box(sw, sh, n);
+    let cols = if n > 4 { 3 } else { 1 };
+    let w = (b.w - 64.0 - (cols - 1) as f32 * 12.0) / cols as f32;
+    (0..n).map(|i| FRect::new(b.x + 32.0 + (i % cols) as f32 * (w + 12.0), b.y + 110.0 + (i / cols) as f32 * 52.0, w, 44.0)).collect()
+}
+
+fn question_box(sw: f32, sh: f32, n: usize) -> FRect {
     let b = dialogue_box(sw, sh);
-    (0..n).map(|i| FRect::new(b.x + 32.0, b.y + 110.0 + i as f32 * 52.0, b.w - 64.0, 44.0)).collect()
+    let cols = if n > 4 { 3 } else { 1 };
+    let rows = n.div_ceil(cols) as f32;
+    let h = (130.0 + rows * 52.0).max(b.h);
+    FRect::new(b.x, (sh - h - 20.0).max(10.0), b.w, h)
 }
 
 fn menu_frame(sw: f32, sh: f32) -> FRect {
@@ -821,7 +847,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
         }
         Menu::Question { text, options, selected, .. } => {
-            let b = dialogue_box(sw, sh);
+            let b = question_box(sw, sh, options.len());
             ui.panel(b);
             for (i, line) in ui.wrap(text, b.w - 64.0, 3.0).iter().enumerate().take(2) {
                 ui.text(line, Vec2::new(b.x + 32.0, b.y + 32.0 + i as f32 * 32.0), 3.0, ui::TEXT);
@@ -1071,6 +1097,54 @@ fn ui_mouse_hint() -> Vec2 {
     Vec2::new(x, y)
 }
 
+impl ValleyGame {
+    /// Debug console commands (also used by headless scripts).
+    pub fn run_command(&mut self, cmd: &str) -> String {
+        let t: Vec<&str> = cmd.split_whitespace().collect();
+        let Some(w) = self.world.as_mut() else { return "no game loaded".into() };
+        let num = |i: usize| t.get(i).and_then(|v| v.parse::<i32>().ok());
+        match t.first().copied() {
+            Some("warp") if t.len() >= 2 => {
+                let (x, y) = (num(2).unwrap_or(5), num(3).unwrap_or(5));
+                w.warp_farmer(t[1], TilePos::new(x, y), None);
+                format!("warped to {}", w.current)
+            }
+            Some("mine") => {
+                w.enter_mine_level(num(1).unwrap_or(1));
+                format!("entered {}", w.current)
+            }
+            Some("give") if t.len() >= 2 => {
+                let n = num(2).unwrap_or(1);
+                match w.items.create(t[1], n) {
+                    Some(item) => {
+                        w.give_item(item);
+                        format!("gave {} x{n}", t[1])
+                    }
+                    None => format!("unknown item {}", t[1]),
+                }
+            }
+            Some("money") => {
+                w.farmer.money = num(1).unwrap_or(w.farmer.money);
+                format!("money = {}", w.farmer.money)
+            }
+            Some("time") => {
+                w.clock.time = num(1).unwrap_or(w.clock.time).clamp(600, 2550);
+                format!("time = {}", w.clock.time)
+            }
+            Some("day") => {
+                w.end_day(false);
+                format!("now day {} of {}", w.clock.day, w.clock.season.name())
+            }
+            Some("slot") => {
+                w.farmer.current_slot = num(1).unwrap_or(0).clamp(0, 35) as usize;
+                format!("slot = {}", w.farmer.current_slot)
+            }
+            Some("tile") => format!("{} {:?} facing {:?}", w.current, w.farmer.tile(), w.farmer.facing),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | slot <n> | tile".into(),
+        }
+    }
+}
+
 impl GameModule for ValleyGame {
     fn id(&self) -> &str {
         MODULE_ID
@@ -1092,6 +1166,10 @@ impl GameModule for ValleyGame {
             Screen::Create { .. } => self.update_create(ctx),
             Screen::Playing => self.update_playing(ctx),
         }
+    }
+
+    fn command(&mut self, _ctx: &mut EngineCtx, cmd: &str) -> String {
+        self.run_command(cmd)
     }
 
     fn draw(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {

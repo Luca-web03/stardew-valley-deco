@@ -211,9 +211,37 @@ pub fn town() -> Map {
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }
+    // Cave mouth to the mines in the north-west corner.
+    b.fill("Back", 2, 1, 3, 3, PATH);
+    b.set("Buildings", 1, 1, CLIFF);
+    b.set("Buildings", 5, 1, CLIFF);
     b.set("Buildings", 20, 14, LAMP);
     b.set("Buildings", 28, 14, LAMP);
-    b.prop("Warp", "-1 15 Farm 46 13 -1 16 Farm 46 14");
+    b.prop("Warp", "-1 15 Farm 46 13 -1 16 Farm 46 14 3 0 Mine 5 8");
+    b.map
+}
+
+pub fn mine_entrance() -> Map {
+    let (w, h) = (11, 10);
+    let mut sheet = TileSheet { id: "mine".into(), image: "dev_mine".into(), sheet_w: 8, sheet_h: 1, tile_w: 16, tile_h: 16, ..Default::default() };
+    sheet.set_tile_prop(0, "Type", s("Stone"));
+    let mut b = B::new("Mine", w, h, sheet);
+    b.fill("Back", 0, 0, w, h, 0);
+    for x in 0..w {
+        b.set("Buildings", x, 0, 2);
+        b.set("Buildings", x, 1, 3);
+        if x != 5 {
+            b.set("Buildings", x, h - 1, 2);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, 2);
+        b.set("Buildings", w - 1, y, 2);
+    }
+    // Descent shaft and elevator.
+    b.set_props("Buildings", 5, 3, 4, &[("Action", "Mine")]);
+    b.set_props("Buildings", 8, 2, 3, &[("Action", "MineElevator")]);
+    b.prop("Warp", "5 9 Town 3 2");
     b.map
 }
 
@@ -243,5 +271,5 @@ pub fn seed_shop() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), town(), seed_shop()]
+    vec![farm(), farmhouse(), town(), seed_shop(), mine_entrance()]
 }

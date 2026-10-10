@@ -28,6 +28,10 @@ pub fn build() -> MemSource {
     m.insert("TerrainFeatures/hoeDirt.png", art::hoe_dirt().encode_png());
     m.insert("TileSheets/tools.png", art::tools().encode_png());
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
+    m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
+    m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
+    m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
+    m.insert("TileSheets/weapons.png", art::weapons().encode_png());
 
     let farmer = art::Look {
         skin: Color::rgb(236, 190, 150),
@@ -89,6 +93,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Perch": obj("Pond Perch", "Fish", -4, 45, ICON_PERCH, 8),
         "Dev_Darter": obj("River Darter", "Fish", -4, 90, ICON_DARTER, 10),
         "Dev_Driftwood": obj("Driftwood", "Basic", -20, 0, ICON_DRIFTWOOD, -300),
+        "Dev_CopperOre": obj("Copper Ore", "Basic", -15, 5, ICON_COPPER_ORE, -300),
+        "Dev_IronOre": obj("Iron Ore", "Basic", -15, 10, ICON_IRON_ORE, -300),
+        "Dev_GoldOre": obj("Gold Ore", "Basic", -15, 25, ICON_GOLD_ORE, -300),
+        "Dev_Coal": obj("Coal", "Basic", -15, 15, ICON_COAL, -300),
+        "Dev_MineRock": obj("Stone", "Litter", 0, 0, ICON_MINE_ROCK, -300),
+        "Dev_CopperNode": obj("Stone", "Litter", 0, 0, ICON_COPPER_NODE, -300),
+        "Dev_IronNode": obj("Stone", "Litter", 0, 0, ICON_IRON_NODE, -300),
+        "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
+        "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
+        "Dev_Dust": obj("Wing Dust", "Basic", -28, 8, ICON_DUST, -300),
         "Dev_Sprinkler": {
             "Name": "Sprinkler", "DisplayName": "Sprinkler", "Description": "Waters the 4 adjacent tiles every morning.",
             "Type": "Crafting", "Category": -8, "Price": 50, "SpriteIndex": ICON_SPRINKLER, "ContextTags": ["sprinkler_cross"]
@@ -143,6 +157,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Bread_Name": "Bread", "Bread_Description": "A warm loaf.",
         "PondPerch_Name": "Pond Perch", "PondPerch_Description": "A calm fish from still water.",
         "RiverDarter_Name": "River Darter", "RiverDarter_Description": "Quick and hard to catch.",
+        "CopperOre_Name": "Copper Ore", "CopperOre_Description": "Smelts into a soft metal.",
+        "IronOre_Name": "Iron Ore", "IronOre_Description": "A sturdy ore.",
+        "GoldOre_Name": "Gold Ore", "GoldOre_Description": "Shiny and valuable.",
+        "Coal_Name": "Coal", "Coal_Description": "Burns hot.",
+        "MudGoo_Name": "Mud Goo", "MudGoo_Description": "Left behind by a mud blob.",
+        "WingDust_Name": "Wing Dust", "WingDust_Description": "Shimmering scales from a cave moth.",
         "Driftwood_Name": "Driftwood", "Driftwood_Description": "Soggy and useless.",
         "WildBerry_Name": "Wild Berry", "WildBerry_Description": "Found growing wild.",
         "Weeds_Name": "Weeds", "Weeds_Description": "", "Twig_Name": "Twig", "Twig_Description": ""
@@ -207,6 +227,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                   ] },
         "SeedShop": { "DisplayName": "General Store", "DefaultArrivalTile": { "X": 6, "Y": 9 },
                       "CreateOnLoad": { "MapPath": "Maps\\SeedShop" } },
+        "Mine": { "DisplayName": "Mines", "DefaultArrivalTile": { "X": 5, "Y": 8 },
+                  "CreateOnLoad": { "MapPath": "Maps\\Mine" } },
     });
     let characters = json!({
         "Mara": { "DisplayName": "Mara", "BirthSeason": "Spring", "BirthDay": 9, "HomeRegion": "Town",
@@ -255,6 +277,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false"
         })),
         ("Strings/Objects", strings),
+        ("Data/Monsters", json!({
+            "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",
+            "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"
+        })),
+        ("Data/Weapons", json!({
+            "Dev_Sword": { "Name": "Training Sword", "DisplayName": "Training Sword",
+                           "Description": "A light, dull blade. Better than nothing.",
+                           "Type": 3, "MinDamage": 4, "MaxDamage": 8, "Knockback": 1.0, "Speed": 0,
+                           "CritChance": 0.02, "CritMultiplier": 3.0, "Texture": "TileSheets\\weapons", "SpriteIndex": 0 }
+        })),
         ("Data/Crops", crops),
         ("Data/Tools", tools),
         ("Data/Shops", shops),

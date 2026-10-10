@@ -6,9 +6,11 @@
 //! behaviour; constants that are best-effort approximations are marked as such.
 
 pub mod collision;
+pub mod combat;
 pub mod crafting;
 pub mod crop;
 pub mod machines;
+pub mod mines;
 pub mod dialogue;
 pub mod farmer;
 pub mod fishing;
