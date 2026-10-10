@@ -826,7 +826,10 @@ impl ValleyGame {
                                     }
                                     Some(h) => {
                                         if let Some(w) = self.world.as_mut() {
-                                            w.farmer.inventory.swap(h, i);
+                                            // Bait/tackle dropped onto a rod attaches to it.
+                                            if !w.attach_to_rod(h, i) {
+                                                w.farmer.inventory.swap(h, i);
+                                            }
                                         }
                                         *held = None;
                                     }

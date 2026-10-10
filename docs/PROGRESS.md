@@ -34,7 +34,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines),
       furniture, casks, tailoring at the sewing machine
 - [x] Cooking, food buffs
-- [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots
+- [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots, bait and
+      tackle, treasure chests
 - [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,
       weapons, rings, boots, combat, fainting
 - [x] Weapon special moves (block, flurry, slam; approx. timings),
@@ -44,7 +45,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Stables and horse riding, minecart networks, TV channels with the
       cooking show
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
-      friendship), farmhouse upgrades, kitchen fridge, fish ponds
+      friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
       gifts, friendship, dating, marriage, spouse, children (approx. timings)
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders

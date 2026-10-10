@@ -33,6 +33,7 @@ pub fn build() -> MemSource {
     m.insert("Buildings/Dev_Silo.png", art::silo().encode_png());
     m.insert("Buildings/Dev_Pond.png", art::pond().encode_png());
     m.insert("Buildings/Dev_Obelisk.png", art::obelisk().encode_png());
+    m.insert("Buildings/Dev_Hut.png", art::hut().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
@@ -136,6 +137,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "SpriteIndex": ICON_BOMB, "CustomFields": { "BombRadius": "3" } },
         "Dev_CrabPot": obj("Crab Pot", "Crafting", -8, 50, ICON_CRAB_POT, -300),
         "Dev_Bait": obj("Bait", "Basic", -21, 1, ICON_BAIT, -300),
+        "Dev_WhirlLure": { "Name": "Whirl Lure", "DisplayName": "Whirl Lure", "Description": "A spinning lure. Fish bite sooner. Attach to an upgraded rod.", "Type": "Basic", "Category": -22, "Price": 250,
+                           "SpriteIndex": ICON_WHIRL_LURE, "CustomFields": { "Port.Tackle": "bite_speed" } },
+        "Dev_CorkFloat": { "Name": "Cork Float", "DisplayName": "Cork Float", "Description": "Makes the catch bar a little taller. Attach to an upgraded rod.", "Type": "Basic", "Category": -22, "Price": 250,
+                           "SpriteIndex": ICON_CORK_FLOAT, "CustomFields": { "Port.Tackle": "bar_size" } },
         "Dev_Crawler": obj("Pond Crawler", "Fish", -4, 60, ICON_CRAWLER, 5),
         "Dev_Battery": obj("Storm Cell", "Basic", 0, 500, ICON_BATTERY, -300),
         "Dev_PlumSapling": obj("Plum Sapling", "Basic", -74, 300, ICON_PLUM_SAPLING, -300),
@@ -368,6 +373,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "hay", "ItemId": "(O)Dev_Hay", "Price": 50 },
                 { "Id": "pail", "ItemId": "(T)MilkPail", "Price": 500 },
                 { "Id": "bait", "ItemId": "(O)Dev_Bait", "Price": 5 },
+                { "Id": "lure", "ItemId": "(O)Dev_WhirlLure", "Price": 500 },
+                { "Id": "float", "ItemId": "(O)Dev_CorkFloat", "Price": 500 },
                 { "Id": "boots", "ItemId": "(B)Dev_WorkBoots", "Price": 500 },
                 { "Id": "ring", "ItemId": "(O)Dev_GuardRing", "Price": 800 },
                 { "Id": "magnet", "ItemId": "(O)Dev_MagnetRing", "Price": 800 }
@@ -577,6 +584,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
               "ProducedItems": [{ "ItemId": "(O)Dev_Bait", "RequiredPopulation": 1, "Chance": 0.4, "MinQuantity": 1, "MaxQuantity": 3 }] }
         ])),
         ("Data/Buildings", json!({
+            "Dev_HarvestHut": {
+                "Name": "Harvest Hut", "Description": "Gathers ripe crops nearby each night and keeps them inside.", "Texture": "Buildings\\Dev_Hut",
+                "Size": { "X": 2, "Y": 2 }, "BuildCost": 20000, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 200 }, { "ItemId": "(O)Dev_Berry", "Amount": 10 }],
+                "CustomFields": { "Port.HarvestHut": "true" }
+            },
             "Dev_Stable": {
                 "Name": "Stable", "Description": "Comes with a horse to ride around the valley.", "Texture": "Buildings\\Dev_Stable",
                 "Size": { "X": 4, "Y": 2 }, "BuildCost": 3000, "BuildDays": 1,

@@ -409,6 +409,8 @@ pub const ICON_HOMING_STONE: i32 = 61;
 pub const ICON_DUNE_CHARM: i32 = 62;
 pub const ICON_NOTE_SCRAP: i32 = 63;
 pub const ICON_BERRY_TART: i32 = 64;
+pub const ICON_WHIRL_LURE: i32 = 65;
+pub const ICON_CORK_FLOAT: i32 = 66;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -686,6 +688,22 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_WHIRL_LURE, OBJ_COLS, 16, 16);
+        c.rect(7, 2, 1, 5, Color::rgb(180, 180, 190));
+        c.ellipse(8.0, 9.0, 3.0, 2.0, Color::rgb(220, 200, 60));
+        c.rect(5, 8, 1, 3, Color::rgb(240, 240, 250));
+        c.rect(10, 8, 1, 3, Color::rgb(240, 240, 250));
+        c.rect(7, 11, 1, 3, Color::rgb(150, 150, 160));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_CORK_FLOAT, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 6.0, 3.5, 3.0, Color::rgb(220, 60, 50));
+        c.ellipse(8.0, 10.0, 3.5, 3.0, Color::rgb(200, 160, 110));
+        c.rect(8, 1, 1, 3, Color::rgb(80, 80, 90));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1534,6 +1552,22 @@ pub fn child() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// Harvest hut (32x32, 2x2 tiles). Original design: a domed fieldstone
+/// hut with a mossy cap and a little wooden door.
+pub fn hut() -> Image {
+    let mut img = Image::new(32, 32);
+    let mut c = Cell { ox: 0, oy: 0, w: 32, h: 32, img: &mut img };
+    c.ellipse(16.0, 19.0, 14.0, 12.0, Color::rgb(150, 145, 135));
+    for (x, y) in [(7, 14), (13, 10), (20, 12), (24, 18), (9, 22), (18, 20)] {
+        c.ellipse(x as f32, y as f32, 2.5, 1.8, Color::rgb(175, 170, 160));
+    }
+    c.ellipse(16.0, 9.0, 11.0, 5.0, Color::rgb(90, 140, 70));
+    c.rect(13, 22, 6, 9, Color::rgb(120, 80, 45));
+    c.px(17, 26, Color::rgb(230, 200, 80));
+    c.auto_outline(OUTLINE);
     img
 }
 

@@ -109,11 +109,17 @@ pub struct Tool {
     pub level: i32,
     /// Watering can only.
     pub water: i32,
+    /// Fishing rods: bait (slot 0) and tackle (slot 1).
+    #[serde(default)]
+    pub attachments: Vec<Option<Item>>,
+    /// Uses left on the attached tackle.
+    #[serde(default)]
+    pub tackle_uses: i32,
 }
 
 impl Tool {
     pub fn new(kind: ToolKind) -> Self {
-        let mut t = Self { kind, level: 0, water: 0 };
+        let mut t = Self { kind, level: 0, water: 0, attachments: Vec::new(), tackle_uses: 0 };
         t.water = t.water_capacity();
         t
     }

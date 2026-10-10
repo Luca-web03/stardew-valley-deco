@@ -21,6 +21,8 @@ pub mod farmer;
 pub mod festivals;
 pub mod furniture;
 pub mod fishing;
+pub mod fishing_gear;
+pub mod harvest_huts;
 pub mod gsq;
 pub mod house;
 pub mod input;

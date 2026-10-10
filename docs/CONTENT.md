@@ -93,6 +93,8 @@ Other conventions:
 | Shops: `Currency` (0 money, 1 star tokens, 2 Qi coins, 4 Qi gems) and `TradeItemId` / `TradeItemAmount` on items | `valley_sim::shop`, `World::buy` |
 | Casks: big craftable `163` or `Port.Cask`; aging rate from `Port.AgingRate` or well-known drink/cheese ids (approx.); silver/gold/iridium at 14/28/56 base days | `valley_sim::casks` |
 | Tailoring: `Data/TailoringRecipes` (`FirstItemTags`, `SecondItemTags`, `SpendRightItem`, `CraftedItemId(s)`); sewing machine = big craftable with `Port.SewingMachine` or a `Tailoring` tile action | `valley_sim::tailoring` |
+| Fishing gear: rods hold bait from upgrade level 1 and tackle from level 2 (approx.); bait = category -21; tackle = category -22 with `Port.Tackle` (`bite_speed`, `bar_size`, `slow_escape`, `no_bounce`, `treasure`) or well-known ids; 20 uses | `valley_sim::fishing_gear` |
+| Harvest huts: building id `Junimo Hut` or `Port.HarvestHut`; gathers ripe hand-harvested crops within 8 tiles each night into its storage | `valley_sim::harvest_huts` |
 
 ## Mods
 

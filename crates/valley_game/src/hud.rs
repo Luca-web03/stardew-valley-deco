@@ -134,6 +134,13 @@ pub fn draw_fishing_overlay(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32,
             let water = FRect::new(frame.x + 20.0, frame.y + 20.0 * scale, 48.0, TRACK * scale);
             ui.out.fill(water, Color::rgb(40, 90, 160), ui.depth + 0.001);
             let bar = FRect::new(water.x, water.y + game.bar_pos * scale, water.w, game.bar_height * scale);
+            // Treasure chest and its progress ring.
+            if let Some((pos, p)) = game.treasure {
+                let chest = FRect::new(water.x + 12.0, water.y + pos * scale, 24.0, 18.0);
+                ui.out.fill(chest, Color::rgb(170, 110, 50), ui.depth + 0.004);
+                ui.out.fill(FRect::new(chest.x, chest.y + 6.0, chest.w, 2.0), Color::rgb(240, 200, 60), ui.depth + 0.005);
+                ui.out.fill(FRect::new(chest.x, chest.y + chest.h + 2.0, chest.w * p, 4.0), Color::rgb(240, 200, 60), ui.depth + 0.005);
+            }
             let c = if game.in_bar() { Color::rgba(110, 230, 90, 220) } else { Color::rgba(90, 190, 70, 170) };
             ui.out.fill(bar, c, ui.depth + 0.002);
             let fish_item = Item::object(&game.fish.id, 1);

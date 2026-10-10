@@ -80,12 +80,29 @@ pub struct Minigame {
     pub progress: f32,
     pub perfect: bool,
     pub elapsed_ms: u32,
+    pub gear: crate::fishing_gear::Gear,
+    /// A treasure chest in the track: (position, catch progress 0..1).
+    pub treasure: Option<(f32, f32)>,
+    /// Appears after this many ms (if any treasure this time).
+    pub treasure_at_ms: Option<u32>,
+    pub treasure_caught: bool,
 }
 
 impl Minigame {
     pub fn new(fish: FishInfo, fishing_level: i32) -> Self {
-        let bar_height = 96.0 + fishing_level as f32 * 8.0;
+        Self::with_gear(fish, fishing_level, crate::fishing_gear::Gear::default(), None)
+    }
+
+    /// A minigame with rod gear and, optionally, a treasure chest that
+    /// surfaces after `treasure_at_ms`.
+    pub fn with_gear(fish: FishInfo, fishing_level: i32, gear: crate::fishing_gear::Gear, treasure_at_ms: Option<u32>) -> Self {
+        use crate::fishing_gear::TackleEffect;
+        let bar_height = 96.0 + fishing_level as f32 * 8.0 + if gear.tackle == Some(TackleEffect::BarSize) { 24.0 } else { 0.0 };
         Self {
+            gear,
+            treasure: None,
+            treasure_at_ms,
+            treasure_caught: false,
             fish,
             fish_pos: TRACK - 100.0,
             fish_target: TRACK / 2.0,
@@ -101,6 +118,10 @@ impl Minigame {
 
     pub fn in_bar(&self) -> bool {
         self.fish_pos + 16.0 >= self.bar_pos && self.fish_pos + 16.0 <= self.bar_pos + self.bar_height
+    }
+
+    fn treasure_in_bar(&self) -> bool {
+        self.treasure.is_some_and(|(p, _)| p + 12.0 >= self.bar_pos && p + 12.0 <= self.bar_pos + self.bar_height)
     }
 
     /// Advance one tick. Returns Some(true) when caught, Some(false) when lost.
@@ -140,18 +161,35 @@ impl Minigame {
             self.bar_vel = 0.0;
         }
         let bottom = TRACK - self.bar_height;
+        let bounce = if self.gear.tackle == Some(crate::fishing_gear::TackleEffect::NoBounce) { 0.0 } else { 0.4 };
         if self.bar_pos > bottom {
             self.bar_pos = bottom;
-            self.bar_vel = -self.bar_vel * 0.4;
+            self.bar_vel = -self.bar_vel * bounce;
             if self.bar_vel.abs() < 1.0 {
                 self.bar_vel = 0.0;
             }
         }
 
+        // A treasure chest may surface; hold it in the bar to grab it.
+        if self.treasure.is_none() && !self.treasure_caught && self.treasure_at_ms.is_some_and(|t| self.elapsed_ms >= t) {
+            self.treasure = Some((rng.range(0, (TRACK - 32.0) as i32) as f32, 0.0));
+        }
+        let treasure_in = self.treasure_in_bar();
+        if let Some((pos, p)) = self.treasure {
+            let keep = self.gear.tackle == Some(crate::fishing_gear::TackleEffect::Treasure);
+            let p = if treasure_in { p + 0.0135 } else if keep { p } else { (p - 0.01).max(0.0) };
+            if p >= 1.0 {
+                self.treasure = None;
+                self.treasure_caught = true;
+            } else {
+                self.treasure = Some((pos, p));
+            }
+        }
         if self.in_bar() {
             self.progress += 0.002;
-        } else {
-            self.progress -= 0.003;
+        } else if !treasure_in {
+            let drain = if self.gear.tackle == Some(crate::fishing_gear::TackleEffect::SlowEscape) { 0.002 } else { 0.003 };
+            self.progress -= drain;
             if self.elapsed_ms > 300 {
                 self.perfect = false;
             }
@@ -290,7 +328,15 @@ impl World {
                     if self.location().is_water(target) {
                         self.sound("waterSlosh");
                         let mut rng = self.fishing_rng();
-                        let bite = rng.range(1500, 12000) as u32;
+                        let gear = self.current_gear();
+                        let mut factor = 1.0;
+                        if gear.bait {
+                            factor *= crate::fishing_gear::BAIT_BITE_FACTOR;
+                        }
+                        if gear.tackle == Some(crate::fishing_gear::TackleEffect::BiteSpeed) {
+                            factor *= 0.75;
+                        }
+                        let bite = (rng.range(1500, 12000) as f32 * factor) as u32;
                         FishingState::Waiting { bobber: target, bite_at_ms: bite, ms: 0 }
                     } else {
                         self.hud("The bobber needs to land in water.");
@@ -318,8 +364,11 @@ impl World {
                     match self.choose_fish(&mut rng) {
                         Some(f) if f.difficulty > 0 => {
                             let level = self.farmer.skills.level(Skill::Fishing);
+                            let gear = self.current_gear();
+                            self.consume_gear();
+                            let treasure = rng.chance(crate::fishing_gear::TREASURE_CHANCE + self.daily_luck).then(|| rng.range(800, 4000) as u32);
                             self.sound("FishHit");
-                            FishingState::Minigame { bobber, game: Box::new(Minigame::new(f, level)) }
+                            FishingState::Minigame { bobber, game: Box::new(Minigame::with_gear(f, level, gear, treasure)) }
                         }
                         Some(f) => {
                             // Trash and other non-fish: no minigame.
@@ -359,6 +408,14 @@ impl World {
                         e.1 = e.1.max(size);
                         let caught = Item::object_q(&f.id, 1, quality);
                         self.order_fish(&caught);
+                        if game.treasure_caught {
+                            let loot = self.fishing_treasure(&mut rng);
+                            self.sound("openChest");
+                            self.hud("You found a treasure chest!");
+                            for it in loot {
+                                self.give_item(it);
+                            }
+                        }
                         FishingState::Caught { item: caught, size, perfect: game.perfect, ms: 0 }
                     }
                     Some(false) => {

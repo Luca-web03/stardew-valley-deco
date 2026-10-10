@@ -814,6 +814,7 @@ impl World {
         }
         self.animals_overnight();
         self.horses_overnight();
+        self.huts_overnight();
         self.orchard_overnight();
         self.crab_pots_overnight();
         self.house_overnight();
@@ -1232,7 +1233,7 @@ impl World {
         if self.crab_pot_action(target) || self.place_bomb(target) || self.place_furniture(target) || self.pickup_furniture(target) {
             return true;
         }
-        if self.interact_pond(target) || self.interact_building(target) {
+        if self.interact_pond(target) || self.interact_hut(target) || self.interact_building(target) {
             return true;
         }
         if self.place_hay(target) {
@@ -2172,6 +2173,9 @@ impl World {
         if tile == FRIDGE_TILE {
             return Some(&self.farmer.fridge);
         }
+        if tile.y == -2 {
+            return self.buildings.iter().find(|b| b.id as i32 == tile.x).and_then(|b| b.storage.as_ref());
+        }
         match self.location().object(tile).map(|o| &o.kind) {
             Some(crate::objects::ObjKind::Chest(inv)) => Some(inv),
             _ => None,
@@ -2184,6 +2188,14 @@ impl World {
             let f = &mut self.farmer;
             move_stack(&mut f.inventory, &mut f.fridge, from_player, slot);
             self.sound("pickUpItem");
+            return;
+        }
+        if chest.y == -2 {
+            if let Some(b) = self.buildings.iter_mut().find(|b| b.id as i32 == chest.x) {
+                let store = b.storage.get_or_insert_with(|| crate::inventory::Inventory::new(crate::harvest_huts::HUT_SLOTS));
+                move_stack(&mut self.farmer.inventory, store, from_player, slot);
+                self.sound("pickUpItem");
+            }
             return;
         }
         let loc_name = self.current.clone();
