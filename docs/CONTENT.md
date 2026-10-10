@@ -73,3 +73,5 @@ Other conventions:
 | Children: optional `CribTile` farmhouse map property (else a free tile near the bed), placeholder sheet `Characters/Dev_Child`; ask chance, stage lengths and names are engine constants | `valley_sim::children` |
 | Mine start floor: `Action Mine <floor>`; floors past 120 are the deep cavern (no elevator, tougher monsters, shafts) | `valley_sim::mines` |
 | Paid travel: `Action Port.Travel <location> <x> <y> <fare> [hhmm-hhmm]` (engine convention, 30 in-game minutes per trip) | `valley_sim::world::World::travel` |
+| Fish ponds: buildings with id `Fish Pond` or the `Port.FishPond` custom field; `Data/FishPondData` (`RequiredTags`, `SpawnTime`, `ProducedItems`, `PopulationGates`, `MaxPopulation`) | `valley_sim::fish_ponds` |
+| Kitchen fridge: `Action Fridge` tile; cooking uses backpack then fridge | `valley_sim::world::FRIDGE_TILE` |

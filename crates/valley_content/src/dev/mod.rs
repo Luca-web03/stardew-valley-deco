@@ -31,6 +31,7 @@ pub fn build() -> MemSource {
     m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
     m.insert("TileSheets/furniture.png", art::furniture().encode_png());
     m.insert("Buildings/Dev_Silo.png", art::silo().encode_png());
+    m.insert("Buildings/Dev_Pond.png", art::pond().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
@@ -475,7 +476,23 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
             "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
         })),
+        ("Data/FishPondData", json!([
+            { "Id": "Dev_Perch", "RequiredTags": ["id_o_dev_perch"], "SpawnTime": 2, "MaxPopulation": 7,
+              "ProducedItems": [
+                  { "ItemId": "(O)Dev_Bait", "RequiredPopulation": 1, "Chance": 0.6, "MinQuantity": 2, "MaxQuantity": 5 },
+                  { "ItemId": "(O)Dev_Driftwood", "RequiredPopulation": 0, "Chance": 0.2, "MinQuantity": 1, "MaxQuantity": 1 }
+              ],
+              "PopulationGates": { "5": ["(O)Dev_Berry 2 4"] } },
+            { "Id": "Dev_AnyFish", "RequiredTags": ["category_fish"],
+              "ProducedItems": [{ "ItemId": "(O)Dev_Bait", "RequiredPopulation": 1, "Chance": 0.4, "MinQuantity": 1, "MaxQuantity": 3 }] }
+        ])),
         ("Data/Buildings", json!({
+            "Dev_Pond": {
+                "Name": "Fish Pond", "Description": "Raise fish of one kind. They multiply and share what they find.", "Texture": "Buildings\\Dev_Pond",
+                "Size": { "X": 3, "Y": 3 }, "BuildCost": 1500, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 100 }],
+                "CustomFields": { "Port.FishPond": "true" }
+            },
             "Coop": {
                 "Name": "Henhouse", "Description": "Houses up to four hens.", "Texture": "Buildings\\Dev_Coop",
                 "Size": { "X": 4, "Y": 3 }, "BuildCost": 1000, "BuildDays": 1,

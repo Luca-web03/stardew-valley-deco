@@ -215,9 +215,10 @@ pub fn farmhouse1() -> Map {
     b.set_props("Back", 9, 4, BED_TOP, &[("Bed", "T")]);
     b.set_props("Back", 9, 5, BED_BOTTOM, &[("Bed", "T")]);
     b.set_props("Buildings", 2, 2, TV, &[("Action", "TV")]);
-    for x in 11..15 {
+    for x in 11..14 {
         b.set_props("Buildings", x, 2, COUNTER, &[("Action", "kitchen")]);
     }
+    b.set_props("Buildings", 14, 2, FRIDGE, &[("Action", "Fridge")]);
     b.fill("Back", 3, 6, 3, 2, RUG);
     b.prop("Warp", "5 11 Farm 21 10");
     b.map

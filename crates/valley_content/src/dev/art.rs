@@ -48,6 +48,7 @@ pub const SHELF: i32 = 8;
 pub const MAT: i32 = 9;
 pub const VOID: i32 = 10;
 pub const TV: i32 = 11;
+pub const FRIDGE: i32 = 12;
 
 fn grass_color(season: &str) -> (Color, Color) {
     match season {
@@ -317,6 +318,14 @@ pub fn indoors() -> Image {
         let mut c = Cell::at(&mut img, TV, IN_COLS, 16, 16);
         c.rect(1, 3, 14, 11, Color::rgb(50, 50, 60));
         c.rect(3, 5, 10, 7, Color::rgb(100, 160, 200));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, FRIDGE, IN_COLS, 16, 16);
+        c.rect(2, 0, 12, 16, Color::rgb(235, 238, 240));
+        c.rect(2, 6, 12, 1, Color::rgb(170, 180, 190));
+        c.rect(11, 2, 1, 3, Color::rgb(120, 130, 140));
+        c.rect(11, 8, 1, 5, Color::rgb(120, 130, 140));
         c.auto_outline(OUTLINE);
     }
     img
@@ -1412,6 +1421,26 @@ pub fn child() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// Fish pond building (48x48, 3x3 tiles). Original design: a stone-rimmed
+/// pool with lily pads.
+pub fn pond() -> Image {
+    let mut img = Image::new(48, 48);
+    let mut c = Cell { ox: 0, oy: 0, w: 48, h: 48, img: &mut img };
+    c.ellipse(24.0, 25.0, 23.0, 21.0, Color::rgb(130, 130, 125));
+    for i in 0..14 {
+        let a = i as f32 / 14.0 * std::f32::consts::TAU;
+        let (x, y) = (24.0 + a.cos() * 21.0, 25.0 + a.sin() * 19.0);
+        c.ellipse(x, y, 3.0, 2.5, Color::rgb(160, 160, 150));
+    }
+    c.ellipse(24.0, 25.0, 17.0, 15.0, Color::rgb(56, 120, 200));
+    c.ellipse(22.0, 22.0, 12.0, 9.0, Color::rgb(80, 145, 215));
+    for (x, y) in [(15.0, 30.0), (31.0, 19.0)] {
+        c.ellipse(x, y, 3.0, 2.0, Color::rgb(70, 150, 70));
+    }
+    c.auto_outline(OUTLINE);
     img
 }
 

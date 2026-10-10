@@ -285,6 +285,29 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
                 s.tint = Color::rgba(200, 200, 200, 140);
             }
             out.sprite(s);
+            // Fish ponds: the resident fish and any produce waiting.
+            if let Some(pond) = &b.pond {
+                let center = cam.to_screen(Vec2::new((b.tile.x as f32 + b.size.0 as f32 / 2.0) * TILE_F, (b.tile.y as f32 + b.size.1 as f32 / 2.0) * TILE_F));
+                if let Some(fish) = &pond.fish {
+                    let (ftex, fsrc) = item_sprite(rc, w, &Item::object(fish, 1));
+                    out.draw(ftex, fsrc, Vec2::new(center.x - 24.0, center.y - 16.0), 2.0, sort_depth(bottom, map_h) + 0.0001);
+                    if let Some(ft) = rc.textures.id("__engine/font8x8") {
+                        for (i, ch) in pond.population.to_string().chars().enumerate() {
+                            let c = ch as i32;
+                            out.draw_tinted(ft, IRect::new((c % 16) * 8, (c / 16) * 8, 8, 8), Vec2::new(center.x + 10.0 + i as f32 * 16.0, center.y - 8.0), 2.0, Color::WHITE, sort_depth(bottom, map_h) + 0.0002);
+                        }
+                    }
+                }
+                if let Some(item) = &pond.output {
+                    let bob = ((w.game_ms as f32) / 300.0).sin() * 4.0;
+                    let (itex, isrc) = item_sprite(rc, w, item);
+                    let white = rc.assets.white(rc.textures);
+                    let mut bubble = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(center.x - 26.0, center.y - 110.0 + bob, 52.0, 52.0), DEPTH_SORT_MAX + 0.01);
+                    bubble.tint = Color::rgba(255, 255, 255, 220);
+                    out.sprite(bubble);
+                    out.sprite(Sprite::new(itex, isrc, FRect::new(center.x - 20.0, center.y - 104.0 + bob, 40.0, 40.0), DEPTH_SORT_MAX + 0.011));
+                }
+            }
         }
     }
 

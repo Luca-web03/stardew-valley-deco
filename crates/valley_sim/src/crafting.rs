@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use crate::farmer::{Farmer, Skill};
+use crate::inventory::Inventory;
 use crate::item::{Item, ItemDb};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -92,30 +93,44 @@ impl Recipe {
     }
 
     pub fn can_craft(&self, db: &ItemDb, f: &Farmer) -> bool {
+        self.can_craft_from(db, &[&f.inventory])
+    }
+
+    /// Are all ingredients available across these inventories?
+    pub fn can_craft_from(&self, db: &ItemDb, invs: &[&Inventory]) -> bool {
         self.ingredients.iter().all(|(ing, n)| {
-            let have: i32 = f.inventory.slots.iter().flatten().filter(|i| Self::matches(db, i, ing)).map(|i| i.stack()).sum();
+            let have: i32 = invs.iter().flat_map(|inv| inv.slots.iter().flatten()).filter(|i| Self::matches(db, i, ing)).map(|i| i.stack()).sum();
             have >= *n
         })
     }
 
     /// Consume ingredients and return the output, or None if missing items.
     pub fn craft(&self, db: &ItemDb, f: &mut Farmer) -> Option<Item> {
-        if !self.can_craft(db, f) {
+        self.craft_from(db, &mut [&mut f.inventory])
+    }
+
+    /// Consume ingredients from the inventories in order (e.g. backpack,
+    /// then fridge) and return the output.
+    pub fn craft_from(&self, db: &ItemDb, invs: &mut [&mut Inventory]) -> Option<Item> {
+        let shared: Vec<&Inventory> = invs.iter().map(|i| &**i).collect();
+        if !self.can_craft_from(db, &shared) {
             return None;
         }
         for (ing, n) in &self.ingredients {
             let mut left = *n;
-            for i in 0..f.inventory.capacity() {
-                if left <= 0 {
-                    break;
+            for inv in invs.iter_mut() {
+                for i in 0..inv.capacity() {
+                    if left <= 0 {
+                        break;
+                    }
+                    let Some(item) = inv.get(i) else { continue };
+                    if !Self::matches(db, item, ing) {
+                        continue;
+                    }
+                    let take = item.stack().min(left);
+                    inv.reduce(i, take);
+                    left -= take;
                 }
-                let Some(item) = f.inventory.get(i) else { continue };
-                if !Self::matches(db, item, ing) {
-                    continue;
-                }
-                let take = item.stack().min(left);
-                f.inventory.reduce(i, take);
-                left -= take;
             }
         }
         Some(self.output())

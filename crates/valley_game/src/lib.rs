@@ -1852,10 +1852,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
         Menu::Chest { tile, hovered } => {
             let f = menu_frame(sw, sh);
             ui.panel(f);
-            let chest = match w.location().object(*tile).map(|o| &o.kind) {
-                Some(valley_sim::objects::ObjKind::Chest(inv)) => Some(inv.clone()),
-                _ => None,
-            };
+            let chest = w.container(*tile).cloned();
             let (prow, crow) = chest_rects(sw, sh);
             for (i, r) in crow.iter().enumerate() {
                 ui.slot(*r, *hovered == Some((false, i)));
@@ -1889,7 +1886,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
             for (i, (r, name)) in recipe_rects(sw, sh).iter().zip(&names).enumerate() {
                 let recipe = &w.cooking[name];
-                let can = recipe.can_craft(&w.items, &w.farmer);
+                let can = recipe.can_craft_from(&w.items, &[&w.farmer.inventory, &w.farmer.fridge]);
                 ui.slot(*r, *hovered == Some(i));
                 let (tex, src) = item_sprite(rc, w, &recipe.output());
                 let inner = FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0);

@@ -39,6 +39,18 @@ pub struct DayReport {
 
 /// Things the front end should react to (sounds, UI, transitions).
 /// Minutes a paid trip (Port.Travel) takes.
+/// Sentinel "tile" that addresses the kitchen fridge in chest menus.
+pub const FRIDGE_TILE: TilePos = TilePos { x: -1, y: -1 };
+
+/// Move a stack from `player` slot into `store` (or back).
+fn move_stack(player: &mut crate::inventory::Inventory, store: &mut crate::inventory::Inventory, from_player: bool, slot: usize) {
+    let (src, dst) = if from_player { (player, store) } else { (store, player) };
+    let Some(item) = src.take(slot) else { return };
+    if let Some(left) = dst.add(item) {
+        src.slots[slot] = Some(left);
+    }
+}
+
 pub const TRAVEL_MINUTES: i32 = 30;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -169,6 +181,7 @@ pub struct World {
     pub order_offers: Vec<String>,
     /// The spouse will ask about a baby when next spoken to.
     pub child_question_pending: bool,
+    pub fish_pond_data: Vec<crate::fish_ponds::FishPondData>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -306,6 +319,7 @@ impl World {
             special_orders: cm.load_json("Data/SpecialOrders").unwrap_or_default(),
             order_offers: Vec::new(),
             child_question_pending: false,
+            fish_pond_data: cm.load_json("Data/FishPondData").unwrap_or_default(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -726,6 +740,7 @@ impl World {
         self.tick_quest_days();
         self.tick_orders();
         self.children_night();
+        self.ponds_overnight();
         if let Some((tool, days)) = self.farmer.tool_upgrade.as_mut() {
             *days -= 1;
             if *days <= 0 {
@@ -1188,7 +1203,7 @@ impl World {
         if self.crab_pot_action(target) || self.place_bomb(target) || self.place_furniture(target) || self.pickup_furniture(target) {
             return true;
         }
-        if self.interact_building(target) {
+        if self.interact_pond(target) || self.interact_building(target) {
             return true;
         }
         if self.place_hay(target) {
@@ -1372,6 +1387,11 @@ impl World {
             }
             "Museum" | "MuseumMenu" | "Gunther" => {
                 self.emit(WorldEvent::OpenMuseum);
+                true
+            }
+            "Fridge" | "fridge" => {
+                self.sound("openChest");
+                self.emit(WorldEvent::OpenChest(FRIDGE_TILE));
                 true
             }
             "kitchen" | "Kitchen" => {
@@ -2035,8 +2055,25 @@ impl World {
         true
     }
 
-    /// Move a stack between the farmer's inventory and a chest.
+    /// The storage behind a chest menu: a placed chest here, or the fridge.
+    pub fn container(&self, tile: TilePos) -> Option<&crate::inventory::Inventory> {
+        if tile == FRIDGE_TILE {
+            return Some(&self.farmer.fridge);
+        }
+        match self.location().object(tile).map(|o| &o.kind) {
+            Some(crate::objects::ObjKind::Chest(inv)) => Some(inv),
+            _ => None,
+        }
+    }
+
+    /// Move a stack between the farmer's inventory and a chest (or fridge).
     pub fn chest_transfer(&mut self, chest: TilePos, from_player: bool, slot: usize) {
+        if chest == FRIDGE_TILE {
+            let f = &mut self.farmer;
+            move_stack(&mut f.inventory, &mut f.fridge, from_player, slot);
+            self.sound("pickUpItem");
+            return;
+        }
         let loc_name = self.current.clone();
         let Some(loc) = self.locations.get_mut(&loc_name) else { return };
         let Some(crate::objects::PlacedObject { kind: crate::objects::ObjKind::Chest(inv), .. }) = loc.state.objects.get_mut(&chest) else { return };

@@ -37,6 +37,7 @@ pub mod arsenal;
 pub mod cart;
 pub mod special_orders;
 pub mod children;
+pub mod fish_ponds;
 pub mod professions;
 pub mod progress;
 pub mod quests;

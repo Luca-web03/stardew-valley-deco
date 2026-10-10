@@ -19,7 +19,8 @@ impl World {
             return false;
         }
         let items = self.items.clone();
-        let Some(item) = r.craft(&items, &mut self.farmer) else {
+        let f = &mut self.farmer;
+        let Some(item) = r.craft_from(&items, &mut [&mut f.inventory, &mut f.fridge]) else {
             self.sound("cancel");
             return false;
         };

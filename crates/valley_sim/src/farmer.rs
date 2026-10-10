@@ -211,6 +211,9 @@ pub struct Farmer {
     pub orders_completed: Vec<String>,
     #[serde(default)]
     pub children: Vec<crate::children::Child>,
+    /// Kitchen fridge storage (cooking draws ingredients from it too).
+    #[serde(default = "fridge_inventory")]
+    pub fridge: Inventory,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -300,6 +303,7 @@ impl Farmer {
             special_order: None,
             orders_completed: Vec::new(),
             children: Vec::new(),
+            fridge: fridge_inventory(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),
@@ -425,4 +429,10 @@ mod tests {
             assert_eq!(f.tile(), t);
         }
     }
+}
+
+pub const FRIDGE_SLOTS: usize = 36;
+
+fn fridge_inventory() -> Inventory {
+    Inventory::new(FRIDGE_SLOTS)
 }

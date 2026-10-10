@@ -477,6 +477,7 @@ pub struct BuildingData {
     pub max_occupants: i32,
     pub valid_occupant_types: Vec<String>,
     pub build_condition: Option<String>,
+    pub custom_fields: Option<BTreeMap<String, String>>,
 }
 
 impl Default for BuildingData {
@@ -497,6 +498,7 @@ impl Default for BuildingData {
             max_occupants: 0,
             valid_occupant_types: vec![],
             build_condition: None,
+            custom_fields: None,
         }
     }
 }

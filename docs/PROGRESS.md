@@ -38,7 +38,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Weapon special moves (block, flurry, slam; approx. timings),
       slingshot with ammo and projectiles
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
-      friendship), farmhouse upgrades
+      friendship), farmhouse upgrades, kitchen fridge, fish ponds
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
       gifts, friendship, dating, marriage, spouse, children (approx. timings)
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
