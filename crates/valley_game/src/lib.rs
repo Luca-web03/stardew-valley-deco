@@ -33,7 +33,7 @@ enum Field {
 enum Screen {
     Title { hovered: Option<usize> },
     LoadList { selected: usize },
-    Create { name: String, farm: String, favorite: String, male: bool, field: Field },
+    Create { name: String, farm: String, favorite: String, male: bool, field: Field, look: valley_sim::farmer::Appearance },
     Playing,
 }
 
@@ -208,7 +208,7 @@ impl ValleyGame {
         let choice = if click { hovered } else if ctx.input.pressed(Key::N) || ctx.input.pressed(Key::Enter) { Some(0) } else if ctx.input.pressed(Key::Escape) { Some(2) } else { None };
         match choice {
             Some(0) => {
-                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name };
+                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name, look: Default::default() };
             }
             Some(1) => self.screen = Screen::LoadList { selected: 0 },
             Some(2) => ctx.quit_requested = true,
@@ -255,7 +255,7 @@ impl ValleyGame {
     }
 
     fn update_create(&mut self, ctx: &mut EngineCtx) {
-        let Screen::Create { name, farm, favorite, male, field } = &mut self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look } = &mut self.screen else { return };
         if ctx.input.pressed(Key::Escape) {
             self.screen = Screen::Title { hovered: None };
             return;
@@ -293,6 +293,24 @@ impl ValleyGame {
             } else if rects[3].contains(m) {
                 *male = !*male;
             }
+            use valley_sim::farmer::{HAIR_COLORS, PANTS_COLORS, SHIRT_COLORS, SKIN_TONES};
+            let cycle = |cur: [u8; 3], list: &[[u8; 3]], d: i32| -> [u8; 3] {
+                let i = list.iter().position(|c| *c == cur).unwrap_or(0) as i32;
+                list[(i + d).rem_euclid(list.len() as i32) as usize]
+            };
+            for (row, (left, right)) in look_rects(sw, sh).iter().enumerate() {
+                let d = if left.contains(m) { -1 } else if right.contains(m) { 1 } else { 0 };
+                if d == 0 {
+                    continue;
+                }
+                match row {
+                    0 => look.skin = cycle(look.skin, SKIN_TONES, d),
+                    1 => look.hair = cycle(look.hair, HAIR_COLORS, d),
+                    2 => look.shirt = cycle(look.shirt, SHIRT_COLORS, d),
+                    3 => look.pants = cycle(look.pants, PANTS_COLORS, d),
+                    _ => look.long_hair = !look.long_hair,
+                }
+            }
         }
         let ok = ctx.input.pressed(Key::Enter) || (ctx.input.mouse_pressed(MouseButton::Left) && rects[4].contains(ctx.input.mouse));
         if ok && !name.trim().is_empty() {
@@ -300,6 +318,7 @@ impl ValleyGame {
                 std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(1)
             });
             let opts = NewGame {
+                appearance: look.clone(),
                 farmer_name: name.trim().to_string(),
                 farm_name: if farm.trim().is_empty() { "Valley".into() } else { farm.trim().to_string() },
                 favorite_thing: favorite.trim().to_string(),
@@ -1030,12 +1049,28 @@ impl ValleyGame {
     fn draw_create(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
         let (sw, sh) = (ctx.screen_w as f32, ctx.screen_h as f32);
         out.clear(Color::rgb(60, 90, 60));
-        let Screen::Create { name, farm, favorite, male, field } = &self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look } = &self.screen else { return };
+        let look = look.clone();
+        let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
+        let farmer_tex = valley_render::world_draw::farmer_texture(&mut rc, &look);
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
-        ui.panel(FRect::new(sw / 2.0 - 360.0, sh / 2.0 - 260.0, 720.0, 520.0));
-        ui.text_centered("New Farmer", sw / 2.0, sh / 2.0 - 230.0, 3.0, ui::TEXT);
+        let cx = create_cx(sw);
+        ui.panel(FRect::new(cx - 360.0, sh / 2.0 - 260.0, 720.0, 520.0));
+        let lp = look_panel(sw, sh);
+        ui.panel(lp);
+        let preview_frame = ((ctx.tick / 12) % 4) as i32;
+        let dir_row = ((ctx.tick / 120) % 4) as i32;
+        ui.slot(FRect::new(lp.x + lp.w / 2.0 - 70.0, lp.y + 30.0, 140.0, 180.0), false);
+        ui.icon(farmer_tex, IRect::new(preview_frame * 16, dir_row * 32, 16, 32), FRect::new(lp.x + lp.w / 2.0 - 40.0, lp.y + 40.0, 80.0, 160.0));
+        for (i, ((l, r), label)) in look_rects(sw, sh).iter().zip(["Skin", "Hair", "Shirt", "Pants", "Style"]).enumerate() {
+            let _ = i;
+            ui.button(*l, "<", false);
+            ui.button(*r, ">", false);
+            ui.text_centered(label, (l.x + l.w + r.x) / 2.0, l.y + 14.0, 2.0, ui::TEXT);
+        }
+        ui.text_centered("New Farmer", cx, sh / 2.0 - 230.0, 3.0, ui::TEXT);
         let rects = create_rects(sw, sh);
         let caret = if (ctx.tick / 30) % 2 == 0 { "_" } else { " " };
         for (i, (label, value, f)) in [("Name", name, Field::Name), ("Farm Name", farm, Field::Farm), ("Favorite Thing", favorite, Field::Favorite)].into_iter().enumerate() {
@@ -1047,7 +1082,7 @@ impl ValleyGame {
         }
         ui.button(rects[3], if *male { "Male" } else { "Female" }, false);
         ui.button(rects[4], "OK", !name.trim().is_empty());
-        ui.text_centered("Tab: next field   Enter: start   Esc: back", sw / 2.0, sh / 2.0 + 220.0, 2.0, ui::TEXT);
+        ui.text_centered("Tab: next field   Enter: start   Esc: back", cx, sh / 2.0 + 220.0, 2.0, ui::TEXT);
     }
 
     fn draw_placement(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
@@ -1156,8 +1191,13 @@ fn load_row_rect(sw: f32, i: usize) -> FRect {
     FRect::new(sw / 2.0 - 360.0, 120.0 + i as f32 * 84.0, 720.0, 72.0)
 }
 
+/// Center of the name/farm form (shifted left to make room for the look panel).
+fn create_cx(sw: f32) -> f32 {
+    sw / 2.0 - 190.0
+}
+
 fn create_rects(sw: f32, sh: f32) -> [FRect; 5] {
-    let x = sw / 2.0 - 280.0;
+    let x = create_cx(sw) - 280.0;
     let y = sh / 2.0 - 150.0;
     [
         FRect::new(x, y, 560.0, 44.0),
@@ -1166,6 +1206,19 @@ fn create_rects(sw: f32, sh: f32) -> [FRect; 5] {
         FRect::new(x, y + 250.0, 200.0, 56.0),
         FRect::new(x + 360.0, y + 250.0, 200.0, 56.0),
     ]
+}
+
+/// (left, right) arrow buttons for skin, hair, shirt, pants, hair style.
+fn look_panel(sw: f32, sh: f32) -> FRect {
+    FRect::new(create_cx(sw) + 380.0, sh / 2.0 - 260.0, 360.0, 520.0)
+}
+
+fn look_rects(sw: f32, sh: f32) -> Vec<(FRect, FRect)> {
+    let p = look_panel(sw, sh);
+    (0..5).map(|i| {
+        let y = p.y + 230.0 + i as f32 * 54.0;
+        (FRect::new(p.x + 30.0, y, 44.0, 44.0), FRect::new(p.x + p.w - 74.0, y, 44.0, 44.0))
+    }).collect()
 }
 
 fn dialogue_box(sw: f32, sh: f32) -> FRect {

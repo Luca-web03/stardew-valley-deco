@@ -177,7 +177,7 @@ impl World {
             let (Ok(x), Ok(y)) = (c[1].parse::<i32>(), c[2].parse::<i32>()) else { continue };
             let facing = c[3].parse::<i32>().map(Dir::from_index).unwrap_or(Dir::Down);
             let texture = if c[0] == "farmer" {
-                "Characters/Farmer/dev_farmer".to_string()
+                self.farmer.appearance.texture_name()
             } else {
                 self.npcs.iter().find(|n| n.name == c[0]).map(|n| n.texture.clone()).unwrap_or_else(|| format!("Characters/{}", c[0]))
             };

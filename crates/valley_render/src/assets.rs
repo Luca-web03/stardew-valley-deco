@@ -100,6 +100,16 @@ impl Assets {
         id
     }
 
+    /// A texture generated in code, cached by name.
+    pub fn generated(&mut self, store: &mut TextureStore, name: &str, make: impl FnOnce() -> Image) -> TexId {
+        if let Some(&t) = self.cache.get(name) {
+            return t;
+        }
+        let id = store.insert(name.to_string(), make());
+        self.cache.insert(name.to_string(), id);
+        id
+    }
+
     /// Like [`Assets::tex`] but returns None if the asset doesn't exist.
     pub fn try_tex(&mut self, cm: &mut ContentManager, store: &mut TextureStore, asset: &str) -> Option<TexId> {
         let t = self.tex(cm, store, asset);

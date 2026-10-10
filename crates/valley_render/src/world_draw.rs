@@ -251,7 +251,7 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     if let Some(e) = event_here {
         let shadow = rc.assets.shadow(rc.textures);
         for a in &e.actors {
-            let tex = rc.assets.tex(rc.cm, rc.textures, &a.texture);
+            let tex = if a.texture.starts_with("__farmer/") { farmer_texture(rc, &w.farmer.appearance) } else { rc.assets.tex(rc.cm, rc.textures, &a.texture) };
             let frame = if a.moving.is_some() { ((a.walk_ms / 150) % 4) as i32 } else { 0 };
             let p = cam.to_screen(a.pos);
             let depth = sort_depth(a.pos.y + TILE_F, map_h);
@@ -359,7 +359,7 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
 
 fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
     let f = &w.farmer;
-    let tex = rc.assets.tex(rc.cm, rc.textures, "Characters/Farmer/dev_farmer");
+    let tex = farmer_texture(rc, &f.appearance);
     let shadow = rc.assets.shadow(rc.textures);
     let p = cam.to_screen(f.pos);
     let depth = sort_depth(f.pos.y + TILE_F, map_h);
@@ -642,4 +642,12 @@ fn draw_fishing_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &C
             }
         }
     }
+}
+
+/// The farmer's sprite sheet, generated from the original placeholder
+/// character art recolored to the chosen appearance.
+pub fn farmer_texture(rc: &mut RenderCtx, a: &valley_sim::farmer::Appearance) -> engine::TexId {
+    let c = |v: [u8; 3]| Color::rgb(v[0], v[1], v[2]);
+    let look = valley_content::dev::art::Look { skin: c(a.skin), hair: c(a.hair), shirt: c(a.shirt), legs: c(a.pants), long_hair: a.long_hair, beard: false };
+    rc.assets.generated(rc.textures, &a.texture_name(), || valley_content::dev::art::character(&look))
 }

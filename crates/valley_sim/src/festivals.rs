@@ -104,7 +104,7 @@ impl World {
                     name: "farmer".into(),
                     pos: Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F - 16.0),
                     facing: self.farmer.facing,
-                    texture: "Characters/Farmer/dev_farmer".into(),
+                    texture: self.farmer.appearance.texture_name(),
                     moving: None,
                     walk_ms: 0,
                     emote: None,

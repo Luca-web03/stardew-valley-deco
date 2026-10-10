@@ -89,6 +89,7 @@ pub struct DroppedItem {
 }
 
 pub struct NewGame {
+    pub appearance: crate::farmer::Appearance,
     pub farmer_name: String,
     pub farm_name: String,
     pub favorite_thing: String,
@@ -98,7 +99,7 @@ pub struct NewGame {
 
 impl Default for NewGame {
     fn default() -> Self {
-        Self { farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345 }
+        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345 }
     }
 }
 
@@ -219,6 +220,7 @@ impl World {
 
         let mut farmer = Farmer::new(&opts.farmer_name, &opts.farm_name);
         farmer.favorite_thing = opts.favorite_thing.clone();
+        farmer.appearance = opts.appearance.clone();
         farmer.male = opts.male;
 
         let mut w = World {
