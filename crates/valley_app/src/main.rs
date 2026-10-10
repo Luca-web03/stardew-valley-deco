@@ -9,6 +9,7 @@
 //! The content folder can also be set with the VALLEY_CONTENT env var.
 
 mod audio;
+mod gamepad;
 mod headless;
 mod window;
 

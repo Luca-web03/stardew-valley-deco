@@ -89,6 +89,8 @@ pub fn run(args: Args) {
         host.add(Box::new(game));
         let mut gpu = GpuTextures::default();
         let mut list = DrawList::new(args.width, args.height);
+        let mut pads = crate::gamepad::Gamepads::new();
+        let mut last_os_mouse = (f32::NAN, f32::NAN);
         loop {
             // Logical resolution follows the window (UI lays out to it).
             let (ww, wh) = (mq::screen_width(), mq::screen_height());
@@ -108,8 +110,13 @@ pub fn run(args: Args) {
                     host.ctx.input.text.push(c);
                 }
             }
+            // Take the OS cursor only when it moves, so a gamepad-driven
+            // cursor isn't snapped back every frame.
             let (mx, my) = mq::mouse_position();
-            host.ctx.input.mouse = Vec2::new(mx, my);
+            if (mx, my) != last_os_mouse {
+                host.ctx.input.mouse = Vec2::new(mx, my);
+                last_os_mouse = (mx, my);
+            }
             for (mb, b) in [(mq::MouseButton::Left, MouseButton::Left), (mq::MouseButton::Right, MouseButton::Right), (mq::MouseButton::Middle, MouseButton::Middle)] {
                 if mq::is_mouse_button_pressed(mb) {
                     host.ctx.input.mouse_down(b);
@@ -122,6 +129,7 @@ pub fn run(args: Args) {
             if wheel != 0.0 {
                 host.ctx.input.wheel = wheel.signum();
             }
+            pads.poll(&mut host.ctx.input, (host.ctx.screen_w as f32, host.ctx.screen_h as f32));
 
             // Run at least one tick per frame so single-frame presses register.
             if host.advance(mq::get_frame_time() as f64) == 0 {
