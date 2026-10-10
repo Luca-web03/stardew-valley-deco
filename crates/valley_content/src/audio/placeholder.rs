@@ -18,6 +18,7 @@ pub const KNOWN_CUES: &[&str] = &[
     "cut", "weed_cut", "passOut", "doorClose", "harvest", "Ship", "cancel", "purchase", "purchaseClick", "give_gift",
     "gulp", "eat", "dirtyHit", "coin", "crafting", "pickUpItem", "openChest", "dwop", "stoneStep", "grassyStep",
     "bigSelect", "bigDeSelect", "smallSelect", "toolSwap", "seeds", "drumkit6", "newArtifact", "stoneCrack",
+    "dog_bark", "trashcan",
 ];
 
 use Wave::{Noise, Saw, Sine, Square, Triangle};
@@ -194,6 +195,17 @@ pub fn sound(cue: &str) -> Option<SoundBuffer> {
             for (i, m) in [79.0, 83.0, 86.0, 91.0].iter().enumerate() {
                 s.add(n(Sine, i as f32 * 0.09, 0.4, midi_hz(*m)).vol(0.3).decay(0.15));
             }
+        }
+        "dog_bark" => {
+            for t in [0.0, 0.18] {
+                s.add(n(Saw, t, 0.09, 420.0).glide(260.0).vol(0.35).attack(0.005).decay(0.04));
+                s.add(noise(t, 0.06, 0.6).vol(0.25).decay(0.03));
+            }
+        }
+        "trashcan" => {
+            s.add(n(Square, 0.0, 0.2, 520.0).glide(470.0).vol(0.2).decay(0.07));
+            s.add(noise(0.0, 0.18, 0.4).vol(0.4).decay(0.06));
+            s.add(noise(0.12, 0.12, 0.5).vol(0.3).decay(0.05));
         }
         _ => return None,
     }

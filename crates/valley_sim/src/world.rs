@@ -191,6 +191,12 @@ pub struct World {
     pub trap_fish: Vec<crate::equipment::TrapFish>,
     /// Farmhouse maps by upgrade level (1.., from Maps/FarmHouse<N>).
     pub house_maps: BTreeMap<i32, valley_content::Map>,
+    pub pet: Option<crate::pets::Pet>,
+    /// Pet sheet assets that exist in content.
+    pub pet_textures: Vec<String>,
+    pub garbage: Option<crate::pets::GarbageData>,
+    /// Trash cans searched today ("Location:id").
+    pub garbage_searched: Vec<String>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -305,6 +311,10 @@ impl World {
             explosions: Vec::new(),
             trap_fish: cm.load_string_dict("Data/Fish").iter().filter_map(|(k, v)| crate::equipment::parse_trap(k, v)).collect(),
             house_maps: (1..=3).filter_map(|i| cm.load_map(&format!("Maps/FarmHouse{i}")).map(|m| (i, m))).collect(),
+            pet: None,
+            pet_textures: ["Animals/dog", "Animals/Dev_Dog"].iter().filter(|t| cm.exists(t)).map(|s| s.to_string()).collect(),
+            garbage: cm.load_json("Data/GarbageCans"),
+            garbage_searched: Vec::new(),
         };
         w.trap_fish.sort_by(|a, b| a.id.cmp(&b.id));
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
@@ -365,6 +375,7 @@ impl World {
             }
         }
         w.populate_new_farm();
+        w.adopt_pet("Biscuit");
         let mut grass_rng = Rng::new(Rng::seed_from(&[w.seed as i64, 88]));
         w.seed_grass(&mut grass_rng);
         w.farmer.mailbox.push("welcome".into());
@@ -621,6 +632,7 @@ impl World {
         }
         self.update_npc_schedules();
         self.spouse_morning();
+        self.pet_morning();
     }
 
     /// End the day (sleep or pass out) and start the next one.
@@ -734,6 +746,8 @@ impl World {
         self.crab_pots_overnight();
         self.house_overnight();
         self.grass_overnight();
+        self.check_achievements();
+        self.garbage_searched.clear();
         self.spawn_daily_debris();
         self.leave_mines();
         self.bombs.clear();
@@ -833,6 +847,7 @@ impl World {
         self.update_monsters(dt);
         self.update_bombs(dt);
         self.update_animals(dt);
+        self.update_pet(dt);
         self.update_dropped(dt);
     }
 
@@ -1120,8 +1135,8 @@ impl World {
             return true;
         }
 
-        // Farm animals and buildings.
-        if self.pet_animal(target) {
+        // Farm animals, the pet and buildings.
+        if self.pet_animal(target) || self.pet_the_pet(target) {
             return true;
         }
         // Trees: tappers and fruit.
@@ -1283,6 +1298,10 @@ impl World {
                 true
             }
             "HayHopper" | "hayHopper" => self.hay_hopper(),
+            "Garbage" => {
+                let can = toks.get(1).copied().unwrap_or("default").to_string();
+                self.search_garbage(&can)
+            }
             "Blacksmith" => {
                 self.emit(WorldEvent::OpenBlacksmith);
                 true

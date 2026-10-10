@@ -36,6 +36,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
     m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
+    m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
@@ -478,6 +479,21 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Workshop/0": "Builder's Bundle/BO Dev_Juicer 1/388 50 0 390 50 0 771 20 0/2/3/Builder's Bundle",
             "Workshop/1": "Smith's Bundle/O Dev_IronBar 3/Dev_CopperBar 2 0 Dev_Quartz 1 0 Dev_Coal 5 0/3/3/Smith's Bundle",
             "Workshop/2": "Repair Fund/O Dev_GoldBar 1/-1 1000 1000/4/1/Repair Fund"
+        })),
+        ("Data/GarbageCans", json!({
+            "DefaultChanceToFindItem": 0.25,
+            "BeforeAll": [],
+            "AfterAll": [{ "ItemId": "Dev_Twig", "MinStack": 1, "MaxStack": 2 }],
+            "GarbageCans": {
+                "Dev_Store": { "BaseChance": 0.5, "Items": [
+                    { "ItemId": "Dev_Bread", "MinStack": 1, "MaxStack": 1 },
+                    { "ItemId": "Dev_Berry", "MinStack": 1, "MaxStack": 3 }
+                ]},
+                "Dev_House": { "Items": [
+                    { "ItemId": "Dev_Driftwood", "MinStack": 1, "MaxStack": 1 },
+                    { "ItemId": "Dev_Geode", "MinStack": 1, "MaxStack": 1 }
+                ]}
+            }
         })),
         ("Data/MuseumRewards", json!({
             "first_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 1 }], "RewardItemId": "(O)Dev_SpeedGro", "RewardItemCount": 5 },

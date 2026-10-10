@@ -39,7 +39,9 @@ were not available; such values are isolated constants that can be tuned.
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
       gifts, friendship, dating, marriage, spouse
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,
-      collections
+      collections, achievements (engine-defined milestones)
+- [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
+      trash cans (Data/GarbageCans)
 - [x] Cutscene events (core command subset), festivals
 - [x] Skills, professions, level-up screen
 - [x] Saves (JSON), title screen, character creation, load list
@@ -51,8 +53,8 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Pets, children, special orders, achievements, trash cans, slingshot,
-      weapon special moves, traveling cart
+- [ ] Children, special orders, slingshot, weapon special moves,
+      traveling cart
 - [ ] Special-area mechanics beyond generic maps (desert, island, skull
       cavern, volcano)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer

@@ -207,6 +207,7 @@ impl World {
         if let Some(TerrainFeature::HoeDirt(d)) = self.location_mut().terrain_mut(t) {
             d.watered = true;
         }
+        self.fill_pet_bowl(t);
         self.sound("wateringCan");
     }
 

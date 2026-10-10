@@ -244,6 +244,8 @@ pub struct Farmer {
     /// Fish caught (id -> (count, largest size)).
     #[serde(default)]
     pub fish_caught: BTreeMap<String, (i32, i32)>,
+    #[serde(default)]
+    pub achievements: Vec<String>,
 }
 
 impl Farmer {
@@ -301,6 +303,7 @@ impl Farmer {
             hay_storage: 0,
             shipped: BTreeMap::new(),
             fish_caught: BTreeMap::new(),
+            achievements: Vec::new(),
         }
     }
 

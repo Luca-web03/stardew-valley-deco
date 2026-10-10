@@ -30,6 +30,8 @@ pub struct SaveData {
     pub buildings: Vec<crate::farm::Building>,
     #[serde(default)]
     pub animals: Vec<crate::farm::FarmAnimal>,
+    #[serde(default)]
+    pub pet: Option<crate::pets::Pet>,
 }
 
 impl SaveData {
@@ -47,6 +49,7 @@ impl SaveData {
             shipping_bin: w.shipping_bin.clone(),
             buildings: w.buildings.clone(),
             animals: w.animals.clone(),
+            pet: w.pet.clone(),
         }
     }
 
@@ -78,6 +81,9 @@ impl SaveData {
         }
         w.rebuild_location_edges();
         w.animals = self.animals;
+        if self.pet.is_some() {
+            w.pet = self.pet;
+        }
         w.next_animal_id = w.animals.iter().map(|a| a.id).max().unwrap_or(0);
         for (name, state) in self.locations {
             if let Some(loc) = w.locations.get_mut(&name) {

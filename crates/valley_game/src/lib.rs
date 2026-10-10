@@ -1705,7 +1705,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     // Everything sellable, colored once shipped or caught.
                     let ids: Vec<&String> = w.items.objects.iter().filter(|(_, o)| o.data.price > 0 && o.data.kind != "Litter").map(|(k, _)| k).collect();
                     let cols = 14;
-                    for (n, id) in ids.iter().enumerate().take(cols * 6) {
+                    for (n, id) in ids.iter().enumerate().take(cols * 4) {
                         let r = FRect::new(f.x + 40.0 + (n % cols) as f32 * 62.0, f.y + 40.0 + (n / cols) as f32 * 62.0, 56.0, 56.0);
                         ui.slot(r, false);
                         let got = w.farmer.shipped.contains_key(*id) || w.farmer.fish_caught.contains_key(*id) || w.farmer.bundles.museum.contains(id);
@@ -1717,6 +1717,17 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                         } else {
                             ui.icon_tinted(tex, src, inner, Color::rgba(40, 30, 25, 160));
                         }
+                    }
+                    // Achievements: three columns, earned ones in gold.
+                    let earned = w.farmer.achievements.len();
+                    ui.text(&format!("Achievements ({earned}/{})", valley_sim::pets::ACHIEVEMENTS.len()), Vec2::new(f.x + 40.0, f.y + 300.0), 2.0, ui::TEXT);
+                    for (i, a) in valley_sim::pets::ACHIEVEMENTS.iter().enumerate() {
+                        let x = f.x + 40.0 + (i % 3) as f32 * 290.0;
+                        let y = f.y + 326.0 + (i / 3) as f32 * 32.0;
+                        let got = w.farmer.achievements.iter().any(|g| g == a.id);
+                        ui.fill(FRect::new(x, y, 22.0, 22.0), if got { Color::rgb(240, 180, 40) } else { Color::rgb(190, 165, 130) });
+                        let label = if got { a.name.to_string() } else { "???".to_string() };
+                        ui.text(&label, Vec2::new(x + 30.0, y + 4.0), 2.0, if got { ui::TEXT } else { Color::rgb(150, 120, 90) });
                     }
                     let shipped: i32 = w.farmer.shipped.values().sum();
                     let fish: i32 = w.farmer.fish_caught.values().map(|v| v.0).sum();

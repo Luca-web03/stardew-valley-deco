@@ -157,6 +157,8 @@ pub fn farm() -> Map {
     b.prop("Warp", &format!("{} 13 Town 1 15 {} 14 Town 1 16", w, w));
     b.prop("ShippingBinTile", "27 9");
     b.prop("FarmHouseEntry", "21 9");
+    b.set("Back", 17, 10, PET_BOWL);
+    b.prop("PetBowlTile", "17 10");
     b.prop("SpawnDebris", "T");
     b.map
 }
@@ -260,6 +262,8 @@ pub fn town() -> Map {
     b.set("Buildings", 5, 1, CLIFF);
     b.set("Buildings", 20, 14, LAMP);
     b.set("Buildings", 28, 14, LAMP);
+    b.set_props("Buildings", 19, 9, GARBAGE, &[("Action", "Garbage Dev_Store")]);
+    b.set_props("Buildings", 8, 8, GARBAGE, &[("Action", "Garbage Dev_House")]);
     b.prop("Warp", "-1 15 Farm 46 13 -1 16 Farm 46 14 3 0 Mine 5 8");
     b.map
 }

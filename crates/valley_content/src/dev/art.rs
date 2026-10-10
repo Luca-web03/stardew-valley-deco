@@ -30,6 +30,8 @@ pub const LAMP: i32 = 28;
 pub const BRIDGE: i32 = 30;
 pub const TREE_TOP: i32 = 31;
 pub const BIN: i32 = 32;
+pub const GARBAGE: i32 = 33;
+pub const PET_BOWL: i32 = 34;
 
 // Indoor sheet tile indices.
 pub const FLOOR: i32 = 0;
@@ -209,6 +211,24 @@ pub fn outdoors(season: &str) -> Image {
             c.rect(x, 7, 1, 9, shade(wood, -30));
         }
         c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, GARBAGE, OUT_COLS, 16, 16);
+        let metal = Color::rgb(120, 135, 140);
+        c.rect(3, 5, 10, 11, metal);
+        for x in (5..12).step_by(3) {
+            c.rect(x, 6, 1, 9, shade(metal, -25));
+        }
+        c.rect(2, 3, 12, 2, shade(metal, 20));
+        c.rect(7, 1, 2, 2, shade(metal, -20));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, PET_BOWL, OUT_COLS, 16, 16);
+        c.noise(g, 6, 1);
+        c.ellipse(8.0, 11.0, 7.0, 4.0, OUTLINE);
+        c.ellipse(8.0, 11.0, 6.0, 3.0, Color::rgb(70, 110, 190));
+        c.ellipse(8.0, 10.0, 4.0, 1.5, Color::rgb(40, 60, 110));
     }
     img
 }
@@ -1226,6 +1246,56 @@ pub fn goat() -> Image {
                 }
                 c.rect(12, 25, 2, 5 - step, dark);
                 c.rect(18, 25, 2, 5, dark);
+            }
+            c.auto_outline(OUTLINE);
+        }
+    }
+    img
+}
+
+/// Farm dog: 4x4 frames of 32x32 (rows down, right, up, left). Original
+/// design: a brown mutt with a white chest patch and a dark ear.
+pub fn dog() -> Image {
+    let mut img = Image::new(128, 128);
+    let fur = Color::rgb(165, 110, 65);
+    let dark = Color::rgb(95, 60, 35);
+    let white = Color::rgb(240, 235, 225);
+    for row in 0..4 {
+        for f in 0..4 {
+            let mut c = Cell { ox: f * 32, oy: row * 32, w: 32, h: 32, img: &mut img };
+            let step = if f % 2 == 1 { 1 } else { 0 };
+            if row == 1 || row == 3 {
+                let right = row == 1;
+                let hx = if right { 24 } else { 8 };
+                let tail = if right { 5 } else { 27 };
+                c.ellipse(16.0, 20.0, 9.0, 5.0, fur);
+                c.ellipse(hx as f32, 14.0, 4.5, 4.0, fur);
+                let snout = if right { hx + 4 } else { hx - 6 };
+                c.rect(snout, 15, 3, 2, fur);
+                c.px(if right { snout + 2 } else { snout }, 15, OUTLINE);
+                c.rect(if right { hx - 3 } else { hx + 1 }, 10, 2, 5, dark);
+                c.px(if right { hx + 1 } else { hx - 2 }, 13, OUTLINE);
+                c.rect(if right { 18 } else { 11 }, 21, 4, 3, white);
+                c.rect(tail, 15 - step, 2, 4, fur);
+                for (lx, off) in [(10, step), (13, 0), (19, step), (22, 0)] {
+                    c.rect(lx, 24, 2, 5 - off, fur);
+                }
+            } else {
+                let front = row == 0;
+                c.ellipse(16.0, 21.0, 6.5, 7.0, fur);
+                c.ellipse(16.0, 11.0, 5.5, 5.0, fur);
+                c.rect(10, 9, 2, 6, dark);
+                c.rect(21, 9, 2, 6, fur);
+                if front {
+                    c.px(14, 11, OUTLINE);
+                    c.px(18, 11, OUTLINE);
+                    c.rect(15, 13, 3, 2, OUTLINE);
+                    c.rect(14, 18, 5, 6, white);
+                } else {
+                    c.rect(15, 25 - step, 2, 4, fur);
+                }
+                c.rect(12, 26, 2, 4 - step, fur);
+                c.rect(19, 26, 2, 4, fur);
             }
             c.auto_outline(OUTLINE);
         }

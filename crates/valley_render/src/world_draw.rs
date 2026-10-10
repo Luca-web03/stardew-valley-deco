@@ -306,6 +306,38 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // The farm pet.
+    if let Some(pet) = w.pet.as_ref().filter(|p| p.location == loc_name) {
+        let tex = rc.assets.tex(rc.cm, rc.textures, &pet.texture);
+        let frame = if pet.moving { ((pet.walk_ms / 150) % 4) as i32 } else { 0 };
+        let row = match pet.facing {
+            Dir::Down => 0,
+            Dir::Right => 1,
+            Dir::Up => 2,
+            Dir::Left => 3,
+        };
+        let (dw, dh) = (32.0 * ZOOM, 32.0 * ZOOM);
+        let p = cam.to_screen(pet.pos);
+        let depth = sort_depth(pet.pos.y + TILE_F, map_h);
+        let shadow = rc.assets.shadow(rc.textures);
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x + TILE_F / 2.0 - dw / 4.0, p.y + TILE_F - 12.0), dw / 32.0, depth - 0.0005);
+        out.sprite(Sprite::new(tex, IRect::new(frame * 32, row * 32, 32, 32), FRect::new(p.x + TILE_F / 2.0 - dw / 2.0, p.y + TILE_F - dh, dw, dh), depth));
+        if pet.emote_ms > 0 {
+            if let Some(ft) = rc.textures.id("__engine/font8x8") {
+                out.draw_tinted(ft, IRect::new(3 * 8, 0, 8, 8), Vec2::new(p.x + 20.0, p.y + TILE_F - dh + 10.0), 3.0, Color::rgb(240, 60, 90), DEPTH_OVERLAY + 0.01);
+            }
+        }
+    }
+    if loc_name == "Farm" && w.pet.as_ref().map(|p| p.bowl_filled).unwrap_or(false) {
+        if let Some(t) = w.locations.get(loc_name).and_then(|l| l.map_prop_tile("PetBowlTile")) {
+            let p = cam.to_screen(Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F));
+            let white = rc.assets.white(rc.textures);
+            let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(p.x + 4.0 * ZOOM, p.y + 9.0 * ZOOM, 8.0 * ZOOM, 2.0 * ZOOM), DEPTH_GROUND + 0.001);
+            s.tint = Color::rgba(130, 200, 255, 230);
+            out.sprite(s);
+        }
+    }
+
     // Event actors take the place of NPCs and the farmer.
     let event_here = w.event.as_ref().filter(|e| e.location == loc_name);
     if let Some(e) = event_here {
