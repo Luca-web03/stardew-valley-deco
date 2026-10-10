@@ -46,6 +46,8 @@ pub enum WorldEvent {
     Dialogue { npc: Option<String>, pages: Vec<DialoguePage> },
     Message(String),
     OpenShop(ShopStock),
+    /// Show the special orders board.
+    OpenOrderBoard,
     Warped { from: String, to: String },
     /// Farmer stepped into bed: ask whether to sleep.
     SleepPrompt,
@@ -155,6 +157,9 @@ pub struct World {
     pub projectiles: Vec<crate::arsenal::Projectile>,
     /// Limited-stock purchases today, keyed "shop:(T)id".
     pub shop_sold: BTreeMap<String, i32>,
+    /// Data/SpecialOrders and this week's board offers.
+    pub special_orders: BTreeMap<String, crate::special_orders::SpecialOrderData>,
+    pub order_offers: Vec<String>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -289,6 +294,8 @@ impl World {
             sling: None,
             projectiles: Vec::new(),
             shop_sold: BTreeMap::new(),
+            special_orders: cm.load_json("Data/SpecialOrders").unwrap_or_default(),
+            order_offers: Vec::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -645,6 +652,7 @@ impl World {
         self.spouse_morning();
         self.pet_morning();
         self.cart_morning();
+        self.orders_morning();
     }
 
     /// End the day (sleep or pass out) and start the next one.
@@ -656,6 +664,7 @@ impl World {
         for item in bin {
             if let Some(id) = item.object_id() {
                 *self.farmer.shipped.entry(id.to_string()).or_insert(0) += item.stack();
+                self.order_shipped(&item);
             }
             let price = self.sell_value(&item) * item.stack();
             earned += price;
@@ -704,6 +713,7 @@ impl World {
 
         let old_season = self.clock.season;
         self.tick_quest_days();
+        self.tick_orders();
         if let Some((tool, days)) = self.farmer.tool_upgrade.as_mut() {
             *days -= 1;
             if *days <= 0 {
@@ -1147,7 +1157,7 @@ impl World {
         });
         if let Some(i) = npc_idx {
             let name = self.npcs[i].name.clone();
-            if self.try_quest_delivery(&name) {
+            if self.try_quest_delivery(&name) || self.try_order_delivery(&name) {
                 return true;
             }
             self.interact_npc(i);
@@ -1318,6 +1328,7 @@ impl World {
                 true
             }
             "HayHopper" | "hayHopper" => self.hay_hopper(),
+            "SpecialOrders" => self.open_order_board(),
             "Garbage" => {
                 let can = toks.get(1).copied().unwrap_or("default").to_string();
                 self.search_garbage(&can)
@@ -1565,6 +1576,9 @@ impl World {
             points *= 8;
         }
         let slot = self.farmer.current_slot;
+        if let Some(given) = self.farmer.inventory.get(slot).cloned() {
+            self.order_gift(&name, &given);
+        }
         self.farmer.inventory.reduce(slot, 1);
         let romanceable = self.npcs[i].can_romance;
         let f = self.farmer.friendship(&name);

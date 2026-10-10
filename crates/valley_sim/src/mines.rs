@@ -287,6 +287,7 @@ impl World {
         if level > self.farmer.deepest_mine_level {
             self.farmer.deepest_mine_level = level;
         }
+        self.order_mine_floor(level);
         // Drop previous levels.
         let keep = name.clone();
         self.locations.retain(|k, _| level_of(k).is_none() || *k == keep);

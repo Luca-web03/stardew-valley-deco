@@ -429,6 +429,37 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_WorkBoots": "Work Boots/Sturdy and comfortable./300/2/0/0/Work Boots/0/55/Maps\\springobjects"
         })),
         ("Strings/Objects", strings),
+        ("Strings/SpecialOrderStrings", json!({
+            "Dev_FishFry_Name": "Riverside Fish Fry",
+            "Dev_FishFry_Text": "We're planning a fish fry down by the river this weekend. Could you catch a few for the grill?"
+        })),
+        ("Data/SpecialOrders", json!({
+            "Dev_TurnipDrive": {
+                "Name": "Turnip Drive", "Requester": "Tobin", "Duration": "Week", "Repeatable": true,
+                "Text": "The shelves are bare and folks keep asking for turnips. Bring me a crate's worth and I'll make it worth your while.",
+                "Objectives": [{ "Type": "Deliver", "Text": "Bring turnips to Tobin", "RequiredCount": "10",
+                                 "Data": { "AcceptedContextTags": "id_o_dev_turnip", "TargetName": "Tobin" } }],
+                "Rewards": [{ "Type": "Money", "Data": { "Amount": "800" } }, { "Type": "Friendship", "Data": {} }]
+            },
+            "Dev_CaveCritters": {
+                "Name": "Cave Critters", "Requester": "Mara", "Duration": "Week", "Repeatable": true,
+                "Text": "Something in the old caves keeps nibbling the lantern wicks. Thin out the blobs down there?",
+                "Objectives": [{ "Type": "Slay", "Text": "Defeat mud blobs", "RequiredCount": "10", "Data": { "TargetName": "Dev_Blob" } }],
+                "Rewards": [{ "Type": "Money", "Data": { "Amount": "1200" } }]
+            },
+            "Dev_FishFry": {
+                "Name": "[LocalizedText Strings\\SpecialOrderStrings:Dev_FishFry_Name]", "Requester": "Mara", "Duration": "Week",
+                "Text": "[LocalizedText Strings\\SpecialOrderStrings:Dev_FishFry_Text]",
+                "Objectives": [{ "Type": "Fish", "Text": "Catch fish", "RequiredCount": "5", "Data": {} }],
+                "Rewards": [{ "Type": "Money", "Data": { "Amount": "600" } }, { "Type": "Mail", "Data": { "MailReceived": "Dev_FishFryDone" } }]
+            },
+            "Dev_DeepDown": {
+                "Name": "Deep Down", "Requester": "Tobin", "Duration": "TwoWeeks", "RequiredTags": "!season_winter",
+                "Text": "My grandfather swore there's a cavern lake below the tenth floor. Care to settle the argument?",
+                "Objectives": [{ "Type": "ReachMineFloor", "Text": "Reach floor 10 of the mines", "RequiredCount": "10", "Data": {} }],
+                "Rewards": [{ "Type": "Money", "Data": { "Amount": "1500" } }]
+            }
+        })),
         ("Data/CookingRecipes", json!({
             "Garden Salad": "Dev_Turnip 1 Dev_Bean 1/1 1/Dev_Salad/default/",
             "Miner's Stew": "Dev_Pumpkin 1 Dev_Goo 2/1 1/Dev_Stew/default/"

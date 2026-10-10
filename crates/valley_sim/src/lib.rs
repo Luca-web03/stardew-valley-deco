@@ -35,6 +35,7 @@ pub mod pathfind;
 pub mod pets;
 pub mod arsenal;
 pub mod cart;
+pub mod special_orders;
 pub mod professions;
 pub mod progress;
 pub mod quests;

@@ -69,3 +69,4 @@ Other conventions:
 | Slingshot ammo damage: `Port.AmmoDamage` custom field on any object, else well-known stone/wood/ore/coal ids | `valley_sim::arsenal::ammo_damage` |
 | Traveling cart: `TravelingCartTile` map property (top-left of a 3x2 footprint), Fridays and Sundays, `Traveler` shop or a generated stock | `valley_sim::cart` |
 | Shop item queries: plain ids, `RANDOM_ITEMS (O) [min] [max] [@requirePrice] [@isRandomSale]`, `RandomItemId`, `MaxItems`, `AvailableStock` (per day) | `valley_sim::shop` |
+| Special orders: `Data/SpecialOrders` town orders (objectives Collect, Ship, Deliver, Fish, Gift, Slay, ReachMineFloor; rewards Money, Friendship, Mail; `RequiredTags` season_/mail_/event_/knows_), board via `Action SpecialOrders` | `valley_sim::special_orders` |

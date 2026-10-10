@@ -133,6 +133,7 @@ impl World {
 
     /// Count newly obtained items for harvest objectives.
     pub(crate) fn quest_obtained(&mut self, item: &Item) {
+        self.order_obtained(item);
         let Some(id) = item.object_id() else { return };
         for q in self.farmer.quests.iter_mut() {
             if let Objective::Harvest { item: want, progress, .. } = &mut q.objective {
@@ -145,6 +146,7 @@ impl World {
     }
 
     pub(crate) fn quest_killed(&mut self, monster: &str) {
+        self.order_slay(monster);
         for q in self.farmer.quests.iter_mut() {
             if let Objective::Slay { monster: want, progress, .. } = &mut q.objective {
                 if want.eq_ignore_ascii_case(monster) || want == "Any" {

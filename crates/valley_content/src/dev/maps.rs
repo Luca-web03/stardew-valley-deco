@@ -254,6 +254,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 16, 11, SIGN, &[("Action", "Bundles")]);
     b.set_props("Buildings", 14, 11, SIGN, &[("Action", "Museum")]);
     b.set_props("Buildings", 12, 11, SIGN, &[("Action", "OpenShop Furniture")]);
+    b.set_props("Buildings", 22, 11, SIGN, &[("Action", "SpecialOrders")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }

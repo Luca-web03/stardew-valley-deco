@@ -467,7 +467,7 @@ impl ItemDb {
             db.bigs.insert(id.clone(), BigInfo { id, data, display_name, description });
         }
         db.machines = cm.load_dict::<MachineData>("Data/Machines");
-        for asset in ["Strings\\Objects", "Strings\\BigCraftables"] {
+        for asset in ["Strings\\Objects", "Strings\\BigCraftables", "Strings\\SpecialOrderStrings"] {
             db.strings.insert(asset.to_lowercase(), cm.load_string_dict(asset));
         }
         db.crops = cm.load_dict::<CropData>("Data/Crops");

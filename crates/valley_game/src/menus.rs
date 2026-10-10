@@ -76,6 +76,8 @@ pub enum Menu {
         shown: f32,
     },
     Billboard,
+    /// Special orders board.
+    OrderBoard,
     Journal {
         selected: usize,
     },

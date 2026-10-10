@@ -205,6 +205,10 @@ pub struct Farmer {
     pub cooking_recipes: BTreeMap<String, i32>,
     #[serde(default)]
     pub quests: Vec<crate::quests::Quest>,
+    #[serde(default)]
+    pub special_order: Option<crate::special_orders::ActiveOrder>,
+    #[serde(default)]
+    pub orders_completed: Vec<String>,
     /// Letters already read (ids), for the collection tab.
     #[serde(default)]
     pub letters_read: Vec<String>,
@@ -288,6 +292,8 @@ impl Farmer {
             buffs: Vec::new(),
             cooking_recipes: BTreeMap::new(),
             quests: Vec::new(),
+            special_order: None,
+            orders_completed: Vec::new(),
             letters_read: Vec::new(),
             professions: Vec::new(),
             pending_levelups: Vec::new(),

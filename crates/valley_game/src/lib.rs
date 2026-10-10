@@ -568,6 +568,7 @@ impl ValleyGame {
                 WorldEvent::OpenAnimalShop(list) => self.menus.push(Menu::AnimalShop { list, hovered: None }),
                 WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
+                WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::Letter { letter, .. } => self.menus.push(Menu::Letter { letter, shown: 0.0 }),
                 WorldEvent::QuestCompleted(t) => self.toast(format!("Quest complete: {t}")),
                 WorldEvent::NewQuest(t) => self.toast(format!("New quest: {t} (F: journal)")),
@@ -957,6 +958,21 @@ impl ValleyGame {
                     }
                 }
                 if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::OrderBoard => {
+                let offers = self.world.as_ref().map(|w| w.order_offers.clone()).unwrap_or_default();
+                let busy = self.world.as_ref().is_some_and(|w| w.farmer.special_order.is_some());
+                let clicked = order_accept_rects(sw, sh).iter().position(|r| r.contains(ctx.input.mouse)).filter(|_| ctx.input.mouse_pressed(MouseButton::Left));
+                if let Some(id) = clicked.and_then(|i| offers.get(i)).filter(|_| !busy).cloned() {
+                    close = true;
+                    action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                        if let Some(Err(e)) = g.world.as_mut().map(|w| w.accept_order(&id)) {
+                            g.toast(&e);
+                        }
+                    }));
+                } else if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) || ctx.input.pressed(Key::Enter) {
                     close = true;
                 }
             }
@@ -1415,6 +1431,14 @@ fn question_box(sw: f32, sh: f32, n: usize) -> FRect {
     let rows = n.div_ceil(cols) as f32;
     let h = (130.0 + rows * 52.0).max(b.h);
     FRect::new(b.x, (sh - h - 20.0).max(10.0), b.w, h)
+}
+
+/// Accept buttons under the two special order cards.
+fn order_accept_rects(sw: f32, sh: f32) -> [FRect; 2] {
+    let f = menu_frame(sw, sh);
+    let half = (f.w - 96.0) / 2.0;
+    let b = |i: usize| FRect::new(f.x + 32.0 + i as f32 * (half + 32.0) + (half - 200.0) / 2.0, f.y + f.h - 96.0, 200.0, 52.0);
+    [b(0), b(1)]
 }
 
 fn menu_frame(sw: f32, sh: f32) -> FRect {
@@ -2048,6 +2072,50 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 }
             }
         }
+        Menu::OrderBoard => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered("Special Orders", sw / 2.0, f.y + 28.0, 3.0, ui::TEXT);
+            let half = (f.w - 96.0) / 2.0;
+            let card = |i: usize| FRect::new(f.x + 32.0 + i as f32 * (half + 32.0), f.y + 80.0, half, f.h - 112.0);
+            if let Some(o) = &w.farmer.special_order {
+                // The active order and its progress.
+                let r = card(0);
+                ui.slot(FRect::new(r.x, r.y, f.w - 64.0, r.h), false);
+                ui.text(&o.name, Vec2::new(r.x + 20.0, r.y + 18.0), 3.0, ui::TEXT);
+                let mut y = r.y + 60.0;
+                for line in ui.wrap(&o.text, f.w - 104.0, 2.0) {
+                    ui.text(&line, Vec2::new(r.x + 20.0, y), 2.0, ui::TEXT);
+                    y += 26.0;
+                }
+                y += 16.0;
+                for ob in &o.objectives {
+                    let mark = if ob.done() { "[x]" } else { "[ ]" };
+                    ui.text(&format!("{mark} {} ({}/{})", ob.text, ob.progress, ob.required), Vec2::new(r.x + 20.0, y), 2.0, ui::TEXT);
+                    y += 30.0;
+                }
+                ui.text(&format!("Days left: {}", o.days_left), Vec2::new(r.x + 20.0, r.y + r.h - 40.0), 2.0, ui::TEXT);
+            } else if w.order_offers.is_empty() {
+                ui.text_centered("No orders posted this week.", sw / 2.0, f.y + 200.0, 2.0, ui::TEXT);
+            } else {
+                for (i, id) in w.order_offers.iter().enumerate().take(2) {
+                    let r = card(i);
+                    ui.slot(r, false);
+                    let Some((name, text)) = w.order_text(id) else { continue };
+                    for (k, line) in ui.wrap(&name, r.w - 40.0, 3.0).iter().enumerate().take(2) {
+                        ui.text(line, Vec2::new(r.x + 20.0, r.y + 18.0 + k as f32 * 30.0), 3.0, ui::TEXT);
+                    }
+                    for (k, line) in ui.wrap(&text, r.w - 40.0, 2.0).iter().enumerate().take(9) {
+                        ui.text(line, Vec2::new(r.x + 20.0, r.y + 90.0 + k as f32 * 26.0), 2.0, ui::TEXT);
+                    }
+                    if let Some(d) = w.special_orders.get(id) {
+                        let days = valley_sim::special_orders::duration_days(&d.duration);
+                        ui.text(&format!("{days} days"), Vec2::new(r.x + 20.0, r.y + r.h - 100.0), 2.0, ui::TEXT);
+                    }
+                    ui.button(order_accept_rects(sw, sh)[i], "Accept", false);
+                }
+            }
+        }
         Menu::Billboard => {
             let f = menu_frame(sw, sh);
             ui.panel(f);
@@ -2083,6 +2151,11 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             let f = menu_frame(sw, sh);
             ui.panel(f);
             ui.text("Journal", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            if let Some(o) = &w.farmer.special_order {
+                let progress: Vec<String> = o.objectives.iter().map(|ob| format!("{} {}/{}", ob.text, ob.progress, ob.required)).collect();
+                let line = format!("Special order: {} - {} ({} days left)", o.name, progress.join(", "), o.days_left);
+                ui.text(&line, Vec2::new(f.x + 32.0, f.y + f.h - 36.0), 2.0, Color::rgb(120, 60, 120));
+            }
             if w.farmer.quests.is_empty() {
                 ui.text("No active quests.", Vec2::new(f.x + 48.0, f.y + 60.0), 2.0, ui::TEXT);
             }
