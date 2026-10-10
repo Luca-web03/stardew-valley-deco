@@ -29,6 +29,9 @@ pub struct Building {
     /// Fish pond contents (fish pond buildings only).
     #[serde(default)]
     pub pond: Option<crate::fish_ponds::PondState>,
+    /// The stable's horse.
+    #[serde(default)]
+    pub horse: Option<crate::horse::Horse>,
 }
 
 impl Building {
@@ -133,7 +136,7 @@ impl World {
             self.farmer.inventory.remove_object(id, m.amount);
         }
         self.next_building_id += 1;
-        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: data.build_days.max(0), animal_door_open: true, pond: None };
+        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: data.build_days.max(0), animal_door_open: true, pond: None, horse: None };
         let done = b.days_left == 0;
         self.buildings.push(b);
         self.rebuild_location_edges();

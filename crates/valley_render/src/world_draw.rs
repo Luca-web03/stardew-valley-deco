@@ -394,6 +394,25 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Horses (the ridden one is drawn with the farmer).
+    for (h, ridden) in w.horses_in(loc_name) {
+        let tex = ["Animals/horse", "Animals/Dev_Horse"].iter().find(|t| rc.cm.exists(t)).map(|t| rc.assets.tex(rc.cm, rc.textures, t)).unwrap_or_else(|| rc.assets.tex(rc.cm, rc.textures, "Animals/Dev_Horse"));
+        let frame = if h.moving { ((h.walk_ms / 120) % 4) as i32 } else { 0 };
+        let row = match h.facing {
+            Dir::Down => 0,
+            Dir::Right => 1,
+            Dir::Up => 2,
+            Dir::Left => 3,
+        };
+        let (dw, dh) = (32.0 * ZOOM, 32.0 * ZOOM);
+        let p = cam.to_screen(h.pos);
+        // Ridden: just behind the farmer's sprite; otherwise sorted normally.
+        let depth = sort_depth(h.pos.y + TILE_F, map_h) - if ridden { 0.0002 } else { 0.0 };
+        let shadow = rc.assets.shadow(rc.textures);
+        out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x - 16.0, p.y + TILE_F - 12.0), 6.0, depth - 0.0005);
+        out.sprite(Sprite::new(tex, IRect::new(frame * 32, row * 32, 32, 32), FRect::new(p.x + TILE_F / 2.0 - dw / 2.0, p.y + TILE_F - dh, dw, dh), depth));
+    }
+
     // The farm pet.
     if let Some(pet) = w.pet.as_ref().filter(|p| p.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &pet.texture);
@@ -575,9 +594,11 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
     out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
     let blink = f.invincible_ms > 0 && (f.invincible_ms / 80) % 2 == 0;
     if !blink {
-        out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+        // Riding: sit higher, legs still.
+        let (lift, frame) = if f.mounted.is_some() { (40.0, 0) } else { (0.0, frame) };
+        out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F - lift), ZOOM, depth);
         if let Some(valley_sim::item::Item::Clothing { id, .. }) = &f.hat {
-            draw_hat(rc, out, w, id, f.facing, Vec2::new(p.x, p.y - TILE_F), frame, depth + 0.0001);
+            draw_hat(rc, out, w, id, f.facing, Vec2::new(p.x, p.y - TILE_F - lift), frame, depth + 0.0001);
         }
     }
 

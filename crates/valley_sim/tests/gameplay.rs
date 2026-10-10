@@ -244,6 +244,9 @@ fn tv_shows_forecast() {
     w.drain_events();
     assert!(w.do_action(None));
     let ev = w.drain_events();
+    assert!(ev.iter().any(|e| matches!(e, WorldEvent::TvMenu(_))), "{ev:?}");
+    w.watch_channel(valley_sim::minecarts::Channel::Weather);
+    let ev = w.drain_events();
     assert!(ev.iter().any(|e| matches!(e, WorldEvent::Message(m) if m.contains("Weather report"))), "{ev:?}");
 }
 

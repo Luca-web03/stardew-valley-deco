@@ -87,6 +87,9 @@ Other conventions:
 | Warp items: `Port.WarpTo` custom field ("<location> [x y]") on an object, or well-known totem ids (destination = the location's `DefaultArrivalTile`, approx.) | `valley_sim::world::World::warp_totem_target` |
 | Buildings: `DefaultAction` runs as a tile action on non-door tiles; `ObeliskWarp <location> <x> <y>` teleports | `valley_sim::farm`, `World::teleport` |
 | Secret notes: `Data/SecretNotes`; note scraps are object `79` or the placeholder `Dev_NoteScrap`, found while digging artifact spots and searching trash cans (approx. chance) | `valley_sim::secret_notes` |
+| Stables: building id `Stable` or `Port.Stable` custom field; horse sheet `Animals/horse` (else placeholder `Animals/Dev_Horse`), 32x32 frames; riding speed x1.6 (approx.) | `valley_sim::horse` |
+| Minecarts: `Data/Minecarts` networks (`UnlockCondition`, `LockedMessage`, `Destinations` with `Price`, `TargetLocation`, `TargetTile`), tile action `MinecartTransport [network] [exclude]` | `valley_sim::minecarts` |
+| TV: weather, fortune and the cooking show from `Data/TV/CookingChannel` ("recipe/text"; Sundays, rerun Wednesdays) | `valley_sim::minecarts::Channel` |
 
 ## Mods
 

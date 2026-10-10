@@ -158,6 +158,7 @@ pub fn farm() -> Map {
     b.prop("ShippingBinTile", "27 9");
     b.prop("FarmHouseEntry", "21 9");
     b.set("Back", 17, 10, PET_BOWL);
+    b.set_props("Buildings", 40, 11, MINECART, &[("Action", "MinecartTransport Default Farm")]);
     b.prop("PetBowlTile", "17 10");
     b.prop("SpawnDebris", "T");
     b.map
@@ -258,6 +259,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 12, 11, SIGN, &[("Action", "OpenShop Furniture")]);
     b.set_props("Buildings", 22, 11, SIGN, &[("Action", "SpecialOrders")]);
     b.set_props("Buildings", 10, 11, SIGN, &[("Action", "OpenShop Dev_Tailor")]);
+    b.set_props("Buildings", 7, 3, MINECART, &[("Action", "MinecartTransport Default Town")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }
@@ -393,6 +395,7 @@ pub fn dunes() -> Map {
     b.set_props("Buildings", 8, 3, 29, &[("Action", "Mine 121")]);
     // Ride back to town.
     b.set_props("Buildings", 5, 15, SIGN, &[("Action", "Port.Travel Town 36 18 0")]);
+    b.set_props("Buildings", 14, 15, MINECART, &[("Action", "MinecartTransport Default Dunes")]);
     b.map
 }
 

@@ -217,6 +217,9 @@ pub struct Farmer {
     /// Secret notes already read (ids).
     #[serde(default)]
     pub notes_read: Vec<String>,
+    /// Riding the horse of this stable (building id).
+    #[serde(default)]
+    pub mounted: Option<u32>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -315,6 +318,7 @@ impl Farmer {
             children: Vec::new(),
             fridge: fridge_inventory(),
             notes_read: Vec::new(),
+            mounted: None,
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),

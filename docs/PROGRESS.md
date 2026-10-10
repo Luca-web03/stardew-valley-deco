@@ -40,6 +40,8 @@ were not available; such values are isolated constants that can be tuned.
       slingshot with ammo and projectiles
 - [x] Deep cavern below the mines (shafts, tougher floors), paid travel
       between areas, warp totems and obelisks, placeholder desert
+- [x] Stables and horse riding, minecart networks, TV channels with the
+      cooking show
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds
 - [x] NPCs: schedules, routing across locations, dialogue with questions,

@@ -39,6 +39,8 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
     m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
+    m.insert("Animals/Dev_Horse.png", art::horse().encode_png());
+    m.insert("Buildings/Dev_Stable.png", art::shed(4, 2, Color::rgb(150, 110, 70), Color::rgb(90, 110, 70)).encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
@@ -98,6 +100,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "771": obj("Fiber", "Basic", -16, 1, ICON_FIBER, -300),
         "92": obj("Sap", "Basic", -81, 2, ICON_SAP, -300),
         "Dev_Bread": obj("Bread", "Cooking", -7, 60, ICON_BREAD, 20),
+        "Dev_BerryTart": obj("Berry Tart", "Cooking", -7, 180, ICON_BERRY_TART, 40),
         "Dev_Berry": obj("Wild Berry", "Basic", -79, 20, ICON_BERRY, 6),
         "Dev_Weeds": obj("Weeds", "Litter", 0, 0, ICON_WEEDS, -300),
         "Dev_Twig": obj("Twig", "Litter", 0, 0, ICON_TWIG, -300),
@@ -488,7 +491,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })),
         ("Data/CookingRecipes", json!({
             "Garden Salad": "Dev_Turnip 1 Dev_Bean 1/1 1/Dev_Salad/default/",
-            "Miner's Stew": "Dev_Pumpkin 1 Dev_Goo 2/1 1/Dev_Stew/default/"
+            "Miner's Stew": "Dev_Pumpkin 1 Dev_Goo 2/1 1/Dev_Stew/default/",
+            "Berry Tart": "Dev_Berry 3 Dev_Bread 1/1 1/Dev_BerryTart/null/"
         })),
         ("Data/mail", json!({
             "spring_2": "Hi @,^The general store has fresh seeds every season, and I set aside a few for you.^- Tobin%item object Dev_TurnipSeeds 10 %%[#]Seeds for a new farmer",
@@ -497,6 +501,22 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Quests", json!({
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
             "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
+        })),
+        ("Data/TV/CookingChannel", json!({
+            "1": "Berry Tart/Today on Kitchen Corner: a crumbly crust, a pile of berries, and a slice of bread to soak up the juice. Bake until bubbling!",
+            "2": "Garden Salad/Back to basics: crisp turnips and beans with a squeeze of something sour. Fresh is best!"
+        })),
+        ("Data/Minecarts", json!({
+            "Default": {
+                "UnlockCondition": "PLAYER_HAS_MAIL Current ccDone_Workshop",
+                "LockedMessage": "The minecarts are out of order. A notice says repairs are underway.",
+                "ChooseDestinationMessage": "Where to?",
+                "Destinations": [
+                    { "Id": "Farm", "DisplayName": "Farm", "TargetLocation": "Farm", "TargetTile": { "X": 40, "Y": 12 }, "TargetDirection": "down" },
+                    { "Id": "Town", "DisplayName": "Town", "TargetLocation": "Town", "TargetTile": { "X": 7, "Y": 4 }, "TargetDirection": "down" },
+                    { "Id": "Dunes", "DisplayName": "Sunscorch Dunes", "Price": 50, "TargetLocation": "Dev_Dunes", "TargetTile": { "X": 14, "Y": 16 }, "TargetDirection": "down" }
+                ]
+            }
         })),
         ("Data/SecretNotes", json!({
             "1": "Day 3. The well behind the store hums at night. Nobody else seems to hear it.",
@@ -527,6 +547,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
               "ProducedItems": [{ "ItemId": "(O)Dev_Bait", "RequiredPopulation": 1, "Chance": 0.4, "MinQuantity": 1, "MaxQuantity": 3 }] }
         ])),
         ("Data/Buildings", json!({
+            "Dev_Stable": {
+                "Name": "Stable", "Description": "Comes with a horse to ride around the valley.", "Texture": "Buildings\\Dev_Stable",
+                "Size": { "X": 4, "Y": 2 }, "BuildCost": 3000, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 100 }],
+                "CustomFields": { "Port.Stable": "true" }
+            },
             "Dev_Obelisk": {
                 "Name": "Dune Obelisk", "Description": "Touch it to travel to the dunes.", "Texture": "Buildings\\Dev_Obelisk",
                 "Size": { "X": 2, "Y": 3 }, "BuildCost": 5000, "BuildDays": 2,

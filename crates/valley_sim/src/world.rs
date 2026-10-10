@@ -70,6 +70,10 @@ pub enum WorldEvent {
     ShaftPrompt,
     /// Brief screen flash (magical travel).
     Flash,
+    /// Pick a minecart destination.
+    MinecartMenu { network: String, prompt: String, choices: Vec<crate::minecarts::MinecartChoice> },
+    /// Pick a TV channel.
+    TvMenu(Vec<crate::minecarts::Channel>),
     /// Offer a paid trip (bus, boat...) to another location.
     TravelPrompt { location: String, tile: TilePos, fare: i32 },
     Warped { from: String, to: String },
@@ -189,6 +193,9 @@ pub struct World {
     pub fish_pond_data: Vec<crate::fish_ponds::FishPondData>,
     /// Data/SecretNotes (id -> text).
     pub secret_notes: BTreeMap<String, String>,
+    pub minecarts: BTreeMap<String, crate::minecarts::MinecartNetwork>,
+    /// Data/TV/CookingChannel (episode -> "recipe/text").
+    pub cooking_channel: BTreeMap<String, String>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -328,6 +335,8 @@ impl World {
             child_question_pending: false,
             fish_pond_data: cm.load_json("Data/FishPondData").unwrap_or_default(),
             secret_notes: cm.load_string_dict("Data/SecretNotes").into_iter().collect(),
+            minecarts: crate::minecarts::load(cm),
+            cooking_channel: cm.load_string_dict("Data/TV/CookingChannel").into_iter().collect(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -799,6 +808,7 @@ impl World {
             }
         }
         self.animals_overnight();
+        self.horses_overnight();
         self.orchard_overnight();
         self.crab_pots_overnight();
         self.house_overnight();
@@ -1000,7 +1010,10 @@ impl World {
         }
 
         // Movement (each axis separately so the farmer slides along walls).
-        let speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.total_attrs().speed as f32 * 0.5 };
+        let mut speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.total_attrs().speed as f32 * 0.5 };
+        if self.farmer.mounted.is_some() {
+            speed *= crate::horse::HORSE_SPEED;
+        }
         let mut moved = false;
         if input.move_x != 0 || input.move_y != 0 {
             self.farmer.facing = if input.move_y < 0 {
@@ -1055,6 +1068,7 @@ impl World {
 
         self.check_warps();
         self.check_bed();
+        self.update_horse();
     }
 
     /// When the farmer clips a corner, slide them around it.
@@ -1135,6 +1149,7 @@ impl World {
             self.hud(format!("{target} isn't available"));
             return;
         }
+        let from_pos = self.farmer.pos;
         let from = std::mem::replace(&mut self.current, target.to_string());
         let loc = self.location();
         // Clamp onto the map and step off the edge so we don't re-trigger warps.
@@ -1155,6 +1170,7 @@ impl World {
         self.in_bed = self.location().tile_prop("Back", t, "Bed").is_some();
         self.sound("doorClose");
         self.quest_visit(target);
+        self.horse_follow(&from, from_pos);
         self.emit(WorldEvent::Warped { from, to: target.to_string() });
         if !self.check_festival() {
             self.check_location_events();
@@ -1201,7 +1217,7 @@ impl World {
         }
 
         // Farm animals, the pet, the traveling cart and buildings.
-        if self.pet_animal(target) || self.pet_the_pet(target) || self.interact_child(target) || self.cart_action(target) {
+        if self.pet_animal(target) || self.pet_the_pet(target) || self.try_mount(target) || self.interact_child(target) || self.cart_action(target) {
             return true;
         }
         // Trees: tappers and fruit.
@@ -1302,7 +1318,12 @@ impl World {
                 return true;
             }
         }
-        // Nothing to interact with: a held melee weapon does its special move.
+        // Nothing to interact with: get off the horse, or a held melee
+        // weapon does its special move.
+        if self.farmer.mounted.is_some() {
+            self.dismount();
+            return true;
+        }
         self.begin_special_move()
     }
 
@@ -1339,6 +1360,10 @@ impl World {
         let toks: Vec<&str> = action.split_whitespace().collect();
         let Some(&cmd) = toks.first() else { return false };
         match cmd {
+            "MinecartTransport" => {
+                let network = toks.get(1).copied().unwrap_or("Default");
+                self.open_minecart(network, toks.get(2).copied())
+            }
             "ObeliskWarp" if toks.len() >= 4 => {
                 let (Ok(x), Ok(y)) = (toks[2].parse(), toks[3].parse()) else { return false };
                 self.teleport(toks[1], TilePos::new(x, y))
@@ -2072,25 +2097,6 @@ impl World {
         }
     }
 
-    /// The TV: tomorrow's weather and today's luck.
-    pub fn watch_tv(&mut self) {
-        let forecast = match self.weather_tomorrow {
-            Weather::Sun => "Tomorrow looks clear and sunny.",
-            Weather::Rain => "Expect rain tomorrow. Your crops will thank you.",
-            Weather::Storm => "A thunderstorm is on the way tomorrow. Stay safe!",
-            Weather::Snow => "Snow is in the forecast for tomorrow.",
-            Weather::Wind => "It'll be a breezy day tomorrow.",
-        };
-        let luck = match self.daily_luck {
-            l if l > 0.07 => "The spirits are very happy today. Great luck!",
-            l if l > 0.02 => "The spirits are in good humor today.",
-            l if l >= -0.02 => "The spirits feel neutral today.",
-            l if l >= -0.07 => "The spirits are somewhat annoyed today.",
-            _ => "The spirits are very displeased today. Be careful!",
-        };
-        self.sound("tvClick");
-        self.emit(WorldEvent::Message(format!("Weather report: {forecast}\n\nFortune corner: {luck}")));
-    }
 
     // ---------------------------------------------------------------- crafting
 

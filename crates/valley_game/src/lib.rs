@@ -570,6 +570,25 @@ impl ValleyGame {
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
+                WorldEvent::MinecartMenu { network, prompt, choices } => {
+                    let mut options: Vec<String> = choices.iter().map(|(_, l)| l.clone()).collect();
+                    options.push("Cancel".into());
+                    let selected = 0;
+                    self.menus.push(Menu::Question { text: prompt, options, selected, kind: QuestionKind::Minecart { network, ids: choices.into_iter().map(|(id, _)| id).collect() } });
+                }
+                WorldEvent::TvMenu(channels) => {
+                    use valley_sim::minecarts::Channel;
+                    let mut options: Vec<String> = channels
+                        .iter()
+                        .map(|c| match c {
+                            Channel::Weather => "Weather Report",
+                            Channel::Fortune => "Fortune Teller",
+                            Channel::Cooking => "Cooking Show",
+                        }.to_string())
+                        .collect();
+                    options.push("(Leave)".into());
+                    self.menus.push(Menu::Question { text: "Choose a channel:".into(), options, selected: 0, kind: QuestionKind::Tv { channels } });
+                }
                 WorldEvent::ShaftPrompt => self.menus.push(Menu::Question {
                     text: "It's a long way down. Jump in?".into(),
                     options: vec!["Jump".into(), "Stay".into()],
@@ -666,6 +685,24 @@ impl ValleyGame {
                                 w.answer_question(i);
                             }
                         }));
+                    } else if let QuestionKind::Minecart { network, ids } = &kind {
+                        if let Some(id) = ids.get(i).cloned() {
+                            let network = network.clone();
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                g.fade = Fade { alpha: 1.0, target: 0.0 };
+                                if let Some(w) = g.world.as_mut() {
+                                    w.ride_minecart(&network, &id);
+                                }
+                            }));
+                        }
+                    } else if let QuestionKind::Tv { channels } = &kind {
+                        if let Some(&c) = channels.get(i) {
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.watch_channel(c);
+                                }
+                            }));
+                        }
                     } else if let QuestionKind::Elevator { levels } = &kind {
                         if let Some(&level) = levels.get(i) {
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
@@ -704,7 +741,7 @@ impl ValleyGame {
                                     w.leave_festival();
                                 }
                             }
-                            QuestionKind::DialogueAnswer => {}
+                            QuestionKind::DialogueAnswer | QuestionKind::Minecart { .. } | QuestionKind::Tv { .. } => {}
                             QuestionKind::Shaft => {
                                 if let Some(w) = g.world.as_mut() {
                                     w.jump_down_shaft();

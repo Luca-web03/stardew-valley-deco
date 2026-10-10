@@ -19,6 +19,10 @@ pub enum QuestionKind {
     Shaft,
     /// Pay a fare and travel.
     Travel { location: String, tile: valley_sim::TilePos, fare: i32 },
+    /// Minecart destination `ids[i]` (last option = cancel).
+    Minecart { network: String, ids: Vec<String> },
+    /// TV channel `channels[i]` (last option = turn off).
+    Tv { channels: Vec<valley_sim::minecarts::Channel> },
 }
 
 #[derive(Clone, Debug, PartialEq)]

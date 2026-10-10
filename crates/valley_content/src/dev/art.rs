@@ -34,6 +34,7 @@ pub const GARBAGE: i32 = 33;
 pub const PET_BOWL: i32 = 34;
 pub const BOULDER: i32 = 35;
 pub const SANDSTONE: i32 = 36;
+pub const MINECART: i32 = 37;
 
 // Indoor sheet tile indices.
 pub const FLOOR: i32 = 0;
@@ -227,6 +228,16 @@ pub fn outdoors(season: &str) -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, MINECART, OUT_COLS, 16, 16);
+        c.rect(1, 13, 14, 1, Color::rgb(110, 80, 50));
+        c.rect(2, 5, 12, 7, Color::rgb(120, 125, 135));
+        c.rect(2, 5, 12, 1, Color::rgb(170, 175, 185));
+        c.rect(4, 7, 8, 3, Color::rgb(70, 60, 55));
+        c.ellipse(4.5, 12.5, 1.6, 1.6, Color::rgb(50, 50, 55));
+        c.ellipse(11.5, 12.5, 1.6, 1.6, Color::rgb(50, 50, 55));
+        c.auto_outline(OUTLINE);
+    }
+    {
         let mut c = Cell::at(&mut img, SANDSTONE, OUT_COLS, 16, 16);
         c.noise(Color::rgb(190, 132, 86), 8, 12);
         for (y, col) in [(3, Color::rgb(214, 160, 108)), (8, Color::rgb(160, 106, 70)), (13, Color::rgb(214, 160, 108))] {
@@ -397,6 +408,7 @@ pub const ICON_BATTERY: i32 = 60;
 pub const ICON_HOMING_STONE: i32 = 61;
 pub const ICON_DUNE_CHARM: i32 = 62;
 pub const ICON_NOTE_SCRAP: i32 = 63;
+pub const ICON_BERRY_TART: i32 = 64;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -674,6 +686,15 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BERRY_TART, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 6.0, 3.5, Color::rgb(220, 170, 100));
+        c.ellipse(8.0, 9.0, 4.5, 2.2, Color::rgb(150, 40, 90));
+        for (x, y) in [(6, 9), (9, 8), (10, 10)] {
+            c.px(x, y, Color::rgb(210, 90, 150));
+        }
         c.auto_outline(OUTLINE);
     }
     {
@@ -1332,6 +1353,49 @@ pub fn goat() -> Image {
                 }
                 c.rect(12, 25, 2, 5 - step, dark);
                 c.rect(18, 25, 2, 5, dark);
+            }
+            c.auto_outline(OUTLINE);
+        }
+    }
+    img
+}
+
+/// Horse: 4x4 frames of 32x32 (rows down, right, up, left). Original
+/// design: a bay horse with a dark mane and a pale blaze.
+pub fn horse() -> Image {
+    let mut img = Image::new(128, 128);
+    let coat = Color::rgb(150, 95, 55);
+    let mane = Color::rgb(60, 40, 30);
+    for row in 0..4 {
+        for f in 0..4 {
+            let mut c = Cell { ox: f * 32, oy: row * 32, w: 32, h: 32, img: &mut img };
+            let step = if f % 2 == 1 { 1 } else { 0 };
+            if row == 1 || row == 3 {
+                let right = row == 1;
+                let hx = if right { 26 } else { 6 };
+                c.ellipse(16.0, 17.0, 11.0, 6.0, coat);
+                c.rect(if right { 21 } else { 7 }, 8, 4, 9, coat);
+                c.ellipse(hx as f32, 9.0, 4.0, 3.0, coat);
+                c.rect(if right { 20 } else { 9 }, 6, 3, 9, mane);
+                c.rect(if right { 1 } else { 28 }, 14, 3, 9 - step, mane);
+                c.px(if right { hx + 1 } else { hx - 1 }, 8, OUTLINE);
+                for (lx, off) in [(8, step), (11, 0), (20, step), (23, 0)] {
+                    c.rect(lx, 22, 2, 8 - off, shade(coat, -15));
+                }
+            } else {
+                let front = row == 0;
+                c.ellipse(16.0, 18.0, 7.0, 9.0, coat);
+                c.rect(13, 3, 6, 10, coat);
+                c.rect(15, 2, 2, 12, mane);
+                if front {
+                    c.rect(15, 6, 2, 6, Color::rgb(235, 225, 210));
+                    c.px(13, 6, OUTLINE);
+                    c.px(18, 6, OUTLINE);
+                } else {
+                    c.rect(15, 24, 2, 6 - step, mane);
+                }
+                c.rect(11, 25, 2, 6 - step, shade(coat, -15));
+                c.rect(19, 25, 2, 6, shade(coat, -15));
             }
             c.auto_outline(OUTLINE);
         }
