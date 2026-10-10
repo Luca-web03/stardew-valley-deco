@@ -333,6 +333,7 @@ pub fn animal_house(id: &str, w: i32, h: i32) -> Map {
         b.set_props("Back", x, 2, RUG, &[("Trough", "T")]);
     }
     b.set("Back", w / 2, h - 1, MAT);
+    b.set_props("Buildings", w - 2, 2, SHELF, &[("Action", "HayHopper")]);
     // Exit warp; the engine retargets it to the building door at runtime.
     b.prop("Warp", &format!("{} {} Farm 0 0", w / 2, h - 1));
     b.map

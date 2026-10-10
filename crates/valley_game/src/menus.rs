@@ -23,11 +23,12 @@ pub enum InvTab {
     Crafting,
     Skills,
     Social,
+    Collections,
     Options,
 }
 
-pub const TABS: [InvTab; 5] = [InvTab::Items, InvTab::Crafting, InvTab::Skills, InvTab::Social, InvTab::Options];
-pub const TAB_LABELS: [&str; 5] = ["Items", "Crafting", "Skills", "Social", "Options"];
+pub const TABS: [InvTab; 6] = [InvTab::Items, InvTab::Crafting, InvTab::Skills, InvTab::Social, InvTab::Collections, InvTab::Options];
+pub const TAB_LABELS: [&str; 6] = ["Items", "Crafting", "Skills", "Social", "Collect", "Options"];
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Menu {

@@ -336,8 +336,7 @@ impl World {
         let crop = match self.location().terrain(t) {
             Some(TerrainFeature::HoeDirt(d)) => d.crop.clone(),
             Some(TerrainFeature::Grass(_)) => {
-                self.location_mut().state.terrain.remove(&t);
-                self.sound("cut");
+                self.cut_grass(t);
                 return;
             }
             _ => None,

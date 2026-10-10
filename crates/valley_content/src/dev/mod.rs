@@ -30,6 +30,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
     m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
     m.insert("TileSheets/furniture.png", art::furniture().encode_png());
+    m.insert("Buildings/Dev_Silo.png", art::silo().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
@@ -118,6 +119,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_CrabPot": obj("Crab Pot", "Crafting", -8, 50, ICON_CRAB_POT, -300),
         "Dev_Bait": obj("Bait", "Basic", -21, 1, ICON_BAIT, -300),
         "Dev_Crawler": obj("Pond Crawler", "Fish", -4, 60, ICON_CRAWLER, 5),
+        "Dev_Battery": obj("Storm Cell", "Basic", 0, 500, ICON_BATTERY, -300),
         "Dev_PlumSapling": obj("Plum Sapling", "Basic", -74, 300, ICON_PLUM_SAPLING, -300),
         "Dev_Plum": obj("Plum", "Basic", -79, 70, ICON_PLUM, 15),
         "Dev_TreeSeed": obj("Tree Seed", "Basic", -74, 5, ICON_TREE_SEED, -300),
@@ -167,6 +169,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                          "Price": 50, "SpriteIndex": 2 },
         "Dev_Tapper": { "Name": "Tapper", "DisplayName": "Tapper", "Description": "Place on a grown tree to collect syrup.",
                         "Price": 50, "SpriteIndex": 3 },
+        "Dev_LightningRod": { "Name": "Lightning Rod", "DisplayName": "Lightning Rod", "Description": "Catches lightning during storms.",
+                              "Price": 50, "SpriteIndex": 4 },
     });
     let machines = json!({
         "(BC)Dev_Juicer": {
@@ -201,6 +205,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Tapper": "388 30 Dev_CopperBar 1/Home/Dev_Tapper/true/default/",
         "Blast Charge": "Dev_CopperOre 4 Dev_Coal 1/Home/Dev_Bomb/false/default/",
         "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
+        "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -420,6 +425,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 100 }, { "ItemId": "(O)390", "Amount": 50 }],
                 "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
                 "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"]
+            },
+            "Silo": {
+                "Name": "Silo", "Description": "Stores hay cut from grass with the scythe.", "Texture": "Buildings\\Dev_Silo",
+                "Size": { "X": 2, "Y": 2 }, "BuildCost": 100, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 100 }, { "ItemId": "(O)Dev_CopperBar", "Amount": 5 }]
             },
             "Barn": {
                 "Name": "Goat Barn", "Description": "Houses up to four goats.", "Texture": "Buildings\\Dev_Barn",

@@ -354,6 +354,9 @@ impl World {
                             self.emit(WorldEvent::LevelUp(Skill::Fishing, l));
                         }
                         self.sound("jingle1");
+                        let e = self.farmer.fish_caught.entry(f.id.clone()).or_insert((0, 0));
+                        e.0 += 1;
+                        e.1 = e.1.max(size);
                         FishingState::Caught { item: Item::object_q(&f.id, 1, quality), size, perfect: game.perfect, ms: 0 }
                     }
                     Some(false) => {

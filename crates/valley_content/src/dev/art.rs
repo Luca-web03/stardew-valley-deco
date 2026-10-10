@@ -347,6 +347,7 @@ pub const ICON_BOMB: i32 = 56;
 pub const ICON_CRAB_POT: i32 = 57;
 pub const ICON_BAIT: i32 = 58;
 pub const ICON_CRAWLER: i32 = 59;
+pub const ICON_BATTERY: i32 = 60;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -619,6 +620,14 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_BATTERY, OBJ_COLS, 16, 16);
+        c.rect(5, 4, 6, 10, Color::rgb(70, 80, 100));
+        c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
+        c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
+        c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
         let mut c = Cell::at(&mut img, ICON_PLUM_SAPLING, OBJ_COLS, 16, 16);
         c.rect(7, 6, 2, 9, Color::rgb(120, 80, 50));
         c.ellipse(8.0, 5.0, 4.0, 3.0, Color::rgb(90, 160, 70));
@@ -764,6 +773,14 @@ pub fn craftables() -> Image {
         c.rect(5, 20, 6, 6, Color::rgb(40, 30, 30));
         c.rect(6, 22, 4, 3, Color::rgb(250, 140, 40));
         c.rect(6, 4, 3, 4, Color::rgb(90, 85, 85));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Lightning rod: a metal mast on a stone base.
+        let mut c = Cell::at(&mut img, 4, 8, 16, 32);
+        c.rect(7, 2, 2, 22, Color::rgb(170, 170, 185));
+        c.rect(6, 1, 4, 2, Color::rgb(220, 200, 90));
+        c.rect(4, 24, 8, 6, Color::rgb(120, 115, 110));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1290,5 +1307,19 @@ pub fn furniture() -> Image {
         c.rect(3, 9, 10, 2, Color::rgb(220, 180, 100));
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// A round silo tower (2x3 tiles).
+pub fn silo() -> Image {
+    let mut img = Image::new(32, 64);
+    let mut c = Cell { ox: 0, oy: 0, w: 32, h: 64, img: &mut img };
+    c.rect(4, 14, 24, 48, Color::rgb(200, 190, 170));
+    for y in (16..62).step_by(6) {
+        c.rect(4, y, 24, 1, Color::rgb(170, 160, 140));
+    }
+    c.ellipse(16.0, 14.0, 13.0, 10.0, Color::rgb(150, 70, 60));
+    c.rect(13, 50, 6, 12, Color::rgb(110, 80, 50));
+    c.auto_outline(OUTLINE);
     img
 }

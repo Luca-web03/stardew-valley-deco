@@ -78,6 +78,8 @@ pub enum WorldEvent {
     FestivalHost { festival: String },
     /// An NPC asked a question; answer with `World::answer_question`.
     DialogueQuestion { npc: String, prompt: String, choices: Vec<String> },
+    /// Lightning flash.
+    Lightning,
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -363,6 +365,8 @@ impl World {
             }
         }
         w.populate_new_farm();
+        let mut grass_rng = Rng::new(Rng::seed_from(&[w.seed as i64, 88]));
+        w.seed_grass(&mut grass_rng);
         w.farmer.mailbox.push("welcome".into());
         for starter in ["Dev_Q1"] {
             if w.quest_data.contains_key(starter) {
@@ -626,6 +630,9 @@ impl World {
         let mut earned = 0;
         let bin: Vec<Item> = self.shipping_bin.drain(..).collect();
         for item in bin {
+            if let Some(id) = item.object_id() {
+                *self.farmer.shipped.entry(id.to_string()).or_insert(0) += item.stack();
+            }
             let price = self.sell_value(&item) * item.stack();
             earned += price;
             shipped.push((item, price));
@@ -726,6 +733,7 @@ impl World {
         self.orchard_overnight();
         self.crab_pots_overnight();
         self.house_overnight();
+        self.grass_overnight();
         self.spawn_daily_debris();
         self.leave_mines();
         self.bombs.clear();
@@ -804,6 +812,7 @@ impl World {
                 ClockEvent::TenMinutes => {
                     self.update_npc_schedules();
                     self.advance_machines(10);
+                    self.maybe_lightning();
                     for b in self.farmer.buffs.iter_mut() {
                         b.minutes_left -= 10;
                     }
@@ -1273,6 +1282,7 @@ impl World {
                 self.watch_tv();
                 true
             }
+            "HayHopper" | "hayHopper" => self.hay_hopper(),
             "Blacksmith" => {
                 self.emit(WorldEvent::OpenBlacksmith);
                 true

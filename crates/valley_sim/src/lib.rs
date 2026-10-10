@@ -35,6 +35,7 @@ pub mod pathfind;
 pub mod professions;
 pub mod progress;
 pub mod quests;
+pub mod ranch;
 pub mod romance;
 pub mod save;
 pub mod schedule;

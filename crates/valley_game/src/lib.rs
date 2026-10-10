@@ -76,6 +76,8 @@ struct Console {
 }
 
 pub struct ValleyGame {
+    /// Remaining ticks of a lightning flash.
+    flash: u32,
     pub options: Options,
     console: Option<Console>,
     debug_overlay: bool,
@@ -105,6 +107,7 @@ impl ValleyGame {
         let options: Options = options;
         input_map::set_bindings(&options.bindings);
         Self {
+            flash: 0,
             options,
             console: None,
             debug_overlay: false,
@@ -537,6 +540,7 @@ impl ValleyGame {
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
                 WorldEvent::Music(track) => ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume }),
                 WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
+                WorldEvent::Lightning => self.flash = 12,
                 WorldEvent::DialogueQuestion { npc, prompt, choices } => {
                     let display = self.world.as_ref().and_then(|w| w.npcs.iter().find(|n| n.name == npc).map(|n| n.display_name.clone())).unwrap_or(npc);
                     let q = Menu::Question { text: format!("{display}: {prompt}"), options: choices, selected: 0, kind: QuestionKind::DialogueAnswer };
@@ -1411,7 +1415,7 @@ fn menu_frame(sw: f32, sh: f32) -> FRect {
 
 fn inventory_tab_rects(sw: f32, sh: f32) -> Vec<FRect> {
     let f = menu_frame(sw, sh);
-    (0..TABS.len()).map(|i| FRect::new(f.x + 16.0 + i as f32 * 166.0, f.y - 52.0, 156.0, 48.0)).collect()
+    (0..TABS.len()).map(|i| FRect::new(f.x + 8.0 + i as f32 * 148.0, f.y - 52.0, 140.0, 48.0)).collect()
 }
 
 fn bundle_tab_rects(sw: f32, sh: f32, n: usize) -> Vec<FRect> {
@@ -1696,6 +1700,28 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                             draw_recipe_tooltip(rc, ui, w, &w.recipes[name], sw);
                         }
                     }
+                }
+                InvTab::Collections => {
+                    // Everything sellable, colored once shipped or caught.
+                    let ids: Vec<&String> = w.items.objects.iter().filter(|(_, o)| o.data.price > 0 && o.data.kind != "Litter").map(|(k, _)| k).collect();
+                    let cols = 14;
+                    for (n, id) in ids.iter().enumerate().take(cols * 6) {
+                        let r = FRect::new(f.x + 40.0 + (n % cols) as f32 * 62.0, f.y + 40.0 + (n / cols) as f32 * 62.0, 56.0, 56.0);
+                        ui.slot(r, false);
+                        let got = w.farmer.shipped.contains_key(*id) || w.farmer.fish_caught.contains_key(*id) || w.farmer.bundles.museum.contains(id);
+                        let item = valley_sim::item::Item::object(id, 1);
+                        let (tex, src) = item_sprite(rc, w, &item);
+                        let inner = FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0);
+                        if got {
+                            ui.icon(tex, src, inner);
+                        } else {
+                            ui.icon_tinted(tex, src, inner, Color::rgba(40, 30, 25, 160));
+                        }
+                    }
+                    let shipped: i32 = w.farmer.shipped.values().sum();
+                    let fish: i32 = w.farmer.fish_caught.values().map(|v| v.0).sum();
+                    let cooked: i32 = w.farmer.cooking_recipes.values().sum();
+                    ui.text(&format!("Shipped: {shipped}   Fish caught: {fish}   Dishes cooked: {cooked}   Monsters: {}", w.monsters_killed), Vec2::new(f.x + 40.0, f.y + f.h - 48.0), 2.0, ui::TEXT);
                 }
                 InvTab::Skills => {
                     use valley_sim::farmer::Skill;
@@ -2228,6 +2254,7 @@ impl GameModule for ValleyGame {
         OPTS.with(|o| o.set((self.options.zoom, self.options.music_volume, self.options.sound_volume)));
         BINDS.with(|b| *b.borrow_mut() = ((0..input_map::BINDING_NAMES.len()).map(|i| self.options.bindings.get(i).clone()).collect(), self.rebinding));
         self.fade.alpha += (self.fade.target - self.fade.alpha).clamp(-0.05, 0.05);
+        self.flash = self.flash.saturating_sub(1);
         if self.fade.target >= 1.0 && self.fade.alpha >= 1.0 {
             self.fade.target = 0.0;
         }
@@ -2258,6 +2285,9 @@ impl GameModule for ValleyGame {
         }
         if self.fade.alpha > 0.0 {
             out.fill(FRect::new(0.0, 0.0, ctx.screen_w as f32, ctx.screen_h as f32), Color::BLACK.with_alpha(self.fade.alpha), 100.0);
+        }
+        if self.flash > 0 {
+            out.fill(FRect::new(0.0, 0.0, ctx.screen_w as f32, ctx.screen_h as f32), Color::rgba(255, 255, 255, (self.flash * 15).min(200) as u8), 99.0);
         }
     }
 }

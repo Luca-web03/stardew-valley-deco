@@ -235,6 +235,15 @@ pub struct Farmer {
     /// Days left on a farmhouse upgrade in progress (0 = none).
     #[serde(default)]
     pub house_upgrade_days: i32,
+    /// Hay stored in silos.
+    #[serde(default)]
+    pub hay_storage: i32,
+    /// Items shipped (object id -> count) for the collections tab.
+    #[serde(default)]
+    pub shipped: BTreeMap<String, i32>,
+    /// Fish caught (id -> (count, largest size)).
+    #[serde(default)]
+    pub fish_caught: BTreeMap<String, (i32, i32)>,
 }
 
 impl Farmer {
@@ -289,6 +298,9 @@ impl Farmer {
             boots: None,
             house_level: 0,
             house_upgrade_days: 0,
+            hay_storage: 0,
+            shipped: BTreeMap::new(),
+            fish_caught: BTreeMap::new(),
         }
     }
 
