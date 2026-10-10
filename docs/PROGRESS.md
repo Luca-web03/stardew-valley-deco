@@ -58,8 +58,10 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Special-area mechanics beyond generic maps (desert, island, skull
-      cavern, volcano)
+- [x] Deep cavern below the mines (shafts, tougher floors), paid travel
+      between areas, placeholder desert
+- [ ] Area-specific mechanics beyond that (island, volcano, desert shops
+      and events)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer
       used; any simple sheet can be configured in `valley_layouts.json`)
 - [ ] Audio follow-ups: xWMA decoding (convert such tracks to

@@ -569,6 +569,21 @@ impl ValleyGame {
                 WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
+                WorldEvent::ShaftPrompt => self.menus.push(Menu::Question {
+                    text: "It's a long way down. Jump in?".into(),
+                    options: vec!["Jump".into(), "Stay".into()],
+                    selected: 1,
+                    kind: QuestionKind::Shaft,
+                }),
+                WorldEvent::TravelPrompt { location, tile, fare } => {
+                    let name = self.world.as_ref().and_then(|w| w.locations.get(&location)).map(|l| l.display_name.clone()).filter(|n| !n.is_empty()).unwrap_or(location.clone());
+                    self.menus.push(Menu::Question {
+                        text: format!("Travel to {name} for {fare}g?"),
+                        options: vec!["Go".into(), "Not now".into()],
+                        selected: 0,
+                        kind: QuestionKind::Travel { location, tile, fare },
+                    });
+                }
                 WorldEvent::Letter { letter, .. } => self.menus.push(Menu::Letter { letter, shown: 0.0 }),
                 WorldEvent::QuestCompleted(t) => self.toast(format!("Quest complete: {t}")),
                 WorldEvent::NewQuest(t) => self.toast(format!("New quest: {t} (F: journal)")),
@@ -689,6 +704,17 @@ impl ValleyGame {
                                 }
                             }
                             QuestionKind::DialogueAnswer => {}
+                            QuestionKind::Shaft => {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.jump_down_shaft();
+                                }
+                            }
+                            QuestionKind::Travel { location, tile, fare } => {
+                                g.fade = Fade { alpha: 1.0, target: 0.0 };
+                                if let Some(w) = g.world.as_mut() {
+                                    w.travel(&location, tile, fare);
+                                }
+                            }
                         }));
                     }
                 }

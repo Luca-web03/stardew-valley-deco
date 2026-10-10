@@ -15,6 +15,10 @@ pub enum QuestionKind {
     FestivalLeave,
     /// Answer an NPC's question (option index is the answer).
     DialogueAnswer,
+    /// Jump down a deep-cavern shaft.
+    Shaft,
+    /// Pay a fare and travel.
+    Travel { location: String, tile: valley_sim::TilePos, fare: i32 },
 }
 
 #[derive(Clone, Debug, PartialEq)]

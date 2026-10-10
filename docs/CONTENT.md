@@ -71,3 +71,5 @@ Other conventions:
 | Shop item queries: plain ids, `RANDOM_ITEMS (O) [min] [max] [@requirePrice] [@isRandomSale]`, `RandomItemId`, `MaxItems`, `AvailableStock` (per day) | `valley_sim::shop` |
 | Special orders: `Data/SpecialOrders` town orders (objectives Collect, Ship, Deliver, Fish, Gift, Slay, ReachMineFloor; rewards Money, Friendship, Mail; `RequiredTags` season_/mail_/event_/knows_), board via `Action SpecialOrders` | `valley_sim::special_orders` |
 | Children: optional `CribTile` farmhouse map property (else a free tile near the bed), placeholder sheet `Characters/Dev_Child`; ask chance, stage lengths and names are engine constants | `valley_sim::children` |
+| Mine start floor: `Action Mine <floor>`; floors past 120 are the deep cavern (no elevator, tougher monsters, shafts) | `valley_sim::mines` |
+| Paid travel: `Action Port.Travel <location> <x> <y> <fare> [hhmm-hhmm]` (engine convention, 30 in-game minutes per trip) | `valley_sim::world::World::travel` |

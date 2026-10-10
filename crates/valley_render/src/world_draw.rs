@@ -150,6 +150,17 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
             out.draw(tex, IRect::new(if down { 0 } else { 16 }, 0, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.002);
             continue;
         }
+        if let ObjKind::Shaft = o.kind {
+            // A dark hole with a lighter rim.
+            let white = rc.assets.white(rc.textures);
+            for (inset, h, col) in [(6.0, 40.0, Color::rgb(90, 70, 55)), (10.0, 32.0, Color::rgb(25, 18, 15)), (16.0, 22.0, Color::rgb(5, 4, 4))] {
+                let r = FRect::new(pos.x + inset, pos.y + (TILE_F - h) / 2.0 + 4.0, TILE_F - inset * 2.0, h);
+                let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), r, DEPTH_GROUND + 0.002 + inset * 0.00001);
+                s.tint = col;
+                out.sprite(s);
+            }
+            continue;
+        }
         if let ObjKind::CrabPot { catch, .. } = &o.kind {
             let bob = ((w.game_ms as f32) / 500.0 + p.x as f32).sin() * 3.0;
             let (tex, src) = object_sprite(rc, w, &o.item_id);

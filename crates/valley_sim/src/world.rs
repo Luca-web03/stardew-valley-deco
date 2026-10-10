@@ -38,6 +38,9 @@ pub struct DayReport {
 }
 
 /// Things the front end should react to (sounds, UI, transitions).
+/// Minutes a paid trip (Port.Travel) takes.
+pub const TRAVEL_MINUTES: i32 = 30;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum WorldEvent {
     Sound(String),
@@ -48,6 +51,10 @@ pub enum WorldEvent {
     OpenShop(ShopStock),
     /// Show the special orders board.
     OpenOrderBoard,
+    /// Ask before jumping down a deep-cavern shaft.
+    ShaftPrompt,
+    /// Offer a paid trip (bus, boat...) to another location.
+    TravelPrompt { location: String, tile: TilePos, fare: i32 },
     Warped { from: String, to: String },
     /// Farmer stepped into bed: ask whether to sleep.
     SleepPrompt,
@@ -1335,6 +1342,22 @@ impl World {
             }
             "HayHopper" | "hayHopper" => self.hay_hopper(),
             "SpecialOrders" => self.open_order_board(),
+            // Engine convention: Port.Travel <location> <x> <y> <fare> [open-close]
+            "Port.Travel" if toks.len() >= 5 => {
+                let (Ok(x), Ok(y), Ok(fare)) = (toks[2].parse(), toks[3].parse(), toks[4].parse()) else { return false };
+                if let Some((open, close)) = toks.get(5).and_then(|h| h.split_once('-')) {
+                    let (open, close): (i32, i32) = (open.parse().unwrap_or(0), close.parse().unwrap_or(2600));
+                    if !(open..close).contains(&self.clock.time) {
+                        self.emit(WorldEvent::Message(format!("Service runs from {} to {}.", crate::time::Clock::time_string(open), crate::time::Clock::time_string(close))));
+                        return true;
+                    }
+                }
+                if !self.locations.contains_key(toks[1]) {
+                    return false;
+                }
+                self.emit(WorldEvent::TravelPrompt { location: toks[1].to_string(), tile: TilePos::new(x, y), fare });
+                true
+            }
             "Garbage" => {
                 let can = toks.get(1).copied().unwrap_or("default").to_string();
                 self.search_garbage(&can)
@@ -1373,9 +1396,11 @@ impl World {
                 true
             }
             "Mine" | "MineLadder" | "Descend" => {
+                // Optional start floor, e.g. "Mine 121" for the deep cavern.
+                let start = toks.get(1).and_then(|n| n.parse().ok()).unwrap_or(1);
                 let me = self.farmer.tile();
                 self.mine_entrance = (self.current.clone(), me);
-                self.enter_mine_level(1);
+                self.enter_mine_level(start);
                 true
             }
             "MineElevator" => {
@@ -1386,6 +1411,18 @@ impl World {
             }
             _ => false,
         }
+    }
+
+    /// Pay the fare and travel (the trip takes half an hour).
+    pub fn travel(&mut self, location: &str, tile: TilePos, fare: i32) -> bool {
+        if self.farmer.money < fare {
+            self.emit(WorldEvent::Message(format!("You need {fare}g for the fare.")));
+            return false;
+        }
+        self.farmer.money -= fare;
+        self.clock.time = crate::time::Clock::add_minutes(self.clock.time, TRAVEL_MINUTES).min(2550);
+        self.warp_farmer(location, tile, Some(Dir::Down));
+        true
     }
 
     pub fn open_shop(&mut self, id: &str) {

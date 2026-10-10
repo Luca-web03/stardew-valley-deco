@@ -251,6 +251,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 32, 14, SIGN, &[("Action", "Carpenter")]);
     b.set_props("Buildings", 34, 14, SIGN, &[("Action", "Blacksmith")]);
     b.set_props("Buildings", 36, 14, SIGN, &[("Action", "OpenShop AdventureShop")]);
+    b.set_props("Buildings", 37, 17, SIGN, &[("Action", "Port.Travel Dev_Dunes 6 16 300 0900-1700")]);
     b.set_props("Buildings", 16, 11, SIGN, &[("Action", "Bundles")]);
     b.set_props("Buildings", 14, 11, SIGN, &[("Action", "Museum")]);
     b.set_props("Buildings", 12, 11, SIGN, &[("Action", "OpenShop Furniture")]);
@@ -366,6 +367,33 @@ pub fn greenhouse() -> Map {
     b.map
 }
 
+/// Placeholder desert reached by paid travel (original layout): sand,
+/// boulders, a small oasis and the mouth of the deep cavern.
+pub fn dunes() -> Map {
+    let (w, h) = (30, 22);
+    let mut b = B::new("Dev_Dunes", w, h, outdoor_sheet());
+    b.fill("Back", 0, 0, w, h, SAND);
+    b.fill("Back", 4, 16, 22, 2, PATH);
+    b.water(19, 6, 5, 3);
+    for x in 0..w {
+        b.set("Buildings", x, 0, BOULDER);
+        b.set("Buildings", x, h - 1, BOULDER);
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, BOULDER);
+        b.set("Buildings", w - 1, y, BOULDER);
+    }
+    for (x, y) in [(6, 5), (9, 11), (14, 4), (26, 13), (3, 12), (22, 19), (17, 12)] {
+        b.set("Buildings", x, y, BOULDER);
+    }
+    // Cave mouth into the deep cavern.
+    b.fill("Buildings", 6, 1, 5, 3, SANDSTONE);
+    b.set_props("Buildings", 8, 3, 29, &[("Action", "Mine 121")]);
+    // Ride back to town.
+    b.set_props("Buildings", 5, 15, SIGN, &[("Action", "Port.Travel Town 36 18 0")]);
+    b.map
+}
+
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes()]
 }

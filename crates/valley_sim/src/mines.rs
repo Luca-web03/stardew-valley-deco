@@ -14,7 +14,21 @@ use crate::world::World;
 use crate::{Dir, TilePos};
 
 pub const MINE_PREFIX: &str = "UndergroundMine";
+/// Deepest floor of the regular mines (and of the elevator).
 pub const MAX_LEVEL: i32 = 120;
+/// Floors past the regular mines form the deep cavern: harder monsters,
+/// no elevator, and shafts that drop several floors (approx. rules).
+pub const DEEP_START: i32 = MAX_LEVEL + 1;
+pub const DEEP_MAX: i32 = 999;
+/// Share of deep-cavern exits that are shafts instead of ladders.
+pub const SHAFT_CHANCE: f64 = 0.3;
+/// Floors a shaft drops (inclusive range) and the fall's health cost.
+pub const SHAFT_DROP: (i32, i32) = (3, 8);
+pub const SHAFT_DAMAGE: (i32, i32) = (10, 25);
+
+pub fn is_deep(level: i32) -> bool {
+    level >= DEEP_START
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RockKind {
@@ -208,7 +222,7 @@ impl World {
     /// Build and enter a mine level.
     pub fn enter_mine_level(&mut self, level: i32) {
         self.give_starter_weapon();
-        let level = level.clamp(1, MAX_LEVEL);
+        let level = level.clamp(1, DEEP_MAX);
         let name = level_location_name(level);
         let map = if self.mine_maps.is_empty() {
             generate_cave(level, self.seed ^ self.clock.days_played() as u64)
@@ -217,7 +231,7 @@ impl World {
         };
         let mut loc = GameLocation::new(&name, map);
         loc.outdoors = false;
-        loc.display_name = format!("Mines {level}");
+        loc.display_name = if is_deep(level) { format!("Deep Cavern {}", level - MAX_LEVEL) } else { format!("Mines {level}") };
         let entry = entry_tile(&loc);
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, level as i64, 404]));
 
@@ -263,7 +277,7 @@ impl World {
         // Monsters (none on every 5th floor, which acts as a rest stop).
         let spawnable: Vec<String> = spawn_table(level).iter().filter(|n| self.monster_info.contains_key(**n)).map(|s| s.to_string()).collect();
         if level % 5 != 0 && !spawnable.is_empty() {
-            let count = 3 + level / 8 + rng.range(0, 3);
+            let count = (3 + level / 8 + rng.range(0, 3)).min(if is_deep(level) { 24 } else { 18 });
             let mut placed = 0;
             for _ in 0..count * 30 {
                 if placed >= count {
@@ -275,9 +289,13 @@ impl World {
                 }
                 let name = rng.pick(&spawnable).cloned().unwrap();
                 let mut info = self.monster_info[&name].clone();
-                // Deeper floors scale monsters up a little.
+                // Deeper floors scale monsters up a little; the deep cavern a lot.
                 info.health += level / 4;
                 info.damage += level / 20;
+                if is_deep(level) {
+                    info.health *= 2;
+                    info.damage += 4;
+                }
                 self.next_monster_id += 1;
                 self.monsters.push(Monster::new(self.next_monster_id, info, &name_clone(&name, &loc.name), p));
                 placed += 1;
@@ -345,19 +363,28 @@ impl World {
         }
         // Ladder chance rises as rocks run out.
         self.mine_stones_left = (self.mine_stones_left - 1).max(0);
-        if !self.mine_ladder_spawned && level < MAX_LEVEL {
+        if !self.mine_ladder_spawned && level != MAX_LEVEL && level < DEEP_MAX {
             let chance = 0.02 + 1.0 / (self.mine_stones_left.max(1) as f64);
             if rng.chance(chance) {
                 self.mine_ladder_spawned = true;
-                self.location_mut().state.objects.insert(t, PlacedObject::new("Port_Ladder", false, ObjKind::Ladder { down: true }));
+                let exit = if is_deep(level) && rng.chance(SHAFT_CHANCE) {
+                    PlacedObject::new("Port_Shaft", false, ObjKind::Shaft)
+                } else {
+                    PlacedObject::new("Port_Ladder", false, ObjKind::Ladder { down: true })
+                };
+                self.location_mut().state.objects.insert(t, exit);
                 self.sound("newRecipe");
             }
         }
         true
     }
 
-    /// Use a ladder object at `t`.
+    /// Use a ladder (or jump down a shaft) at `t`.
     pub(crate) fn use_ladder(&mut self, t: TilePos) -> bool {
+        if matches!(self.location().object(t).map(|o| &o.kind), Some(ObjKind::Shaft)) {
+            self.emit(crate::world::WorldEvent::ShaftPrompt);
+            return true;
+        }
         let Some(PlacedObject { kind: ObjKind::Ladder { down }, .. }) = self.location().object(t).cloned() else { return false };
         let level = self.mine_level().unwrap_or(0);
         if down {
@@ -369,6 +396,19 @@ impl World {
             self.sound("stairsdown");
         }
         true
+    }
+}
+
+impl World {
+    /// Jump down a shaft: several floors deeper, at a cost in health.
+    pub fn jump_down_shaft(&mut self) {
+        let level = self.mine_level().unwrap_or(DEEP_START);
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, 911]));
+        let drop = rng.range(SHAFT_DROP.0, SHAFT_DROP.1 + 1);
+        let dmg = rng.range(SHAFT_DAMAGE.0, SHAFT_DAMAGE.1 + 1).min(self.farmer.health - 1).max(0);
+        self.farmer.health -= dmg;
+        self.enter_mine_level(level + drop);
+        self.emit(crate::world::WorldEvent::Hud(format!("You fell {drop} floors and took {dmg} damage.")));
     }
 }
 

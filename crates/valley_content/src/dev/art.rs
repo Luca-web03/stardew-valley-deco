@@ -32,6 +32,8 @@ pub const TREE_TOP: i32 = 31;
 pub const BIN: i32 = 32;
 pub const GARBAGE: i32 = 33;
 pub const PET_BOWL: i32 = 34;
+pub const BOULDER: i32 = 35;
+pub const SANDSTONE: i32 = 36;
 
 // Indoor sheet tile indices.
 pub const FLOOR: i32 = 0;
@@ -222,6 +224,21 @@ pub fn outdoors(season: &str) -> Image {
         c.rect(2, 3, 12, 2, shade(metal, 20));
         c.rect(7, 1, 2, 2, shade(metal, -20));
         c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, SANDSTONE, OUT_COLS, 16, 16);
+        c.noise(Color::rgb(190, 132, 86), 8, 12);
+        for (y, col) in [(3, Color::rgb(214, 160, 108)), (8, Color::rgb(160, 106, 70)), (13, Color::rgb(214, 160, 108))] {
+            c.rect(0, y, 16, 1, col);
+        }
+    }
+    {
+        let mut c = Cell::at(&mut img, BOULDER, OUT_COLS, 16, 16);
+        c.noise(Color::rgb(222, 200, 140), 6, 8);
+        c.ellipse(8.0, 9.0, 7.5, 6.5, OUTLINE);
+        c.ellipse(8.0, 9.0, 6.5, 5.5, Color::rgb(176, 120, 80));
+        c.ellipse(7.0, 7.5, 4.0, 3.0, Color::rgb(204, 150, 100));
+        c.rect(5, 12, 6, 1, Color::rgb(140, 92, 60));
     }
     {
         let mut c = Cell::at(&mut img, PET_BOWL, OUT_COLS, 16, 16);
