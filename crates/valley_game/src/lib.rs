@@ -2316,6 +2316,7 @@ impl ValleyGame {
                 w.clock.time = num(1).unwrap_or(w.clock.time).clamp(600, 2550);
                 format!("time = {}", w.clock.time)
             }
+            Some("child") => w.debug_add_child(num(1).unwrap_or(0)),
             Some("day") => {
                 w.end_day(false);
                 format!("now day {} of {}", w.clock.day, w.clock.season.name())
@@ -2329,7 +2330,7 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenBundles);
                 "opening bundles".into()
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | slot <n> | tile".into(),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | bundles | slot <n> | tile".into(),
         }
     }
 }

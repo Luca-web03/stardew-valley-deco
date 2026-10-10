@@ -40,7 +40,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
-      gifts, friendship, dating, marriage, spouse
+      gifts, friendship, dating, marriage, spouse, children (approx. timings)
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,
@@ -58,7 +58,6 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Children
 - [ ] Special-area mechanics beyond generic maps (desert, island, skull
       cavern, volcano)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer

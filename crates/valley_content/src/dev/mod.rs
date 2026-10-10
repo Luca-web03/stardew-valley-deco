@@ -38,6 +38,7 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
     m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
+    m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 

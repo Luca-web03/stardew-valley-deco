@@ -1336,6 +1336,68 @@ pub fn dog() -> Image {
     img
 }
 
+/// Children sheet: 16x16 cells, 9 columns x 2 rows (one row per outfit
+/// colour). Columns: 0 newborn bundle, 1 sitting baby, 2-3 crawling,
+/// 4-7 toddler walking, 8 crib. Original design.
+pub fn child() -> Image {
+    let mut img = Image::new(16 * 9, 32);
+    let skin = Color::rgb(236, 196, 160);
+    let hair = Color::rgb(120, 80, 45);
+    for row in 0..2 {
+        let suit = if row == 0 { Color::rgb(120, 170, 220) } else { Color::rgb(230, 170, 90) };
+        for col in 0..8 {
+            let mut c = Cell { ox: col * 16, oy: row * 16, w: 16, h: 16, img: &mut img };
+            match col {
+                0 => {
+                    c.ellipse(8.0, 11.0, 5.0, 3.5, Color::rgb(245, 240, 230));
+                    c.ellipse(5.0, 10.0, 2.5, 2.5, skin);
+                    c.px(4, 10, OUTLINE);
+                }
+                1 => {
+                    c.ellipse(8.0, 12.0, 4.0, 3.0, suit);
+                    c.ellipse(8.0, 7.0, 3.5, 3.5, skin);
+                    c.rect(6, 4, 4, 1, hair);
+                    c.px(7, 7, OUTLINE);
+                    c.px(9, 7, OUTLINE);
+                    c.rect(3, 11, 2, 2, skin);
+                    c.rect(11, 11, 2, 2, skin);
+                }
+                2 | 3 => {
+                    let step = col - 2;
+                    c.ellipse(9.0, 11.0, 4.5, 2.5, suit);
+                    c.ellipse(4.5, 9.0, 3.0, 3.0, skin);
+                    c.rect(3, 6, 3, 1, hair);
+                    c.px(3, 9, OUTLINE);
+                    c.rect(4 + step, 13, 2, 2, skin);
+                    c.rect(11 - step, 13, 2, 2, suit);
+                }
+                _ => {
+                    let f = col - 4;
+                    let bob = f % 2;
+                    c.rect(5, 8 + bob, 6, 5, suit);
+                    c.ellipse(8.0, 5.0 + bob as f32, 3.5, 3.5, skin);
+                    c.rect(5, 1 + bob, 6, 2, hair);
+                    c.px(7, 5 + bob, OUTLINE);
+                    c.px(9, 5 + bob, OUTLINE);
+                    c.rect(5, 13, 2, 3 - (f == 1) as i32, skin);
+                    c.rect(9, 13, 2, 3 - (f == 3) as i32, skin);
+                }
+            }
+            c.auto_outline(OUTLINE);
+        }
+        // Crib.
+        let mut c = Cell { ox: 8 * 16, oy: row * 16, w: 16, h: 16, img: &mut img };
+        let wood = Color::rgb(190, 140, 90);
+        c.rect(1, 6, 14, 1, wood);
+        c.rect(1, 13, 14, 2, wood);
+        for x in (1..16).step_by(3) {
+            c.rect(x, 6, 1, 9, wood);
+        }
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
 /// Traveling cart (48x32, 3x2 tiles). Original design: a wooden wagon
 /// with a striped awning, crates and two spoked wheels.
 pub fn cart() -> Image {

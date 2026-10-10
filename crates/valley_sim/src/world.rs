@@ -160,6 +160,8 @@ pub struct World {
     /// Data/SpecialOrders and this week's board offers.
     pub special_orders: BTreeMap<String, crate::special_orders::SpecialOrderData>,
     pub order_offers: Vec<String>,
+    /// The spouse will ask about a baby when next spoken to.
+    pub child_question_pending: bool,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -296,6 +298,7 @@ impl World {
             shop_sold: BTreeMap::new(),
             special_orders: cm.load_json("Data/SpecialOrders").unwrap_or_default(),
             order_offers: Vec::new(),
+            child_question_pending: false,
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -483,7 +486,7 @@ impl World {
     }
 
     /// Tile where the farmer wakes: next to the bed, or the arrival tile.
-    fn wake_tile(&self) -> TilePos {
+    pub fn wake_tile(&self) -> TilePos {
         let Some(house) = self.locations.get("FarmHouse") else { return TilePos::new(1, 1) };
         for d in [Dir::Left, Dir::Down, Dir::Right, Dir::Up] {
             let p = self.bed_tile.offset(d);
@@ -650,6 +653,7 @@ impl World {
         }
         self.update_npc_schedules();
         self.spouse_morning();
+        self.children_morning();
         self.pet_morning();
         self.cart_morning();
         self.orders_morning();
@@ -714,6 +718,7 @@ impl World {
         let old_season = self.clock.season;
         self.tick_quest_days();
         self.tick_orders();
+        self.children_night();
         if let Some((tool, days)) = self.farmer.tool_upgrade.as_mut() {
             *days -= 1;
             if *days <= 0 {
@@ -872,6 +877,7 @@ impl World {
         self.update_bombs(dt);
         self.update_animals(dt);
         self.update_pet(dt);
+        self.update_children(dt);
         self.update_dropped(dt);
     }
 
@@ -1165,7 +1171,7 @@ impl World {
         }
 
         // Farm animals, the pet, the traveling cart and buildings.
-        if self.pet_animal(target) || self.pet_the_pet(target) || self.cart_action(target) {
+        if self.pet_animal(target) || self.pet_the_pet(target) || self.interact_child(target) || self.cart_action(target) {
             return true;
         }
         // Trees: tappers and fruit.
@@ -1487,6 +1493,9 @@ impl World {
     fn interact_npc(&mut self, i: usize) {
         let me = self.farmer.tile();
         let name = self.npcs[i].name.clone();
+        if self.maybe_ask_about_child(&name) {
+            return;
+        }
         let nt = self.npcs[i].tile();
         self.npcs[i].facing = Dir::toward(me.x - nt.x, me.y - nt.y);
         self.npcs[i].pause_ms = 3000;
@@ -1918,7 +1927,8 @@ impl World {
         let romanceable = self.npcs.iter().find(|n| n.name == npc).is_some_and(|n| n.can_romance);
         let f = self.farmer.friendship(&npc);
         f.points = (f.points + c.friendship).clamp(0, f.max_points(romanceable));
-        if !c.id.is_empty() && !self.farmer.dialogue_answers.contains(&c.id) {
+        self.child_answer(&c.id);
+        if !c.id.is_empty() && !c.id.starts_with("__") && !self.farmer.dialogue_answers.contains(&c.id) {
             self.farmer.dialogue_answers.push(c.id.clone());
         }
         let raw = match &c.reaction {

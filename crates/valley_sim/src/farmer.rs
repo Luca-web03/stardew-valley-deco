@@ -209,6 +209,11 @@ pub struct Farmer {
     pub special_order: Option<crate::special_orders::ActiveOrder>,
     #[serde(default)]
     pub orders_completed: Vec<String>,
+    #[serde(default)]
+    pub children: Vec<crate::children::Child>,
+    /// `days_played` when the next baby arrives.
+    #[serde(default)]
+    pub baby_due: Option<i32>,
     /// Letters already read (ids), for the collection tab.
     #[serde(default)]
     pub letters_read: Vec<String>,
@@ -294,6 +299,8 @@ impl Farmer {
             quests: Vec::new(),
             special_order: None,
             orders_completed: Vec::new(),
+            children: Vec::new(),
+            baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),
             pending_levelups: Vec::new(),

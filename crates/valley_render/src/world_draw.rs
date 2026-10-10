@@ -329,6 +329,37 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         out.sprite(s);
     }
 
+    // Children (and the crib while there's a baby).
+    if loc_name == "FarmHouse" && !w.farmer.children.is_empty() {
+        use valley_sim::children::ChildStage;
+        let tex = rc.assets.tex(rc.cm, rc.textures, "Characters/Dev_Child");
+        let today = w.clock.days_played();
+        let crib = w.crib_tile();
+        if w.farmer.children.iter().any(|c| matches!(c.stage(today), ChildStage::Newborn | ChildStage::Sitter)) {
+            let p = cam.to_screen(Vec2::new(crib.x as f32 * TILE_F, crib.y as f32 * TILE_F));
+            out.draw(tex, IRect::new(8 * 16, 0, 16, 16), p, ZOOM, sort_depth((crib.y + 1) as f32 * TILE_F - 2.0, map_h));
+        }
+        let shadow = rc.assets.shadow(rc.textures);
+        for c in &w.farmer.children {
+            let col = match c.stage(today) {
+                ChildStage::Newborn => 0,
+                ChildStage::Sitter => 1,
+                ChildStage::Crawler => 2 + if c.moving { ((c.walk_ms / 250) % 2) as i32 } else { 0 },
+                ChildStage::Toddler => 4 + if c.moving { ((c.walk_ms / 150) % 4) as i32 } else { 0 },
+            };
+            let p = cam.to_screen(c.pos);
+            let in_crib = matches!(c.stage(today), ChildStage::Newborn | ChildStage::Sitter);
+            // Babies lie in the crib, in front of its back rail.
+            let depth = if in_crib { sort_depth((crib.y + 1) as f32 * TILE_F - 1.0, map_h) } else { sort_depth(c.pos.y + TILE_F, map_h) };
+            if !in_crib {
+                out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x + 8.0, p.y + TILE_F - 12.0), 3.0, depth - 0.0005);
+            }
+            let mut s = Sprite::new(tex, IRect::new(col * 16, c.variant.clamp(0, 1) * 16, 16, 16), FRect::new(p.x, p.y, TILE_F, TILE_F), depth + 0.0001);
+            s.flip_x = c.facing == Dir::Right;
+            out.sprite(s);
+        }
+    }
+
     // The farm pet.
     if let Some(pet) = w.pet.as_ref().filter(|p| p.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, &pet.texture);
