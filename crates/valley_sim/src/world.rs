@@ -71,6 +71,8 @@ pub enum WorldEvent {
     OpenBlacksmith,
     OpenBundles,
     OpenMuseum,
+    /// Talked to the festival host: ask to start the main event.
+    FestivalHost { festival: String },
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -166,6 +168,11 @@ pub struct World {
     pub compat: Compat,
     pub bundles: Vec<crate::bundles::BundleDef>,
     pub museum_rewards: BTreeMap<String, crate::bundles::MuseumReward>,
+    /// Festivals keyed by date ("fall16").
+    pub festivals: HashMap<String, crate::festivals::FestivalInfo>,
+    /// Temporary maps used by event scripts (changeToTemporaryMap).
+    pub festival_maps: HashMap<String, valley_content::Map>,
+    pub festival_done_today: bool,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -268,7 +275,37 @@ impl World {
             compat: Compat::default(),
             bundles: Vec::new(),
             museum_rewards: BTreeMap::new(),
+            festivals: HashMap::new(),
+            festival_maps: HashMap::new(),
+            festival_done_today: false,
         };
+        for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
+            let data = cm.load_string_dict(&format!("Data/Festivals/{key}"));
+            if let Some(f) = crate::festivals::parse_festival(key, data) {
+                w.festivals.insert(key.clone(), f);
+            }
+        }
+        // Preload temporary maps referenced by festival and event scripts.
+        let scripts: Vec<String> = w
+            .festivals
+            .values()
+            .flat_map(|f| f.data.values().cloned().collect::<Vec<_>>())
+            .chain(w.event_data.values().flat_map(|d| d.values().cloned().collect::<Vec<_>>()))
+            .collect();
+        for sc in scripts {
+            for c in crate::events::split_commands(&sc) {
+                let t = crate::events::tokens(&c);
+                if t.first().map(|s| s == "changeToTemporaryMap").unwrap_or(false) {
+                    if let Some(name) = t.get(1) {
+                        if !w.festival_maps.contains_key(name) {
+                            if let Some(m) = cm.load_map(&format!("Maps/{name}")) {
+                                w.festival_maps.insert(name.clone(), m);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         w.bundles = crate::bundles::parse_bundles(&cm.load_string_dict("Data/Bundles"), &w.items);
         if let Some(v) = cm.load_json_value("Data/MuseumRewards") {
             w.museum_rewards = crate::bundles::parse_museum_rewards(&v);
@@ -503,6 +540,7 @@ impl World {
 
     /// Morning setup: weather-dependent watering, NPC schedules, mail.
     pub fn start_day(&mut self) {
+        self.festival_done_today = false;
         let raining = self.weather.is_raining();
         self.unlock_recipes();
         self.run_sprinklers();
@@ -696,6 +734,12 @@ impl World {
         self.game_ms += dt as u64;
         self.animate(dt);
         if self.event.is_some() {
+            if self.festival_roaming() {
+                if !self.paused {
+                    self.update_festival_roam(input, dt);
+                }
+                return;
+            }
             if !self.paused || self.event.as_ref().is_some_and(|e| !e.waiting_ui) {
                 self.update_event(dt);
             }
@@ -955,7 +999,9 @@ impl World {
         self.sound("doorClose");
         self.quest_visit(target);
         self.emit(WorldEvent::Warped { from, to: target.to_string() });
-        self.check_location_events();
+        if !self.check_festival() {
+            self.check_location_events();
+        }
     }
 
     fn face_toward(&mut self, t: TilePos) {

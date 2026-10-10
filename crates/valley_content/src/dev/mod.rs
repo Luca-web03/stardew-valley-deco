@@ -376,6 +376,16 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Events/Town", json!({
             "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
         })),
+        ("Data/Festivals/FestivalDates", json!({ "fall16": "Harvest Fair" })),
+        ("Data/Festivals/fall16", json!({
+            "name": "Harvest Fair",
+            "conditions": "Town/900 1500",
+            "host": "Tobin",
+            "set-up": "none/20 15/farmer 2 15 1 Tobin 20 13 2 Mara 16 17 1/pause 300/viewport 10 15/emote Mara 32",
+            "mainEvent": "pause 200/speak Tobin \"Welcome, everyone, to the Harvest Fair!#$b#The judges have tasted every pumpkin in town... and the prize goes to @!$h\"/money 500/emote Mara 20/speak Mara \"Congratulations!$h\"/pause 400/end",
+            "Mara": "I entered my best berries this year. Fingers crossed!$h",
+            "Tobin": "Talk to me when you're ready for the judging."
+        })),
         ("Data/Bundles", json!({
             "Garden/0": "Spring Basket/O Dev_Sprinkler 2/Dev_Turnip 3 0 Dev_Bean 3 0 Dev_Berry 2 0/0/3/Spring Basket",
             "Garden/1": "Fresh Catch/O Dev_SpeedGro 5/Dev_Perch 1 0 Dev_Darter 1 0/1/2/Fresh Catch",

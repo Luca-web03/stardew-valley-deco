@@ -24,7 +24,7 @@ pub struct Actor {
     pub emote: Option<(i32, u32)>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct EventRunner {
     pub id: String,
     pub location: String,
@@ -40,6 +40,10 @@ pub struct EventRunner {
     pub waiting_move: Option<String>,
     pub skippable: bool,
     pub finished: bool,
+    /// Present while this event is a festival.
+    pub festival: Option<crate::festivals::FestivalState>,
+    /// Original map while a temporary map is shown.
+    pub saved_map: Option<valley_content::Map>,
 }
 
 /// Split a script on '/' while keeping quoted text intact.
@@ -194,6 +198,8 @@ impl World {
             waiting_move: None,
             skippable: false,
             finished: false,
+            festival: None,
+            saved_map: None,
         });
         self.farmer.tool_use = None;
         self.weapon_swing = None;
@@ -213,8 +219,18 @@ impl World {
         }
     }
 
-    fn finish_event(&mut self) {
-        let Some(e) = self.event.take() else { return };
+    pub(crate) fn finish_event(&mut self) {
+        let Some(mut e) = self.event.take() else { return };
+        if let Some(m) = e.saved_map.take() {
+            if let Some(loc) = self.locations.get_mut(&e.location) {
+                loc.map = m;
+            }
+        }
+        if e.festival.is_some() {
+            self.end_festival_day();
+            self.emit(WorldEvent::EventEnded);
+            return;
+        }
         if !self.farmer.events_seen.contains(&e.id) {
             self.farmer.events_seen.push(e.id.clone());
         }
@@ -267,7 +283,17 @@ impl World {
                 break;
             }
         }
-        if e.finished || (e.pc >= e.commands.len() && !e.waiting_ui && e.waiting_move.is_none() && e.wait_ms == 0) {
+        let done = e.finished || (e.pc >= e.commands.len() && !e.waiting_ui && e.waiting_move.is_none() && e.wait_ms == 0);
+        if done {
+            if let Some(f) = e.festival.as_mut() {
+                if !f.main_started && !f.roaming {
+                    // Set-up finished: let the farmer walk around.
+                    f.roaming = true;
+                    e.finished = false;
+                    self.event = Some(e);
+                    return;
+                }
+            }
             self.event = Some(e);
             self.finish_event();
             return;
@@ -416,6 +442,17 @@ impl World {
             }
             "addQuest" => {
                 self.add_quest(&arg(1));
+                false
+            }
+            "changeToTemporaryMap" | "changeLocation" => {
+                if let Some(m) = self.festival_maps.get(&arg(1)).cloned() {
+                    if let Some(loc) = self.locations.get_mut(&e.location) {
+                        let old = std::mem::replace(&mut loc.map, m);
+                        if e.saved_map.is_none() {
+                            e.saved_map = Some(old);
+                        }
+                    }
+                }
                 false
             }
             _ => false,

@@ -365,6 +365,18 @@ impl ValleyGame {
 
         if !self.menus.is_empty() {
             self.update_menu(ctx);
+        } else if self.world.as_ref().is_some_and(|w| w.festival_roaming()) {
+            if ctx.input.pressed(Key::Escape) {
+                self.menus.push(Menu::Question {
+                    text: "Leave the festival? You'll head home for the night.".into(),
+                    options: vec!["Leave".into(), "Stay".into()],
+                    selected: 1,
+                    kind: QuestionKind::FestivalLeave,
+                });
+            } else if let Some(w) = self.world.as_mut() {
+                let input = input_map::player_input(&ctx.input, None);
+                w.update(&input);
+            }
         } else if self.world.as_ref().is_some_and(|w| w.in_event()) {
             if ctx.input.pressed(Key::Escape) {
                 if let Some(w) = self.world.as_mut() {
@@ -446,6 +458,12 @@ impl ValleyGame {
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
                 WorldEvent::Music(track) => ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume }),
                 WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
+                WorldEvent::FestivalHost { festival } => self.menus.push(Menu::Question {
+                    text: format!("Are you ready to begin the main event of the {festival}?"),
+                    options: vec!["Yes".into(), "Not yet".into()],
+                    selected: 0,
+                    kind: QuestionKind::FestivalMain,
+                }),
                 WorldEvent::OpenMuseum => self.menus.push(Menu::Museum { hovered: None }),
                 WorldEvent::OpenBlacksmith => {
                     let collected = self.world.as_mut().is_some_and(|w| w.collect_tool_upgrade());
@@ -563,6 +581,16 @@ impl ValleyGame {
                                 g.screen = Screen::Title { hovered: None };
                             }
                             QuestionKind::Elevator { .. } => {}
+                            QuestionKind::FestivalMain => {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.festival_begin_main();
+                                }
+                            }
+                            QuestionKind::FestivalLeave => {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.leave_festival();
+                                }
+                            }
                         }));
                     }
                 }

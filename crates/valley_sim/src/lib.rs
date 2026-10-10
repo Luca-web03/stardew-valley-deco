@@ -17,6 +17,7 @@ pub mod dialogue;
 pub mod events;
 pub mod farm;
 pub mod farmer;
+pub mod festivals;
 pub mod fishing;
 pub mod gsq;
 pub mod input;
