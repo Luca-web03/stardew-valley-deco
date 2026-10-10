@@ -412,6 +412,7 @@ pub const ICON_BERRY_TART: i32 = 64;
 pub const ICON_WHIRL_LURE: i32 = 65;
 pub const ICON_CORK_FLOAT: i32 = 66;
 pub const ICON_TICKET: i32 = 67;
+pub const ICON_BOOK: i32 = 68;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -689,6 +690,14 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BOOK, OBJ_COLS, 16, 16);
+        c.rect(3, 3, 10, 11, Color::rgb(70, 110, 160));
+        c.rect(3, 3, 2, 11, Color::rgb(50, 80, 120));
+        c.rect(6, 6, 5, 1, Color::rgb(230, 210, 120));
+        c.rect(12, 4, 1, 9, Color::rgb(240, 235, 220));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1692,6 +1701,27 @@ pub fn clothes() -> Image {
         c.rect(4, 4, 3, h, *col);
         c.rect(9, 4, 3, h, *col);
         c.rect(4, 2, 8, 1, shade(*col, -30));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// Trinket icons, 16x16: 0 pebble charm, 1 swift feather. Original designs.
+pub fn trinkets() -> Image {
+    let mut img = Image::new(32, 16);
+    {
+        let mut c = Cell { ox: 0, oy: 0, w: 16, h: 16, img: &mut img };
+        c.rect(7, 1, 2, 4, Color::rgb(150, 110, 70));
+        c.ellipse(8.0, 9.0, 4.5, 4.0, Color::rgb(120, 170, 160));
+        c.ellipse(7.0, 8.0, 1.5, 1.2, Color::rgb(200, 240, 230));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell { ox: 16, oy: 0, w: 16, h: 16, img: &mut img };
+        for i in 0..10 {
+            c.rect(4 + i / 2, 13 - i, 3, 1, Color::rgb(240, 240, 250));
+        }
+        c.rect(5, 12, 1, 3, Color::rgb(140, 120, 100));
         c.auto_outline(OUTLINE);
     }
     img

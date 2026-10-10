@@ -353,7 +353,7 @@ impl World {
                     _ => mi.gold_ore.clone(),
                 };
                 if let Some(o) = ore {
-                    let bonus = if self.farmer.has_profession("miner") { 1 } else { 0 };
+                    let bonus = if self.farmer.has_profession("miner") { 1 } else { 0 } + if self.has_mastery(crate::farmer::Skill::Mining) { 1 } else { 0 };
                     self.spawn_drop(Item::object(&o, rng.range(1, 4) + bonus), c);
                 }
             }

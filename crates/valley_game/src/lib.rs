@@ -571,6 +571,12 @@ impl ValleyGame {
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::OpenTailoring => self.menus.push(Menu::Tailoring { left: None, right: None }),
                 WorldEvent::OpenReels => self.menus.push(Menu::Reels { bet: 10, last: None }),
+                WorldEvent::MasteryMenu { points, skills } => {
+                    let mut options: Vec<String> = skills.iter().map(|s| format!("{s:?}: {}", valley_sim::mastery::perk_text(*s))).collect();
+                    options.push("Leave".into());
+                    let text = format!("Mastery points: {points}. Choose a perk:");
+                    self.menus.push(Menu::Question { text, options, selected: 0, kind: QuestionKind::Mastery { skills } });
+                }
                 WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::MinecartMenu { network, prompt, choices } => {
@@ -698,6 +704,14 @@ impl ValleyGame {
                                 }
                             }));
                         }
+                    } else if let QuestionKind::Mastery { skills } = &kind {
+                        if let Some(&s) = skills.get(i) {
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(Err(e)) = g.world.as_mut().map(|w| w.claim_mastery(s)) {
+                                    g.toast(&e);
+                                }
+                            }));
+                        }
                     } else if let QuestionKind::Tv { channels } = &kind {
                         if let Some(&c) = channels.get(i) {
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
@@ -744,7 +758,7 @@ impl ValleyGame {
                                     w.leave_festival();
                                 }
                             }
-                            QuestionKind::DialogueAnswer | QuestionKind::Minecart { .. } | QuestionKind::Tv { .. } => {}
+                            QuestionKind::DialogueAnswer | QuestionKind::Minecart { .. } | QuestionKind::Tv { .. } | QuestionKind::Mastery { .. } => {}
                             QuestionKind::Shaft => {
                                 if let Some(w) = g.world.as_mut() {
                                     w.jump_down_shaft();
@@ -1709,14 +1723,15 @@ fn inventory_slot_rects(sw: f32, sh: f32) -> Vec<FRect> {
         .collect()
 }
 
-/// Equipment slots in the items tab: ring 1, ring 2, boots (top row) and
-/// hat, shirt, pants (second row); indices match `World::unequip`.
-fn equip_rects(sw: f32, sh: f32) -> [FRect; 6] {
+/// Equipment slots in the items tab: ring 1, ring 2, boots (top row),
+/// hat, shirt, pants (second row) and the trinket (right of the boots);
+/// indices match `World::unequip`.
+fn equip_rects(sw: f32, sh: f32) -> [FRect; 7] {
     let f = menu_frame(sw, sh);
     let x = f.x + f.w - 300.0;
     let y = f.y + 300.0;
     let r = |i: usize| FRect::new(x + (i % 3) as f32 * 76.0, y + (i / 3) as f32 * 76.0, 64.0, 64.0);
-    [r(0), r(1), r(2), r(3), r(4), r(5)]
+    [r(0), r(1), r(2), r(3), r(4), r(5), FRect::new(x + 228.0, y, 64.0, 64.0)]
 }
 
 fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
@@ -1876,14 +1891,15 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                         ui.text("Trash", Vec2::new(t.x + 4.0, t.y + 24.0), 2.0, ui::TEXT);
                     }
                     let er = equip_rects(sw, sh);
-                    for (k, (r, label)) in er.iter().zip(["Ring", "Ring", "Boots", "Hat", "Shirt", "Pants"]).enumerate() {
+                    for (k, (r, label)) in er.iter().zip(["Ring", "Ring", "Boots", "Hat", "Shirt", "Pants", "Trinket"]).enumerate() {
                         ui.slot(*r, false);
                         let item = match k {
                             0 | 1 => w.farmer.rings[k].as_ref(),
                             2 => w.farmer.boots.as_ref(),
                             3 => w.farmer.hat.as_ref(),
                             4 => w.farmer.shirt_item.as_ref(),
-                            _ => w.farmer.pants_item.as_ref(),
+                            5 => w.farmer.pants_item.as_ref(),
+                            _ => w.farmer.trinket.as_ref(),
                         };
                         match item {
                             Some(it) => hud::draw_item_in_slot(rc, ui, w, it, *r),

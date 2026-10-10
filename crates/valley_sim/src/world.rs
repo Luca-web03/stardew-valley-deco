@@ -76,6 +76,8 @@ pub enum WorldEvent {
     TvMenu(Vec<crate::minecarts::Channel>),
     /// Open the sewing machine.
     OpenTailoring,
+    /// Mastery pedestal: unspent points and skills that can be mastered.
+    MasteryMenu { points: i32, skills: Vec<crate::farmer::Skill> },
     /// Casino games.
     OpenReels,
     OpenHighLow,
@@ -213,6 +215,8 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// Data/Powers (book powers).
+    pub powers: BTreeMap<String, crate::mastery::PowerData>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -363,6 +367,7 @@ impl World {
             passive_maps,
             festival_original_maps: BTreeMap::new(),
             casino_plays: 0,
+            powers: crate::mastery::load_powers(cm),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -1324,7 +1329,7 @@ impl World {
         let slot = self.farmer.current_slot;
         // Warp items and note scraps act before placement.
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
-            if self.use_warp_totem(slot, &id) || self.read_note_scrap(slot, &id) {
+            if self.use_warp_totem(slot, &id) || self.read_note_scrap(slot, &id) || self.read_book(slot, &id) {
                 return true;
             }
         }
@@ -1392,6 +1397,7 @@ impl World {
         match cmd {
             "Tailoring" => self.open_tailoring(),
             "Theater" | "Port.Theater" => self.watch_movie(),
+            "Port.Mastery" => self.open_mastery(),
             "Port.Reels" => {
                 self.emit(WorldEvent::OpenReels);
                 true
@@ -1955,7 +1961,10 @@ impl World {
             r
         };
         self.rng = rng;
-        let Some((items, _)) = result else { return false };
+        let Some((mut items, _)) = result else { return false };
+        if self.has_mastery(Skill::Farming) && self.rng.chance(crate::mastery::FARMING_PERK_CHANCE) {
+            items.push(Item::object(&data.harvest_item_id, 1));
+        }
         let price = self.items.object(&data.harvest_item_id).map(|o| o.data.price).unwrap_or(0);
         let xp = (16.0 * (0.018 * price as f64 + 1.0).ln()).round() as i32;
         if let Some(l) = self.farmer.skills.gain(Skill::Farming, xp) {

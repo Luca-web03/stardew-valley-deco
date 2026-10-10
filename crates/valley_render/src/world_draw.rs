@@ -855,6 +855,16 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
         Item::Object { id, .. } => object_sprite(rc, w, id),
         Item::Big { id, .. } => big_sprite(rc, w, id),
         Item::Furniture { id } => furniture_sprite(rc, w, id),
+        Item::Trinket { id } => {
+            let (tex_name, idx) = match w.items.trinkets.get(id) {
+                Some(t) => (t.texture.clone().unwrap_or_else(|| "TileSheets/Dev_Trinkets".into()).replace('\\', "/"), t.sheet_index),
+                None => ("TileSheets/Dev_Trinkets".to_string(), 0),
+            };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let (tw, _) = rc.textures.size(tex);
+            let cols = (tw / 16).max(1) as i32;
+            (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
         Item::Clothing { slot, id } => {
             let lay = rc.assets.layouts(rc.cm);
             let (tex_name, idx) = match w.items.clothing(*slot, id) {

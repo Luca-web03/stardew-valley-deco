@@ -45,6 +45,7 @@ pub fn build() -> MemSource {
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
+    m.insert("TileSheets/Dev_Trinkets.png", art::trinkets().encode_png());
     m.insert("TileSheets/Dev_Clothes.png", art::clothes().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
@@ -127,6 +128,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                             "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
         "Dev_Cloth": { "Name": "Cloth", "DisplayName": "Cloth", "Description": "Woven fabric for the sewing machine.", "Type": "Crafting", "Category": -8, "Price": 100,
                        "SpriteIndex": ICON_FIBER, "ContextTags": ["item_cloth"] },
+        "Dev_BookGarden": { "Name": "The Weekend Gardener", "DisplayName": "The Weekend Gardener", "Description": "Tips for busy growers. Reading it teaches you a few things.", "Type": "Basic", "Category": 0, "Price": 500,
+                            "SpriteIndex": ICON_BOOK, "ContextTags": ["book_item"], "CustomFields": { "Port.BookXp": "Farming 250" } },
+        "Dev_BookDunes": { "Name": "Dune Lore", "DisplayName": "Dune Lore", "Description": "Stories of travelers who crossed the dunes.", "Type": "Basic", "Category": 0, "Price": 800,
+                           "SpriteIndex": ICON_BOOK, "ContextTags": ["book_item"], "CustomFields": { "Port.BookPower": "Dev_DuneWalker", "Port.BookXp": "Foraging 100" } },
         "Dev_Ticket": { "Name": "Movie Ticket", "DisplayName": "Movie Ticket", "Description": "Good for one showing. Give it to a friend to invite them along.", "Type": "Basic", "Category": 0, "Price": 250,
                         "SpriteIndex": ICON_TICKET, "CanBeGivenAsGift": false },
         "Dev_NoteScrap": { "Name": "Note Scrap", "DisplayName": "Note Scrap", "Description": "A torn page with writing on it. Read it to see what it says.", "Type": "Basic", "Category": 0, "Price": 1,
@@ -334,6 +339,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "club", "ItemId": "(W)Dev_Club", "Price": 900 },
                 { "Id": "sling", "ItemId": "(W)Dev_Slingshot", "Price": 500 },
                 { "Id": "bomb", "ItemId": "(O)Dev_Bomb", "Price": 150 }
+            ]
+        },
+        "Dev_Bookstall": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "garden", "ItemId": "(O)Dev_BookGarden" },
+                { "Id": "dunes", "ItemId": "(O)Dev_BookDunes" },
+                { "Id": "pebble", "ItemId": "(TR)Dev_PebbleCharm", "Price": 2000 },
+                { "Id": "feather", "ItemId": "(TR)Dev_SwiftFeather", "Price": 3000 }
             ]
         },
         "Dev_MarketStall": {
@@ -581,6 +595,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "StartTime": 1700, "StartMessage": "The Lantern Market is open in the dunes tonight!", "OnlyShowMessageOnFirstDay": false,
                 "MapReplacements": { "Dev_Dunes": "Dev_Dunes_Market" }
             }
+        })),
+        ("Data/Trinkets", json!({
+            "Dev_PebbleCharm": { "DisplayName": "Pebble Charm", "Description": "A smooth river stone on a cord. Defense +2.", "Texture": "TileSheets\\Dev_Trinkets", "SheetIndex": 0,
+                                 "CustomFields": { "Port.TrinketStats": "defense 2" } },
+            "Dev_SwiftFeather": { "DisplayName": "Swift Feather", "Description": "Light as air. Speed +1, attack +1.", "Texture": "TileSheets\\Dev_Trinkets", "SheetIndex": 1,
+                                  "CustomFields": { "Port.TrinketStats": "speed 1 attack 1" } }
+        })),
+        ("Data/Powers", json!({
+            "Dev_DuneWalker": { "DisplayName": "Dune Walker", "Description": "You know the safe paths across the sand." }
         })),
         ("Data/Movies", json!([
             { "Id": "Dev_LanternFlight", "Seasons": ["Spring", "Summer"], "Title": "Lantern Flight", "Tags": ["family", "adventure"],

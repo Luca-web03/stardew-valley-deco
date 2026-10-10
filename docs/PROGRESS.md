@@ -60,7 +60,8 @@ were not available; such values are isolated constants that can be tuned.
       (multi-day map swaps)
 - [x] Movie theater: seasonal movies, tickets, inviting villagers,
       reactions by movie tags (no concessions yet)
-- [x] Skills, professions, level-up screen
+- [x] Skills, professions, level-up screen, mastery (engine-defined perks),
+      books (skill XP, powers), trinkets (stat effects)
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
       debug overlay (F3)

@@ -164,6 +164,21 @@ pub enum Item {
     Furniture { id: String },
     /// Hat, shirt or pants (Data/Hats, Data/Shirts, Data/Pants).
     Clothing { slot: ClothingSlot, id: String },
+    /// Trinket from Data/Trinkets.
+    Trinket { id: String },
+}
+
+/// A trinket (`Data/Trinkets`, public format subset). Effects are game code
+/// in the original; here `Port.TrinketStats` ("attack 2 defense 1 speed 1
+/// magnet 32 luck 1") gives stat bonuses.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct TrinketData {
+    pub display_name: String,
+    pub description: String,
+    pub texture: Option<String>,
+    pub sheet_index: i32,
+    pub custom_fields: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -246,14 +261,14 @@ impl Item {
     pub fn stack(&self) -> i32 {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } => 1,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } => {}
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => {}
         }
     }
 
@@ -323,6 +338,7 @@ impl Item {
             Item::Weapon { id } => format!("(W){id}"),
             Item::Boots { id } => format!("(B){id}"),
             Item::Clothing { slot, id } => format!("({}){id}", slot.prefix()),
+            Item::Trinket { id } => format!("(TR){id}"),
             Item::Furniture { id } => format!("(F){id}"),
         }
     }
@@ -336,7 +352,7 @@ impl Item {
 
     /// Tools, weapons and boots can't be stacked.
     pub fn is_equipment(&self) -> bool {
-        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. })
+        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. })
     }
 }
 
@@ -526,6 +542,7 @@ pub struct ItemDb {
     pub boots: BTreeMap<String, BootsInfo>,
     pub furniture: BTreeMap<String, FurnitureInfo>,
     pub hats: BTreeMap<String, ClothingInfo>,
+    pub trinkets: BTreeMap<String, TrinketData>,
     pub shirts: BTreeMap<String, ClothingInfo>,
     pub pants: BTreeMap<String, ClothingInfo>,
     /// Preloaded string tables used at runtime (lowercased asset name).
@@ -563,6 +580,11 @@ impl ItemDb {
                 f.display_name = cm.expand(&f.display_name);
                 db.furniture.insert(id, f);
             }
+        }
+        for (id, mut t) in cm.load_dict::<TrinketData>("Data/Trinkets") {
+            t.display_name = cm.expand(&t.display_name);
+            t.description = cm.expand(&t.description);
+            db.trinkets.insert(id, t);
         }
         for (id, raw) in cm.load_string_dict("Data/Hats") {
             if let Some(mut h) = parse_hat(&id, &raw) {
@@ -658,6 +680,7 @@ impl ItemDb {
             Item::Tool(_) => tags.push("category_tool".into()),
             Item::Weapon { .. } => tags.push("category_weapon".into()),
             Item::Boots { .. } => tags.push("category_boots".into()),
+            Item::Trinket { .. } => tags.push("category_trinket".into()),
             Item::Clothing { slot, .. } => {
                 tags.push("category_clothing".into());
                 tags.push(match slot {
@@ -696,6 +719,7 @@ impl ItemDb {
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Boots { id } => self.boots.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Trinket { id } => self.trinkets.get(id).map(|t| t.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Furniture { id } => self.furniture.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
@@ -717,6 +741,7 @@ impl ItemDb {
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Boots { id } => self.boots.get(id).map(|b| format!("{}\nDefense +{}", b.description, b.defense)).unwrap_or_default(),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.description.clone()).unwrap_or_default(),
+            Item::Trinket { id } => self.trinkets.get(id).map(|t| t.description.clone()).unwrap_or_default(),
             Item::Furniture { id } => self.furniture.get(id).map(|f| format!("Furniture ({}). Can be placed indoors.", f.kind)).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
@@ -732,6 +757,7 @@ impl ItemDb {
             Item::Big { id, .. } => self.big(id).map(|b| b.data.price).unwrap_or(0),
             Item::Boots { id } => self.boots.get(id).map(|b| b.price / 2).unwrap_or(0),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.price / 2).unwrap_or(0),
+            Item::Trinket { .. } => 250,
             Item::Furniture { id } => self.furniture.get(id).map(|f| f.price / 2).unwrap_or(0),
             Item::Tool(_) | Item::Weapon { .. } => 0,
         }
@@ -759,6 +785,7 @@ impl ItemDb {
             "W" => self.weapons.contains_key(id).then(|| Item::Weapon { id: id.to_string() }),
             "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
             "F" => self.furniture.contains_key(id).then(|| Item::Furniture { id: id.to_string() }),
+            "TR" => self.trinkets.contains_key(id).then(|| Item::Trinket { id: id.to_string() }),
             "H" => self.hats.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Hat, id: id.to_string() }),
             "S" => self.shirts.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Shirt, id: id.to_string() }),
             "P" => self.pants.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Pants, id: id.to_string() }),

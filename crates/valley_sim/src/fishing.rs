@@ -368,7 +368,12 @@ impl World {
                             self.consume_gear();
                             let treasure = rng.chance(crate::fishing_gear::TREASURE_CHANCE + self.daily_luck).then(|| rng.range(800, 4000) as u32);
                             self.sound("FishHit");
-                            FishingState::Minigame { bobber, game: Box::new(Minigame::with_gear(f, level, gear, treasure)) }
+                            let mut game = Minigame::with_gear(f, level, gear, treasure);
+                            if self.has_mastery(Skill::Fishing) {
+                                game.bar_height += 16.0;
+                                game.bar_pos = TRACK - game.bar_height;
+                            }
+                            FishingState::Minigame { bobber, game: Box::new(game) }
                         }
                         Some(f) => {
                             // Trash and other non-fish: no minigame.

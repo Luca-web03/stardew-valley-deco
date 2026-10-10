@@ -99,6 +99,9 @@ Other conventions:
 | Passive festivals: `Data/PassiveFestivals` (`Season`, `StartDay`/`EndDay`, `Condition`, `StartMessage`, `MapReplacements` location -> map asset); setup/cleanup methods are code in the original and not run | `valley_sim::passive_festivals` |
 | Casino: original games "Lucky Reels" (`Port.Reels`) and "High-Low" (`Port.HighLow`) played with Qi coins; `Port.CoinCounter` sells 100 coins for 1000g; prize shops use `Currency: 2` | `valley_sim::casino` |
 | Perfection: engine-defined weighted score (shipping, fish, cooking, crafting, friends, skills, museum, bundles) | `valley_sim::perfection` |
+| Mastery (engine-defined): XP past level 10 counts toward 5 mastery levels; one perk per skill at a `Port.Mastery` tile | `valley_sim::mastery` |
+| Books: objects with `Port.BookXp` ("<Skill> <xp>") and/or `Port.BookPower` (id in `Data/Powers`) | `valley_sim::mastery::read_book` |
+| Trinkets: `Data/Trinkets` items `(TR)id`, worn in the trinket slot; effects via `Port.TrinketStats` ("attack 2 defense 1 speed 1 magnet 32 luck 1"); the original's effect classes are not implemented | `valley_sim::item::TrinketData` |
 
 ## Mods
 

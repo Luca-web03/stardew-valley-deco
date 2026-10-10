@@ -52,6 +52,12 @@ impl World {
     /// Equip the item in inventory `slot` (ring, boots or clothing), swapping out the old one.
     pub fn equip(&mut self, slot: usize) -> bool {
         let Some(item) = self.farmer.inventory.get(slot).cloned() else { return false };
+        if matches!(item, Item::Trinket { .. }) {
+            let old = self.farmer.trinket.replace(item);
+            self.farmer.inventory.slots[slot] = old;
+            self.sound("crit");
+            return true;
+        }
         if let Item::Clothing { slot: kind, .. } = &item {
             let worn = match kind {
                 crate::item::ClothingSlot::Hat => &mut self.farmer.hat,
@@ -84,14 +90,16 @@ impl World {
         false
     }
 
-    /// Unequip ring 0/1 (`which` 0..=1), boots (2), hat (3), shirt (4) or pants (5).
+    /// Unequip ring 0/1 (`which` 0..=1), boots (2), hat (3), shirt (4),
+    /// pants (5) or trinket (6).
     pub fn unequip(&mut self, which: usize) -> bool {
         let item = match which {
             0 | 1 => self.farmer.rings[which].clone(),
             2 => self.farmer.boots.clone(),
             3 => self.farmer.hat.clone(),
             4 => self.farmer.shirt_item.clone(),
-            _ => self.farmer.pants_item.clone(),
+            5 => self.farmer.pants_item.clone(),
+            _ => self.farmer.trinket.clone(),
         };
         let Some(item) = item else { return false };
         if !self.farmer.inventory.can_fit(&item) {
@@ -102,7 +110,8 @@ impl World {
             2 => self.farmer.boots = None,
             3 => self.farmer.hat = None,
             4 => self.farmer.shirt_item = None,
-            _ => self.farmer.pants_item = None,
+            5 => self.farmer.pants_item = None,
+            _ => self.farmer.trinket = None,
         }
         self.farmer.inventory.add(item);
         true
@@ -143,6 +152,21 @@ impl World {
         if let Some(Item::Boots { id }) = &self.farmer.boots {
             if let Some(b) = self.items.boots.get(id) {
                 a.defense += b.defense;
+            }
+        }
+        if let Some(Item::Trinket { id }) = &self.farmer.trinket {
+            let spec = self.items.trinkets.get(id).and_then(|t| t.custom_fields.as_ref()).and_then(|f| f.get("Port.TrinketStats")).cloned().unwrap_or_default();
+            let toks: Vec<&str> = spec.split_whitespace().collect();
+            for pair in toks.chunks(2) {
+                let n: i32 = pair.get(1).and_then(|v| v.parse().ok()).unwrap_or(0);
+                match pair[0] {
+                    "attack" => a.attack += n,
+                    "defense" => a.defense += n,
+                    "speed" => a.speed += n,
+                    "magnet" => a.magnetic_radius += n,
+                    "luck" => a.luck += n,
+                    _ => {}
+                }
             }
         }
         a

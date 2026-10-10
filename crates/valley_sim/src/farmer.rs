@@ -232,6 +232,11 @@ pub struct Farmer {
     pub movies_seen: Vec<String>,
     #[serde(default)]
     pub movies_seen_with: Vec<String>,
+    /// Skills whose mastery perk was claimed, and powers learned from books.
+    #[serde(default)]
+    pub mastery_perks: Vec<Skill>,
+    #[serde(default)]
+    pub powers: Vec<String>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -266,6 +271,8 @@ pub struct Farmer {
     pub shirt_item: Option<Item>,
     #[serde(default)]
     pub pants_item: Option<Item>,
+    #[serde(default)]
+    pub trinket: Option<Item>,
     /// Farmhouse upgrade level (0 = starting cabin).
     #[serde(default)]
     pub house_level: i32,
@@ -336,6 +343,8 @@ impl Farmer {
             qi_gems: 0,
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),
+            mastery_perks: Vec::new(),
+            powers: Vec::new(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),
@@ -350,6 +359,7 @@ impl Farmer {
             hat: None,
             shirt_item: None,
             pants_item: None,
+            trinket: None,
             house_level: 0,
             house_upgrade_days: 0,
             hay_storage: 0,

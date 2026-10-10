@@ -126,6 +126,9 @@ impl World {
         if self.farmer.has_profession("brute") {
             mult *= 1.15;
         }
+        if self.has_mastery(crate::farmer::Skill::Combat) {
+            mult *= 1.1;
+        }
         let mut killed = Vec::new();
         for &i in &targets {
             let m = &mut self.monsters[i];

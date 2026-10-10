@@ -23,6 +23,8 @@ pub enum QuestionKind {
     Minecart { network: String, ids: Vec<String> },
     /// TV channel `channels[i]` (last option = turn off).
     Tv { channels: Vec<valley_sim::minecarts::Channel> },
+    /// Claim the mastery perk of `skills[i]` (last option = cancel).
+    Mastery { skills: Vec<valley_sim::farmer::Skill> },
 }
 
 #[derive(Clone, Debug, PartialEq)]
