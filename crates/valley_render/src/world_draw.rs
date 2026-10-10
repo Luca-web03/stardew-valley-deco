@@ -128,12 +128,30 @@ pub fn draw_world(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camer
     let shake_off = |shake: i32| if shake > 0 { ((shake as f32) * 1.3).sin() * 3.0 } else { 0.0 };
     for (p, o) in &loc.state.objects {
         let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
-        let (tex, src) = object_sprite(rc, w, &o.item_id);
-        let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y, TILE_F, TILE_F), sort_depth((p.y * TILE + TILE - 4) as f32, map_h));
-        s.flip_x = o.flip;
-        out.sprite(s);
-        if matches!(o.kind, ObjKind::Forage) {
-            continue;
+        let depth = sort_depth((p.y * TILE + TILE - 4) as f32, map_h);
+        if o.big {
+            let (tex, src) = big_sprite(rc, w, &o.item_id);
+            let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
+            s.flip_x = o.flip;
+            out.sprite(s);
+        } else {
+            let (tex, src) = object_sprite(rc, w, &o.item_id);
+            let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y, TILE_F, TILE_F), depth);
+            s.flip_x = o.flip;
+            out.sprite(s);
+        }
+        // Finished machines show their product in a bobbing bubble.
+        if let ObjKind::Machine { output: Some(item), ready: true, .. } = &o.kind {
+            let bob = ((w.game_ms as f32) / 250.0).sin() * 4.0;
+            let white = rc.assets.white(rc.textures);
+            let bubble = FRect::new(pos.x + 4.0, pos.y - TILE_F * 1.9 + bob, TILE_F - 8.0, TILE_F - 8.0);
+            out.sprite({
+                let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), bubble, DEPTH_SORT_MAX + 0.01);
+                s.tint = Color::rgba(255, 255, 255, 220);
+                s
+            });
+            let (tex, src) = item_sprite(rc, w, item);
+            out.sprite(Sprite::new(tex, src, FRect::new(bubble.x + 6.0, bubble.y + 6.0, bubble.w - 12.0, bubble.h - 12.0), DEPTH_SORT_MAX + 0.011));
         }
     }
 
@@ -311,6 +329,7 @@ pub fn object_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId,
 pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId, IRect) {
     match item {
         Item::Object { id, .. } => object_sprite(rc, w, id),
+        Item::Big { id, .. } => big_sprite(rc, w, id),
         Item::Tool(t) => {
             let (tex_name, idx) = match w.items.tools.get(t.kind.data_key()) {
                 Some(d) => (if d.texture.is_empty() { "TileSheets/tools".to_string() } else { d.texture.replace('\\', "/") }, d.menu_sprite_index),
@@ -322,4 +341,16 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
             (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
         }
     }
+}
+
+/// Texture + 16x32 source rect of a big craftable.
+pub fn big_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::TexId, IRect) {
+    let (tex_name, idx) = match w.items.big(id) {
+        Some(b) => (b.texture(), b.data.sprite_index),
+        None => ("TileSheets/Craftables".to_string(), 0),
+    };
+    let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+    let (tw, _) = rc.textures.size(tex);
+    let cols = (tw / 16).max(1) as i32;
+    (tex, IRect::new((idx % cols) * 16, (idx / cols) * 32, 16, 32))
 }

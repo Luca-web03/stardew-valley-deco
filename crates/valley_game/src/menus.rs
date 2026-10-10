@@ -14,10 +14,14 @@ pub enum QuestionKind {
 #[derive(Clone, Debug, PartialEq)]
 pub enum InvTab {
     Items,
+    Crafting,
     Skills,
     Social,
     Options,
 }
+
+pub const TABS: [InvTab; 5] = [InvTab::Items, InvTab::Crafting, InvTab::Skills, InvTab::Social, InvTab::Options];
+pub const TAB_LABELS: [&str; 5] = ["Items", "Crafting", "Skills", "Social", "Options"];
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Menu {
@@ -52,6 +56,10 @@ pub enum Menu {
     DayEnd {
         report: DayReport,
         ms: u32,
+    },
+    Chest {
+        tile: valley_sim::TilePos,
+        hovered: Option<(bool, usize)>,
     },
 }
 

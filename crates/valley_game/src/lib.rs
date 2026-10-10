@@ -18,7 +18,7 @@ use valley_sim::save::SaveData;
 use valley_sim::world::{NewGame, World, WorldEvent};
 use valley_sim::{TilePos, TILE_F};
 
-use crate::menus::{InvTab, Menu, QuestionKind, TYPE_SPEED};
+use crate::menus::{InvTab, Menu, QuestionKind, TABS, TAB_LABELS, TYPE_SPEED};
 
 pub const MODULE_ID: &str = "valley";
 
@@ -314,6 +314,7 @@ impl ValleyGame {
                 }
                 WorldEvent::LevelUp(skill, level) => self.toast(format!("{skill:?} level {level}!")),
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
+                WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
             }
             if self.world.is_none() {
                 break;
@@ -443,7 +444,7 @@ impl ValleyGame {
                 let tabs = inventory_tab_rects(sw, sh);
                 if ctx.input.mouse_pressed(MouseButton::Left) {
                     if let Some(i) = tabs.iter().position(|r| r.contains(ctx.input.mouse)) {
-                        *tab = [InvTab::Items, InvTab::Skills, InvTab::Social, InvTab::Options][i].clone();
+                        *tab = TABS[i].clone();
                     }
                 }
                 match tab {
@@ -476,6 +477,21 @@ impl ValleyGame {
                             }
                         }
                     }
+                    InvTab::Crafting => {
+                        let names = self.world.as_ref().map(known_recipes).unwrap_or_default();
+                        let rects = recipe_rects(sw, sh);
+                        *hovered = rects.iter().position(|r| r.contains(ctx.input.mouse)).filter(|&i| i < names.len());
+                        if ctx.input.mouse_pressed(MouseButton::Left) {
+                            if let Some(i) = *hovered {
+                                let name = names[i].clone();
+                                action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                    if let Some(w) = g.world.as_mut() {
+                                        w.craft(&name);
+                                    }
+                                }));
+                            }
+                        }
+                    }
                     InvTab::Options => {
                         let b = options_buttons(sw, sh);
                         if ctx.input.mouse_pressed(MouseButton::Left) {
@@ -497,6 +513,23 @@ impl ValleyGame {
                     _ => {}
                 }
                 if input_map::menu_pressed(&ctx.input) {
+                    close = true;
+                }
+            }
+            Menu::Chest { tile, hovered } => {
+                let (prow, crow) = chest_rects(sw, sh);
+                *hovered = crow.iter().position(|r| r.contains(ctx.input.mouse)).map(|i| (false, i)).or_else(|| prow.iter().position(|r| r.contains(ctx.input.mouse)).map(|i| (true, i)));
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some((from_player, i)) = *hovered {
+                        let t = *tile;
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(w) = g.world.as_mut() {
+                                w.chest_transfer(t, from_player, i);
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
                     close = true;
                 }
             }
@@ -675,7 +708,37 @@ fn menu_frame(sw: f32, sh: f32) -> FRect {
 
 fn inventory_tab_rects(sw: f32, sh: f32) -> Vec<FRect> {
     let f = menu_frame(sw, sh);
-    (0..4).map(|i| FRect::new(f.x + 16.0 + i as f32 * 150.0, f.y - 52.0, 140.0, 48.0)).collect()
+    (0..TABS.len()).map(|i| FRect::new(f.x + 16.0 + i as f32 * 166.0, f.y - 52.0, 156.0, 48.0)).collect()
+}
+
+fn known_recipes(w: &World) -> Vec<String> {
+    w.farmer.crafting_recipes.keys().filter(|k| w.recipes.contains_key(*k)).cloned().collect()
+}
+
+fn recipe_rects(sw: f32, sh: f32) -> Vec<FRect> {
+    let f = menu_frame(sw, sh);
+    (0..40)
+        .map(|i| {
+            let row = i / 10;
+            let col = i % 10;
+            FRect::new(f.x + 64.0 + col as f32 * 84.0, f.y + 48.0 + row as f32 * 100.0, 72.0, 88.0)
+        })
+        .collect()
+}
+
+/// (player inventory rects, chest rects)
+fn chest_rects(sw: f32, sh: f32) -> (Vec<FRect>, Vec<FRect>) {
+    let f = menu_frame(sw, sh);
+    let grid = |y0: f32| -> Vec<FRect> {
+        (0..36)
+            .map(|i| {
+                let row = i / 12;
+                let col = i % 12;
+                FRect::new(f.x + 48.0 + col as f32 * 68.0, y0 + row as f32 * 68.0, 64.0, 64.0)
+            })
+            .collect()
+    };
+    (grid(f.y + 320.0), grid(f.y + 48.0))
 }
 
 fn inventory_slot_rects(sw: f32, sh: f32) -> Vec<FRect> {
@@ -798,9 +861,8 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
         }
         Menu::Inventory { tab, held, hovered } => {
             let f = menu_frame(sw, sh);
-            for (i, (r, label)) in inventory_tab_rects(sw, sh).iter().zip(["Items", "Skills", "Social", "Options"]).enumerate() {
-                let active = matches!((i, tab), (0, InvTab::Items) | (1, InvTab::Skills) | (2, InvTab::Social) | (3, InvTab::Options));
-                ui.button(*r, label, active);
+            for (i, (r, label)) in inventory_tab_rects(sw, sh).iter().zip(TAB_LABELS).enumerate() {
+                ui.button(*r, label, TABS[i] == *tab);
             }
             ui.panel(f);
             match tab {
@@ -827,6 +889,29 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     if let Some(i) = hovered {
                         if let Some(item) = w.farmer.inventory.get(*i) {
                             draw_tooltip(ui, w, item, sw, sh);
+                        }
+                    }
+                }
+                InvTab::Crafting => {
+                    let names = known_recipes(w);
+                    if names.is_empty() {
+                        ui.text("You don't know any recipes yet.", Vec2::new(f.x + 64.0, f.y + 64.0), 2.0, ui::TEXT);
+                    }
+                    for (i, (r, name)) in recipe_rects(sw, sh).iter().zip(&names).enumerate() {
+                        let recipe = &w.recipes[name];
+                        let can = recipe.can_craft(&w.items, &w.farmer);
+                        ui.slot(*r, *hovered == Some(i));
+                        let out = recipe.output();
+                        let (tex, src) = item_sprite(rc, w, &out);
+                        if can {
+                            ui.icon(tex, src, FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0));
+                        } else {
+                            ui.icon_tinted(tex, src, FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0), Color::rgba(90, 90, 90, 140));
+                        }
+                    }
+                    if let Some(i) = hovered {
+                        if let Some(name) = names.get(*i) {
+                            draw_recipe_tooltip(rc, ui, w, &w.recipes[name], sw);
                         }
                     }
                 }
@@ -869,6 +954,36 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     ui.text("Controls: WASD move, C/left click use tool, X/right click act,", Vec2::new(f.x + 48.0, f.y + 320.0), 2.0, ui::TEXT);
                     ui.text("1-0,-,= toolbar, E/Esc menu, Shift walk, Ctrl+Tab switch game.", Vec2::new(f.x + 48.0, f.y + 348.0), 2.0, ui::TEXT);
                 }
+            }
+        }
+        Menu::Chest { tile, hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            let chest = match w.location().object(*tile).map(|o| &o.kind) {
+                Some(valley_sim::objects::ObjKind::Chest(inv)) => Some(inv.clone()),
+                _ => None,
+            };
+            let (prow, crow) = chest_rects(sw, sh);
+            for (i, r) in crow.iter().enumerate() {
+                ui.slot(*r, *hovered == Some((false, i)));
+                if let Some(item) = chest.as_ref().and_then(|c| c.get(i)) {
+                    hud::draw_item_in_slot(rc, ui, w, item, *r);
+                }
+            }
+            ui.fill(FRect::new(f.x + 40.0, f.y + 270.0, f.w - 80.0, 4.0), ui::FRAME_LIGHT);
+            for (i, r) in prow.iter().enumerate() {
+                ui.slot(*r, *hovered == Some((true, i)));
+                if let Some(item) = w.farmer.inventory.get(i) {
+                    hud::draw_item_in_slot(rc, ui, w, item, *r);
+                }
+            }
+            let hovered_item = match hovered {
+                Some((true, i)) => w.farmer.inventory.get(*i).cloned(),
+                Some((false, i)) => chest.as_ref().and_then(|c| c.get(*i).cloned()),
+                None => None,
+            };
+            if let Some(item) = hovered_item {
+                draw_tooltip(ui, w, &item, sw, sh);
             }
         }
         Menu::DayEnd { report, .. } => {
@@ -916,6 +1031,31 @@ fn draw_tooltip(ui: &mut Ui, w: &World, item: &valley_sim::item::Item, sw: f32, 
     let price = w.items.sell_price(item);
     if price > 0 {
         ui.text(&format!("Sells for {price}g"), Vec2::new(r.x + 20.0, r.y + h - 34.0), 2.0, ui::TEXT);
+    }
+    ui.depth = d;
+}
+
+fn draw_recipe_tooltip(rc: &mut RenderCtx, ui: &mut Ui, w: &World, r: &valley_sim::crafting::Recipe, sw: f32) {
+    let out = r.output();
+    let name = w.items.display_name(&out);
+    let h = 70.0 + r.ingredients.len() as f32 * 44.0 + 20.0;
+    let m = ui_mouse_hint();
+    let rect = FRect::new((m.x + 24.0).min(sw - 440.0), m.y + 24.0, 420.0, h);
+    let d = ui.depth;
+    ui.depth += 0.05;
+    ui.panel(rect);
+    ui.text(&name, Vec2::new(rect.x + 20.0, rect.y + 20.0), 3.0, ui::TEXT);
+    for (i, (ing, n)) in r.ingredients.iter().enumerate() {
+        let y = rect.y + 60.0 + i as f32 * 44.0;
+        let have: i32 = w.farmer.inventory.slots.iter().flatten().filter(|it| it.object_id() == Some(ing.as_str())).map(|it| it.stack()).sum();
+        let label = match w.items.object(ing) {
+            Some(o) => o.display_name.clone(),
+            None => format!("Any ({ing})"),
+        };
+        let item = valley_sim::item::Item::object(ing, 1);
+        let (tex, src) = item_sprite(rc, w, &item);
+        ui.icon(tex, src, FRect::new(rect.x + 20.0, y, 36.0, 36.0));
+        ui.text(&format!("{label} x{n}"), Vec2::new(rect.x + 68.0, y + 10.0), 2.0, if have >= *n { ui::TEXT } else { Color::RED });
     }
     ui.depth = d;
 }

@@ -61,12 +61,13 @@ impl<'a> Ui<'a> {
         BuiltinFont::measure(s, scale)
     }
 
+    /// Draw `src` fitted into `r`, preserving aspect ratio (centered).
     pub fn icon(&mut self, tex: TexId, src: IRect, r: FRect) {
-        self.out.sprite(Sprite::new(tex, src, r, self.depth + 0.0003));
+        self.out.sprite(Sprite::new(tex, src, fit(src, r), self.depth + 0.0003));
     }
 
     pub fn icon_tinted(&mut self, tex: TexId, src: IRect, r: FRect, tint: Color) {
-        let mut s = Sprite::new(tex, src, r, self.depth + 0.0003);
+        let mut s = Sprite::new(tex, src, fit(src, r), self.depth + 0.0003);
         s.tint = tint;
         self.out.sprite(s);
     }
@@ -123,4 +124,14 @@ impl<'a> Ui<'a> {
         self.text(label, Vec2::new(r.x + (r.w - m.x) / 2.0, r.y + (r.h - 8.0 * scale) / 2.0), scale, TEXT);
         r
     }
+}
+
+/// Largest rect with `src`'s aspect ratio centered inside `r`.
+pub fn fit(src: IRect, r: FRect) -> FRect {
+    if src.w <= 0 || src.h <= 0 {
+        return r;
+    }
+    let s = (r.w / src.w as f32).min(r.h / src.h as f32);
+    let (w, h) = (src.w as f32 * s, src.h as f32 * s);
+    FRect::new(r.x + (r.w - w) / 2.0, r.y + (r.h - h) / 2.0, w, h)
 }

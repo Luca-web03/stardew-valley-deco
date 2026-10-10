@@ -303,6 +303,10 @@ pub const ICON_TWIG: i32 = 12;
 pub const ICON_ROCK: i32 = 13;
 pub const ICON_BERRY: i32 = 14;
 pub const ICON_CHEST: i32 = 15;
+pub const ICON_JUICE: i32 = 16;
+pub const ICON_SPRINKLER: i32 = 17;
+pub const ICON_FERTILIZER: i32 = 18;
+pub const ICON_SPEEDGRO: i32 = 19;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -414,6 +418,58 @@ pub fn objects() -> Image {
         c.rect(2, 5, 12, 10, Color::rgb(160, 104, 56));
         c.rect(2, 5, 12, 3, Color::rgb(190, 130, 70));
         c.rect(7, 8, 2, 3, Color::YELLOW);
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_JUICE, OBJ_COLS, 16, 16);
+        c.rect(5, 2, 6, 3, Color::rgb(200, 200, 210));
+        c.rect(4, 5, 8, 10, Color::rgb(230, 200, 120));
+        c.rect(5, 8, 6, 6, Color::rgb(240, 140, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_SPRINKLER, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 11.0, 6.0, 3.0, Color::rgb(150, 150, 160));
+        c.rect(7, 4, 2, 7, Color::rgb(120, 120, 130));
+        c.rect(5, 3, 6, 2, Color::rgb(90, 140, 220));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_FERTILIZER, OBJ_COLS, 16, 16);
+        c.rect(3, 4, 10, 11, Color::rgb(180, 150, 100));
+        c.rect(3, 4, 10, 2, Color::rgb(140, 110, 70));
+        c.rect(6, 8, 4, 4, Color::rgb(100, 70, 40));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_SPEEDGRO, OBJ_COLS, 16, 16);
+        c.rect(3, 4, 10, 11, Color::rgb(170, 200, 120));
+        c.rect(3, 4, 10, 2, Color::rgb(120, 160, 80));
+        c.rect(6, 7, 1, 6, Color::rgb(60, 120, 40));
+        c.rect(9, 7, 1, 6, Color::rgb(60, 120, 40));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// Big craftables: 16x32 cells, 8 columns. 0 = storage box, 1 = juicer.
+pub fn craftables() -> Image {
+    let mut img = Image::new(128, 32);
+    let wood = Color::rgb(160, 104, 56);
+    {
+        let mut c = Cell::at(&mut img, 0, 8, 16, 32);
+        c.rect(1, 14, 14, 16, wood);
+        c.rect(1, 12, 14, 6, shade(wood, 30));
+        c.rect(1, 18, 14, 1, shade(wood, -40));
+        c.rect(7, 18, 2, 4, Color::YELLOW);
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 1, 8, 16, 32);
+        c.rect(2, 10, 12, 20, Color::rgb(120, 150, 170));
+        c.rect(3, 6, 10, 4, Color::rgb(200, 200, 210));
+        c.rect(5, 14, 6, 8, Color::rgb(240, 140, 60));
+        c.rect(2, 26, 12, 2, Color::rgb(80, 100, 120));
         c.auto_outline(OUTLINE);
     }
     img

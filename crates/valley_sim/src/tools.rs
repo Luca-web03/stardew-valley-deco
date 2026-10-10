@@ -57,6 +57,7 @@ impl World {
                 true
             }
             Some(Item::Object { id, .. }) if self.items.is_seed(&id) => self.plant(target, &id),
+            Some(item) if self.is_placeable(&item) => self.place_current(target),
             _ => false,
         }
     }
@@ -144,6 +145,9 @@ impl World {
     }
 
     fn use_axe(&mut self, slot: usize, t: TilePos) {
+        if self.pickup_object(t) {
+            return;
+        }
         let damage = self.tool_level(slot) + 1;
         if let Some(o) = self.location().object(t) {
             if let ObjKind::Debris { debris: DebrisKind::Twig, .. } = o.kind {
@@ -221,6 +225,9 @@ impl World {
     }
 
     fn use_pickaxe(&mut self, _slot: usize, t: TilePos) {
+        if self.pickup_object(t) {
+            return;
+        }
         if let Some(o) = self.location().object(t) {
             if let ObjKind::Debris { debris: DebrisKind::Stone, .. } = o.kind {
                 self.break_debris(t, DebrisKind::Stone);

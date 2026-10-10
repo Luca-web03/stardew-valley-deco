@@ -104,6 +104,9 @@ pub struct Farmer {
     pub mailbox: Vec<String>,
     pub mail_received: Vec<String>,
     pub events_seen: Vec<String>,
+    /// Known crafting recipes and how many times each was crafted.
+    #[serde(default)]
+    pub crafting_recipes: BTreeMap<String, i32>,
     pub tool_use: Option<ToolUse>,
     /// Animation clock while moving (ms).
     pub walk_ms: u32,
@@ -140,6 +143,7 @@ impl Farmer {
             mailbox: Vec::new(),
             mail_received: Vec::new(),
             events_seen: Vec::new(),
+            crafting_recipes: BTreeMap::new(),
             tool_use: None,
             walk_ms: 0,
             moving: false,

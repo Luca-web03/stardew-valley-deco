@@ -23,6 +23,9 @@ fn neg1() -> i32 {
 fn one() -> i32 {
     1
 }
+fn default_forage_max() -> i32 {
+    6
+}
 fn yes() -> bool {
     true
 }
@@ -239,7 +242,11 @@ pub struct LocationData {
     pub create_on_load: Option<CreateLocationData>,
     pub music: Option<serde_json::Value>,
     pub music_default: Option<String>,
-    pub forage: Option<serde_json::Value>,
+    pub forage: Vec<SpawnForageData>,
+    #[serde(default = "default_forage_max")]
+    pub max_spawned_forage_at_once: i32,
+    pub min_daily_forage_spawn: i32,
+    pub max_daily_forage_spawn: i32,
     pub fish: Option<serde_json::Value>,
     pub artifact_spots: Option<serde_json::Value>,
 }
@@ -260,3 +267,116 @@ pub struct ToolData {
 
 /// Data/Characters.json etc. are dictionaries keyed by ID.
 pub type DataDict<T> = BTreeMap<String, T>;
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BigCraftableData {
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub price: i32,
+    pub fragility: i32,
+    pub can_be_placed_outdoors: bool,
+    pub can_be_placed_indoors: bool,
+    pub is_lamp: bool,
+    pub texture: Option<String>,
+    pub sprite_index: i32,
+    pub context_tags: Option<Vec<String>>,
+}
+
+impl Default for BigCraftableData {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            display_name: String::new(),
+            description: String::new(),
+            price: 0,
+            fragility: 0,
+            can_be_placed_outdoors: true,
+            can_be_placed_indoors: true,
+            is_lamp: false,
+            texture: None,
+            sprite_index: 0,
+            context_tags: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MachineTrigger {
+    pub id: Option<String>,
+    pub trigger: String,
+    pub required_item_id: Option<String>,
+    pub required_tags: Option<Vec<String>>,
+    #[serde(default = "one")]
+    pub required_count: i32,
+    pub condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct QuantityModifier {
+    pub id: Option<String>,
+    pub condition: Option<String>,
+    pub modification: String,
+    pub amount: f32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MachineOutputItem {
+    pub id: Option<String>,
+    pub item_id: Option<String>,
+    pub condition: Option<String>,
+    pub min_stack: i32,
+    pub max_stack: i32,
+    pub quality: Option<i32>,
+    pub preserve_type: Option<String>,
+    pub preserve_id: Option<String>,
+    pub copy_price: bool,
+    pub copy_quality: bool,
+    pub object_internal_name: Option<String>,
+    pub object_display_name: Option<String>,
+    pub price_modifiers: Option<Vec<QuantityModifier>>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MachineOutputRule {
+    pub id: String,
+    pub triggers: Vec<MachineTrigger>,
+    pub output_item: Vec<MachineOutputItem>,
+    #[serde(default = "neg1")]
+    pub minutes_until_ready: i32,
+    #[serde(default = "neg1")]
+    pub days_until_ready: i32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MachineItemAdditionalConsumed {
+    pub item_id: String,
+    #[serde(default = "one")]
+    pub required_count: i32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MachineData {
+    pub output_rules: Vec<MachineOutputRule>,
+    pub additional_consumed_items: Vec<MachineItemAdditionalConsumed>,
+    pub invalid_item_message: Option<String>,
+    pub load_effects: Option<serde_json::Value>,
+    pub working_effects: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct SpawnForageData {
+    pub id: Option<String>,
+    pub item_id: Option<String>,
+    pub season: Option<String>,
+    pub chance: Option<f64>,
+    pub condition: Option<String>,
+}

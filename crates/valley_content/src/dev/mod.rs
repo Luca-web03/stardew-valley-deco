@@ -27,6 +27,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/crops.png", art::crops().encode_png());
     m.insert("TerrainFeatures/hoeDirt.png", art::hoe_dirt().encode_png());
     m.insert("TileSheets/tools.png", art::tools().encode_png());
+    m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
 
     let farmer = art::Look {
         skin: Color::rgb(236, 190, 150),
@@ -84,6 +85,46 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Weeds": obj("Weeds", "Litter", 0, 0, ICON_WEEDS, -300),
         "Dev_Twig": obj("Twig", "Litter", 0, 0, ICON_TWIG, -300),
         "Dev_Rock": obj("Stone", "Litter", 0, 0, ICON_ROCK, -300),
+        "Dev_Juice": obj("Juice", "ArtisanGoods", -26, 50, ICON_JUICE, 15),
+        "Dev_Sprinkler": {
+            "Name": "Sprinkler", "DisplayName": "Sprinkler", "Description": "Waters the 4 adjacent tiles every morning.",
+            "Type": "Crafting", "Category": -8, "Price": 50, "SpriteIndex": ICON_SPRINKLER, "ContextTags": ["sprinkler_cross"]
+        },
+        "Dev_Fertilizer": {
+            "Name": "Fertilizer", "DisplayName": "Fertilizer", "Description": "Improves the chance of quality crops.",
+            "Type": "Basic", "Category": -19, "Price": 2, "SpriteIndex": ICON_FERTILIZER, "CustomFields": { "FertilizerQuality": "1" }
+        },
+        "Dev_SpeedGro": {
+            "Name": "Growth Mix", "DisplayName": "Growth Mix", "Description": "Crops grow 10% faster.",
+            "Type": "Basic", "Category": -19, "Price": 20, "SpriteIndex": ICON_SPEEDGRO, "CustomFields": { "FertilizerSpeed": "0.1" }
+        },
+    });
+    let bigs = json!({
+        "Dev_Box": { "Name": "Storage Box", "DisplayName": "Storage Box", "Description": "Holds 36 items.",
+                     "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
+        "Dev_Juicer": { "Name": "Juicer", "DisplayName": "Juicer", "Description": "Turns produce into juice.",
+                        "Price": 50, "SpriteIndex": 1 },
+    });
+    let machines = json!({
+        "(BC)Dev_Juicer": {
+            "OutputRules": [{
+                "Id": "produce",
+                "Triggers": [{ "Trigger": "ItemPlacedInMachine", "RequiredTags": ["category_vegetable,category_fruits"] }],
+                "OutputItem": [{
+                    "ItemId": "(O)Dev_Juice", "CopyPrice": true,
+                    "PriceModifiers": [{ "Modification": "Multiply", "Amount": 2.0 }],
+                    "ObjectDisplayName": "%PRESERVED_DISPLAY_NAME Juice", "PreserveId": "DROP_IN"
+                }],
+                "MinutesUntilReady": 120
+            }],
+            "InvalidItemMessage": "The juicer only takes fruit and vegetables."
+        }
+    });
+    let recipes = json!({
+        "Storage Box": "388 20/Home/Dev_Box/true/default/",
+        "Juicer": "388 15 390 10/Home/Dev_Juicer/true/default/",
+        "Sprinkler": "390 5 388 5/Home/Dev_Sprinkler/false/default/",
+        "Fertilizer": "771 2/Home/Dev_Fertilizer 5/false/l 1/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -130,7 +171,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "turnip", "ItemId": "(O)Dev_TurnipSeeds", "Condition": "SEASON Spring" },
                 { "Id": "bean", "ItemId": "(O)Dev_BeanSeeds", "Condition": "SEASON Spring Summer" },
                 { "Id": "pumpkin", "ItemId": "(O)Dev_PumpkinSeeds", "Condition": "SEASON Fall" },
-                { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 }
+                { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 },
+                { "Id": "fert", "ItemId": "(O)Dev_Fertilizer", "Price": 10 },
+                { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" }
             ]
         }
     });
@@ -140,7 +183,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "FarmHouse": { "DisplayName": "Farmhouse", "DefaultArrivalTile": { "X": 5, "Y": 8 },
                        "CreateOnLoad": { "MapPath": "Maps\\FarmHouse" } },
         "Town": { "DisplayName": "Town", "DefaultArrivalTile": { "X": 2, "Y": 15 },
-                  "CreateOnLoad": { "MapPath": "Maps\\Town" } },
+                  "CreateOnLoad": { "MapPath": "Maps\\Town" },
+                  "Forage": [
+                      { "Id": "berry", "ItemId": "(O)Dev_Berry", "Season": "Spring", "Chance": 0.8 },
+                      { "Id": "berry_summer", "ItemId": "(O)Dev_Berry", "Season": "Summer", "Chance": 0.8 }
+                  ],
+                  "MinDailyForageSpawn": 1, "MaxDailyForageSpawn": 3, "MaxSpawnedForageAtOnce": 6 },
         "SeedShop": { "DisplayName": "General Store", "DefaultArrivalTile": { "X": 6, "Y": 9 },
                       "CreateOnLoad": { "MapPath": "Maps\\SeedShop" } },
     });
@@ -183,6 +231,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
     });
     vec![
         ("Data/Objects", objects),
+        ("Data/BigCraftables", bigs),
+        ("Data/Machines", machines),
+        ("Data/CraftingRecipes", recipes),
         ("Strings/Objects", strings),
         ("Data/Crops", crops),
         ("Data/Tools", tools),

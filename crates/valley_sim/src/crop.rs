@@ -25,6 +25,9 @@ pub struct Crop {
     pub flip: bool,
     /// Seed-phase sprite variant (0 or 1).
     pub variant: u8,
+    /// Per-crop phase lengths when modified (speed fertilizer); None = data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase_days: Option<Vec<i32>>,
 }
 
 impl Crop {
@@ -38,7 +41,28 @@ impl Crop {
             dead: false,
             flip: rng.chance(0.5),
             variant: rng.range(0, 2) as u8,
+            phase_days: None,
         }
+    }
+
+    /// Effective phase lengths.
+    pub fn phases<'a>(&'a self, data: &'a CropData) -> &'a [i32] {
+        self.phase_days.as_deref().unwrap_or(&data.days_in_phase)
+    }
+
+    /// Apply a growth speed bonus (e.g. 0.1 = 10% faster) to a crop that
+    /// hasn't started growing: removes ceil(total * bonus) days, taking
+    /// from the longest phases first and never shortening a phase below 1.
+    pub fn apply_speed_bonus(&mut self, data: &CropData, bonus: f32) {
+        let mut days: Vec<i32> = data.days_in_phase.clone();
+        let total: i32 = days.iter().sum();
+        let mut remove = (total as f32 * bonus).ceil() as i32;
+        while remove > 0 {
+            let Some((i, _)) = days.iter().enumerate().filter(|(_, d)| **d > 1).max_by_key(|(i, d)| (**d, -(*i as i32))) else { break };
+            days[i] -= 1;
+            remove -= 1;
+        }
+        self.phase_days = Some(days);
     }
 
     pub fn grows_in(data: &CropData, season: Season) -> bool {
@@ -46,7 +70,7 @@ impl Crop {
     }
 
     pub fn is_ready(&self, data: &CropData) -> bool {
-        !self.dead && self.phase >= data.days_in_phase.len() && self.regrow_left <= 0
+        !self.dead && self.phase >= self.phases(data).len() && self.regrow_left <= 0
     }
 
     /// Total growth days remaining until first harvest.
@@ -54,18 +78,18 @@ impl Crop {
         if self.dead {
             return i32::MAX;
         }
-        if self.phase >= data.days_in_phase.len() {
+        if self.phase >= self.phases(data).len() {
             return self.regrow_left.max(0);
         }
-        let mut d = data.days_in_phase[self.phase] - self.day_in_phase;
-        for p in data.days_in_phase.iter().skip(self.phase + 1) {
+        let mut d = self.phases(data)[self.phase] - self.day_in_phase;
+        for p in self.phases(data).iter().skip(self.phase + 1) {
             d += p;
         }
         d.max(0)
     }
 
     fn skip_empty_phases(&mut self, data: &CropData) {
-        while self.phase < data.days_in_phase.len() && data.days_in_phase[self.phase] <= 0 {
+        while self.phase < self.phases(data).len() && self.phases(data)[self.phase] <= 0 {
             self.phase += 1;
         }
     }
@@ -82,14 +106,14 @@ impl Crop {
         if !watered && data.needs_watering {
             return;
         }
-        if self.phase >= data.days_in_phase.len() {
+        if self.phase >= self.phases(data).len() {
             if self.regrow_left > 0 {
                 self.regrow_left -= 1;
             }
             return;
         }
         self.day_in_phase += 1;
-        if self.day_in_phase >= data.days_in_phase[self.phase] {
+        if self.day_in_phase >= self.phases(data)[self.phase] {
             self.phase += 1;
             self.day_in_phase = 0;
             self.skip_empty_phases(data);
@@ -148,7 +172,7 @@ impl Crop {
 
     /// Frame index in the 8-frame crop strip.
     pub fn sprite_frame(&self, data: &CropData) -> i32 {
-        let phases = data.days_in_phase.len() as i32;
+        let phases = self.phases(data).len() as i32;
         if self.phase == 0 && self.day_in_phase == 0 && !self.harvested_once {
             return self.variant as i32;
         }

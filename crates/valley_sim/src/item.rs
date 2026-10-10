@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use valley_content::data::{CropData, ObjectData, ToolData};
+use valley_content::data::{BigCraftableData, CropData, MachineData, ObjectData, ToolData};
 use valley_content::ContentManager;
 
 pub const MAX_STACK: i32 = 999;
@@ -19,6 +19,9 @@ pub mod category {
     pub const COOKING: i32 = -7;
     pub const FISH: i32 = -4;
     pub const FERTILIZER: i32 = -19;
+    /// Crafted placeables (fences, sprinklers, paths...).
+    pub const CRAFTING_PLACEABLE: i32 = -8;
+    pub const BIG_CRAFTABLE: i32 = -9;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
@@ -120,30 +123,72 @@ impl Tool {
     }
 }
 
+/// Extra state for produced items (machine outputs like "<fruit> Juice").
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+pub struct ItemExtra {
+    /// Item this was made from (for flavored names/prices).
+    pub preserved_from: Option<String>,
+    pub display_name: Option<String>,
+    pub price: Option<i32>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Item {
-    Object { id: String, stack: i32, quality: Quality },
+    Object {
+        id: String,
+        stack: i32,
+        quality: Quality,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        extra: Option<Box<ItemExtra>>,
+    },
+    /// Placeable "big craftable" (chests, machines...), 16x32 sprite.
+    Big { id: String, stack: i32 },
     Tool(Tool),
 }
 
 impl Item {
     pub fn object(id: &str, stack: i32) -> Self {
-        Item::Object { id: id.to_string(), stack, quality: Quality::Normal }
+        Item::Object { id: id.to_string(), stack, quality: Quality::Normal, extra: None }
     }
     pub fn object_q(id: &str, stack: i32, quality: Quality) -> Self {
-        Item::Object { id: id.to_string(), stack, quality }
+        Item::Object { id: id.to_string(), stack, quality, extra: None }
+    }
+    pub fn big(id: &str, stack: i32) -> Self {
+        Item::Big { id: id.to_string(), stack }
     }
 
     pub fn stack(&self) -> i32 {
         match self {
-            Item::Object { stack, .. } => *stack,
+            Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
             Item::Tool(_) => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
-        if let Item::Object { stack, .. } = self {
-            *stack = n;
+        match self {
+            Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
+            Item::Tool(_) => {}
+        }
+    }
+
+    pub fn quality(&self) -> Quality {
+        match self {
+            Item::Object { quality, .. } => *quality,
+            _ => Quality::Normal,
+        }
+    }
+
+    pub fn extra(&self) -> Option<&ItemExtra> {
+        match self {
+            Item::Object { extra, .. } => extra.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn big_id(&self) -> Option<&str> {
+        match self {
+            Item::Big { id, .. } => Some(id),
+            _ => None,
         }
     }
 
@@ -170,15 +215,17 @@ impl Item {
 
     pub fn can_stack_with(&self, o: &Item) -> bool {
         match (self, o) {
-            (Item::Object { id: a, quality: qa, .. }, Item::Object { id: b, quality: qb, .. }) => a == b && qa == qb,
+            (Item::Object { id: a, quality: qa, extra: ea, .. }, Item::Object { id: b, quality: qb, extra: eb, .. }) => a == b && qa == qb && ea == eb,
+            (Item::Big { id: a, .. }, Item::Big { id: b, .. }) => a == b,
             _ => false,
         }
     }
 
-    /// Qualified id like "(O)24" or "(T)Hoe".
+    /// Qualified id like "(O)24", "(BC)130" or "(T)Hoe".
     pub fn qualified_id(&self) -> String {
         match self {
             Item::Object { id, .. } => format!("(O){id}"),
+            Item::Big { id, .. } => format!("(BC){id}"),
             Item::Tool(t) => format!("(T){}", t.kind.data_key()),
         }
     }
@@ -221,13 +268,62 @@ impl ObjectInfo {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct BigInfo {
+    pub id: String,
+    pub data: BigCraftableData,
+    pub display_name: String,
+    pub description: String,
+}
+
+impl BigInfo {
+    pub fn texture(&self) -> String {
+        self.data.texture.clone().unwrap_or_else(|| "TileSheets/Craftables".to_string()).replace('\\', "/")
+    }
+}
+
+/// Implicit context tags for an object category (public data convention).
+pub fn category_tag(cat: i32) -> Option<&'static str> {
+    Some(match cat {
+        -2 => "category_gem",
+        -4 => "category_fish",
+        -5 => "category_egg",
+        -6 => "category_milk",
+        -7 => "category_cooking",
+        -8 => "category_crafting",
+        -12 => "category_minerals",
+        -14 => "category_meat",
+        -15 => "category_metal_resources",
+        -16 => "category_building_resources",
+        -19 => "category_fertilizer",
+        -20 => "category_junk",
+        -21 => "category_bait",
+        -22 => "category_tackle",
+        -25 => "category_ingredients",
+        -26 => "category_artisan_goods",
+        -27 => "category_syrup",
+        -28 => "category_monster_loot",
+        -74 => "category_seeds",
+        -75 => "category_vegetable",
+        -79 => "category_fruits",
+        -80 => "category_flowers",
+        -81 => "category_greens",
+        _ => return None,
+    })
+}
+
 /// Resolved item data for the session.
 #[derive(Clone, Debug, Default)]
 pub struct ItemDb {
     pub objects: BTreeMap<String, ObjectInfo>,
+    pub bigs: BTreeMap<String, BigInfo>,
+    /// Keyed by qualified machine id, e.g. "(BC)12".
+    pub machines: BTreeMap<String, MachineData>,
     /// Keyed by seed object id.
     pub crops: BTreeMap<String, CropData>,
     pub tools: BTreeMap<String, ToolData>,
+    /// Preloaded string tables used at runtime (lowercased asset name).
+    pub strings: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
 
 impl ItemDb {
@@ -240,6 +336,18 @@ impl ItemDb {
             };
             let description = cm.expand(&data.description);
             db.objects.insert(id.clone(), ObjectInfo { id, data, display_name, description });
+        }
+        for (id, data) in cm.load_dict::<BigCraftableData>("Data/BigCraftables") {
+            let display_name = {
+                let n = cm.expand(&data.display_name);
+                if n.is_empty() { data.name.clone() } else { n }
+            };
+            let description = cm.expand(&data.description);
+            db.bigs.insert(id.clone(), BigInfo { id, data, display_name, description });
+        }
+        db.machines = cm.load_dict::<MachineData>("Data/Machines");
+        for asset in ["Strings\\Objects", "Strings\\BigCraftables"] {
+            db.strings.insert(asset.to_lowercase(), cm.load_string_dict(asset));
         }
         db.crops = cm.load_dict::<CropData>("Data/Crops");
         db.tools = cm.load_dict::<ToolData>("Data/Tools");
@@ -257,9 +365,73 @@ impl ItemDb {
         self.objects.get(id)
     }
 
+    /// Expand `[LocalizedText Strings\\Objects:Key]`-style tokens using the
+    /// string tables loaded with the database.
+    pub fn expand_text(&self, text: &str) -> String {
+        if !text.contains('[') {
+            return text.to_string();
+        }
+        let mut look = |asset: &str, key: &str| self.strings.get(&asset.replace('/', "\\").to_lowercase()).and_then(|m| m.get(key).cloned());
+        valley_content::strings::expand(text, &mut look)
+    }
+
+    pub fn big(&self, id: &str) -> Option<&BigInfo> {
+        let (_, id) = split_qualified(id);
+        self.bigs.get(id)
+    }
+
+    /// All context tags of an item (explicit + implicit id/category tags).
+    pub fn context_tags(&self, item: &Item) -> Vec<String> {
+        let mut tags = Vec::new();
+        match item {
+            Item::Object { id, quality, .. } => {
+                tags.push(format!("id_o_{}", id.to_lowercase()));
+                if let Some(o) = self.object(id) {
+                    if let Some(t) = category_tag(o.data.category) {
+                        tags.push(t.to_string());
+                    }
+                    tags.extend(o.data.context_tags.iter().flatten().cloned());
+                }
+                tags.push(match quality {
+                    Quality::Normal => "quality_none",
+                    Quality::Silver => "quality_silver",
+                    Quality::Gold => "quality_gold",
+                    Quality::Iridium => "quality_iridium",
+                }.to_string());
+            }
+            Item::Big { id, .. } => {
+                tags.push(format!("id_bc_{}", id.to_lowercase()));
+                if let Some(b) = self.big(id) {
+                    tags.extend(b.data.context_tags.iter().flatten().cloned());
+                }
+            }
+            Item::Tool(_) => tags.push("category_tool".into()),
+        }
+        tags
+    }
+
+    /// Does the item match all tags in a list? Supports `!tag` negation and
+    /// `a,b` alternatives inside one entry.
+    pub fn matches_tags(&self, item: &Item, required: &[String]) -> bool {
+        let tags = self.context_tags(item);
+        required.iter().all(|entry| {
+            entry.split(',').any(|alt| {
+                let alt = alt.trim();
+                match alt.strip_prefix('!') {
+                    Some(t) => !tags.iter().any(|x| x == t),
+                    None => tags.iter().any(|x| x == alt),
+                }
+            })
+        })
+    }
+
     pub fn display_name(&self, item: &Item) -> String {
+        if let Some(n) = item.extra().and_then(|e| e.display_name.clone()) {
+            return n;
+        }
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Big { id, .. } => self.big(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
                 match t.level {
@@ -276,6 +448,7 @@ impl ItemDb {
     pub fn description(&self, item: &Item) -> String {
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.description.clone()).unwrap_or_default(),
+            Item::Big { id, .. } => self.big(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
     }
@@ -283,7 +456,11 @@ impl ItemDb {
     /// Base sell price (one unit) including quality.
     pub fn sell_price(&self, item: &Item) -> i32 {
         match item {
-            Item::Object { id, quality, .. } => self.object(id).map(|o| (o.data.price as f32 * quality.price_mult()).floor() as i32).unwrap_or(0),
+            Item::Object { id, quality, extra, .. } => {
+                let base = extra.as_ref().and_then(|e| e.price).or_else(|| self.object(id).map(|o| o.data.price)).unwrap_or(0);
+                (base as f32 * quality.price_mult()).floor() as i32
+            }
+            Item::Big { id, .. } => self.big(id).map(|b| b.data.price).unwrap_or(0),
             Item::Tool(_) => 0,
         }
     }
@@ -298,6 +475,7 @@ impl ItemDb {
         let (ty, id) = split_qualified(qualified);
         match ty {
             "O" => self.objects.contains_key(id).then(|| Item::object(id, stack)),
+            "BC" => self.bigs.contains_key(id).then(|| Item::big(id, stack)),
             "T" => ToolKind::from_key(id).map(|k| Item::Tool(Tool::new(k))),
             _ => None,
         }

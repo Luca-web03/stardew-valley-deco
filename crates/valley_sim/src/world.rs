@@ -51,6 +51,8 @@ pub enum WorldEvent {
     DayEnded(DayReport),
     LevelUp(Skill, i32),
     Exhausted,
+    /// Open the chest at this tile in the current location.
+    OpenChest(TilePos),
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -110,6 +112,7 @@ pub struct World {
     pub last_report: Option<DayReport>,
     /// Raw schedule tables per NPC name.
     pub schedule_data: HashMap<String, HashMap<String, String>>,
+    pub recipes: BTreeMap<String, crate::crafting::Recipe>,
 }
 
 impl World {
@@ -170,6 +173,7 @@ impl World {
             in_bed: false,
             last_report: None,
             schedule_data: HashMap::new(),
+            recipes: crate::crafting::parse_all(&cm.load_string_dict("Data/CraftingRecipes")),
         };
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
@@ -345,6 +349,9 @@ impl World {
     /// Morning setup: weather-dependent watering, NPC schedules, mail.
     pub fn start_day(&mut self) {
         let raining = self.weather.is_raining();
+        self.unlock_recipes();
+        self.run_sprinklers();
+        self.spawn_forage();
         for loc in self.locations.values_mut() {
             if loc.outdoors && raining {
                 for t in loc.state.terrain.values_mut() {
@@ -420,6 +427,10 @@ impl World {
             }
         }
 
+        // Machines keep working through the night until 6am.
+        let overnight = Clock::minutes_between(self.clock.time, 2600) + 240;
+        self.advance_machines(overnight);
+
         let old_season = self.clock.season;
         self.clock.next_day();
         self.weather = self.weather_tomorrow;
@@ -430,6 +441,7 @@ impl World {
         // Overnight world updates.
         let season = self.clock.season;
         let crops = self.items.crops.clone();
+        let items = self.items.clone();
         let new_season = old_season != season;
         for loc in self.locations.values_mut() {
             let outdoors = loc.outdoors;
@@ -441,10 +453,11 @@ impl World {
                             if let Some(data) = crops.get(&c.seed_id) {
                                 c.new_day(data, d.watered, season, outdoors);
                             }
-                        } else if outdoors && (rng.chance(0.1) || (new_season && season == crate::time::Season::Winter)) {
+                        } else if outdoors && d.fertilizer.is_none() && (rng.chance(0.1) || (new_season && season == crate::time::Season::Winter)) {
                             remove.push(*p);
                         }
-                        d.watered = false;
+                        let retention = d.fertilizer.as_ref().and_then(|f| crate::machines::fertilizer_effect(&items, f)).map(|(_, _, r)| r).unwrap_or(0.0);
+                        d.watered = d.watered && retention > 0.0 && rng.chance(retention);
                     }
                     TerrainFeature::Tree(tree) => {
                         if !tree.stump && tree.stage < crate::terrain::TREE_MATURE && rng.chance(0.2) {
@@ -515,6 +528,7 @@ impl World {
             match ev {
                 ClockEvent::TenMinutes => {
                     self.update_npc_schedules();
+                    self.advance_machines(10);
                     if self.clock.time == 2400 || self.clock.time == 2500 {
                         self.hud("It's getting late...");
                     }
@@ -792,6 +806,11 @@ impl World {
             return self.ship_current();
         }
 
+        // Placed objects (chests, machines).
+        if self.interact_object(target) {
+            return true;
+        }
+
         // Map actions.
         if let Some(action) = self.location().action_at(target) {
             if self.run_action(&action) {
@@ -799,11 +818,19 @@ impl World {
             }
         }
 
-        // Planting / eating with the held item.
+        // Planting / fertilizing / placing / eating with the held item.
         let slot = self.farmer.current_slot;
+        if let Some(item) = self.farmer.current_item().cloned() {
+            if self.is_placeable(&item) && self.place_current(target) {
+                return true;
+            }
+        }
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
             if self.items.is_seed(&id) {
                 return self.plant(target, &id);
+            }
+            if crate::machines::fertilizer_effect(&self.items, &id).is_some() && matches!(self.location().terrain(target), Some(TerrainFeature::HoeDirt(_))) {
+                return self.apply_fertilizer(target);
             }
             if self.items.object(&id).is_some_and(|o| o.is_edible()) {
                 self.emit(WorldEvent::EatPrompt { slot });
@@ -1055,6 +1082,7 @@ impl World {
         let Some(data) = self.items.crops.get(seed_id).cloned() else { return false };
         let outdoors = self.location().outdoors;
         let season = self.clock.season;
+        let items = self.items.clone();
         let mut rng = self.rng.clone();
         let ok = {
             let loc = self.location_mut();
@@ -1063,7 +1091,13 @@ impl World {
                     if outdoors && !Crop::grows_in(&data, season) {
                         None
                     } else {
-                        d.crop = Some(Crop::new(seed_id, &mut rng));
+                        let mut c = Crop::new(seed_id, &mut rng);
+                        if let Some((_, speed, _)) = d.fertilizer.as_ref().and_then(|f| crate::machines::fertilizer_effect(&items, f)) {
+                            if speed > 0.0 {
+                                c.apply_speed_bonus(&data, speed);
+                            }
+                        }
+                        d.crop = Some(c);
                         Some(true)
                     }
                 }
@@ -1104,11 +1138,12 @@ impl World {
 
     pub fn harvest_at(&mut self, t: TilePos, data: &valley_content::data::CropData) -> bool {
         let level = self.farmer.skills.level(Skill::Farming);
+        let items = self.items.clone();
         let mut rng = self.rng.clone();
         let result = {
             let loc = self.location_mut();
             let Some(TerrainFeature::HoeDirt(d)) = loc.state.terrain.get_mut(&t) else { return false };
-            let fert = 0;
+            let fert = d.fertilizer.as_ref().and_then(|f| crate::machines::fertilizer_effect(&items, f)).map(|(q, _, _)| q).unwrap_or(0);
             let Some(crop) = d.crop.as_mut() else { return false };
             let r = crop.harvest(data, &mut rng, level, fert);
             if let Some((_, true)) = &r {
@@ -1278,6 +1313,59 @@ impl World {
 
     pub fn npcs_here(&self) -> impl Iterator<Item = &Npc> {
         self.npcs.iter().filter(move |n| n.location == self.current)
+    }
+
+    // ---------------------------------------------------------------- crafting
+
+    pub fn unlock_recipes(&mut self) {
+        let names: Vec<String> = self.recipes.iter().filter(|(_, r)| r.auto_unlocked(&self.farmer)).map(|(k, _)| k.clone()).collect();
+        for n in names {
+            if !self.farmer.crafting_recipes.contains_key(&n) {
+                self.farmer.crafting_recipes.insert(n, 0);
+            }
+        }
+    }
+
+    /// Craft a known recipe into the inventory.
+    pub fn craft(&mut self, name: &str) -> bool {
+        let Some(r) = self.recipes.get(name).cloned() else { return false };
+        if !self.farmer.crafting_recipes.contains_key(name) {
+            return false;
+        }
+        let out = r.output();
+        if !self.farmer.inventory.can_fit(&out) {
+            self.hud("Inventory full");
+            return false;
+        }
+        let items = self.items.clone();
+        let Some(item) = r.craft(&items, &mut self.farmer) else {
+            self.sound("cancel");
+            return false;
+        };
+        self.farmer.inventory.add(item.clone());
+        *self.farmer.crafting_recipes.entry(name.to_string()).or_insert(0) += 1;
+        self.sound("crafting");
+        self.emit(WorldEvent::Pickup(item));
+        true
+    }
+
+    /// Move a stack between the farmer's inventory and a chest.
+    pub fn chest_transfer(&mut self, chest: TilePos, from_player: bool, slot: usize) {
+        let loc_name = self.current.clone();
+        let Some(loc) = self.locations.get_mut(&loc_name) else { return };
+        let Some(crate::objects::PlacedObject { kind: crate::objects::ObjKind::Chest(inv), .. }) = loc.state.objects.get_mut(&chest) else { return };
+        if from_player {
+            let Some(item) = self.farmer.inventory.take(slot) else { return };
+            if let Some(left) = inv.add(item) {
+                self.farmer.inventory.slots[slot] = Some(left);
+            }
+        } else {
+            let Some(item) = inv.take(slot) else { return };
+            if let Some(left) = self.farmer.inventory.add(item) {
+                inv.slots[slot] = Some(left);
+            }
+        }
+        self.sound("pickUpItem");
     }
 
     // ---------------------------------------------------------------- queries
