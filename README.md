@@ -41,7 +41,9 @@ cargo run -p valley_app -- --headless --new Robin \
 | Toolbar slot | 1–0, -, =, mouse wheel |
 | Menu (items, crafting, skills, social, options) | E / I / Esc |
 | Journal (quests) | F |
-| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `slot`, `tile`, `bundles`) |
+| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`) |
+| Weapon special move | X or right click with a weapon held (nothing else to interact with) |
+| Slingshot | hold C / left mouse to pull, release to fire (aims at the mouse) |
 | Debug overlay | F3 |
 | Switch hosted game | Ctrl+Tab |
 
@@ -49,11 +51,15 @@ cargo run -p valley_app -- --headless --new Robin \
 
 Farming (tilling, watering, crops, fertilizer, sprinklers), foraging,
 trees and debris, tools and upgrades, crafting and machines, cooking and
-buffs, fishing minigame, mines with combat, farm buildings and animals,
-villagers with schedules, dialogue, gifts, dating and marriage, shops,
-mail, quests, bundles, museum, cutscene events, festivals, skills and
-professions, weather and seasons, day/night, saves, audio. See
-`docs/PROGRESS.md` for the detailed status.
+buffs, a kitchen fridge, fishing minigame, crab pots and fish ponds, mines
+with combat, weapon special moves, a slingshot and a deep cavern with
+shafts, farm buildings and animals, a farm pet, villagers with schedules,
+dialogue, gifts, dating, marriage and children, shops, a traveling cart,
+clothing, mail, quests, special orders, bundles, museum, secret notes,
+achievements, trash cans, cutscene events, festivals, skills and
+professions, warp totems, obelisks and paid travel, weather and seasons,
+day/night, saves, audio, and content mods. See `docs/PROGRESS.md` for the
+detailed status.
 
 ## Workspace
 
