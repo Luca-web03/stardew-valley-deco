@@ -383,6 +383,8 @@ impl ValleyGame {
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
                 WorldEvent::Music(track) => ctx.audio.music(&track),
+                WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
+                WorldEvent::OpenMuseum => self.menus.push(Menu::Museum { hovered: None }),
                 WorldEvent::OpenBlacksmith => {
                     let collected = self.world.as_mut().is_some_and(|w| w.collect_tool_upgrade());
                     if collected {
@@ -749,6 +751,59 @@ impl ValleyGame {
                     }));
                 }
             }
+            Menu::Bundles { area, hovered } => {
+                let areas = self.world.as_ref().map(|w| w.bundle_areas()).unwrap_or_default();
+                let tabs = bundle_tab_rects(sw, sh, areas.len());
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = tabs.iter().position(|r| r.contains(ctx.input.mouse)) {
+                        *area = i;
+                    }
+                }
+                let keys: Vec<(String, usize)> = self
+                    .world
+                    .as_ref()
+                    .map(|w| w.bundles.iter().filter(|b| areas.get(*area) == Some(&b.area)).map(|b| (b.key.clone(), b.reqs.len())).collect())
+                    .unwrap_or_default();
+                *hovered = None;
+                for (bi, (_, n)) in keys.iter().enumerate() {
+                    for ri in 0..*n {
+                        if bundle_req_rect(sw, sh, bi, ri).contains(ctx.input.mouse) {
+                            *hovered = Some((bi, ri));
+                        }
+                    }
+                }
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some((bi, ri)) = *hovered {
+                        let key = keys[bi].0.clone();
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(Err(e)) = g.world.as_mut().map(|w| w.donate_to_bundle(&key, ri)) {
+                                g.toast(e);
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::Museum { hovered } => {
+                let slots = shop_inventory_rects(sw, sh);
+                *hovered = slots.iter().position(|r| r.contains(ctx.input.mouse));
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    if let Some(i) = *hovered {
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            match g.world.as_mut().map(|w| w.donate_to_museum(i)) {
+                                Some(Ok(())) => g.toast("Thank you for your donation!"),
+                                Some(Err(e)) => g.toast(e),
+                                None => {}
+                            }
+                        }));
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
             Menu::Blacksmith { hovered } => {
                 let rows = shop_rows(sw, sh);
                 let tools = self.world.as_ref().map(upgradable_tools).unwrap_or_default();
@@ -1020,6 +1075,16 @@ fn menu_frame(sw: f32, sh: f32) -> FRect {
 fn inventory_tab_rects(sw: f32, sh: f32) -> Vec<FRect> {
     let f = menu_frame(sw, sh);
     (0..TABS.len()).map(|i| FRect::new(f.x + 16.0 + i as f32 * 166.0, f.y - 52.0, 156.0, 48.0)).collect()
+}
+
+fn bundle_tab_rects(sw: f32, sh: f32, n: usize) -> Vec<FRect> {
+    let f = menu_frame(sw, sh);
+    (0..n).map(|i| FRect::new(f.x + 16.0 + i as f32 * 200.0, f.y - 52.0, 190.0, 48.0)).collect()
+}
+
+fn bundle_req_rect(sw: f32, sh: f32, bundle: usize, req: usize) -> FRect {
+    let f = menu_frame(sw, sh);
+    FRect::new(f.x + 300.0 + req as f32 * 60.0, f.y + 40.0 + bundle as f32 * 84.0, 52.0, 52.0)
 }
 
 /// Inventory slots holding upgradable tools.
@@ -1428,6 +1493,82 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 ui.text(&ps, Vec2::new(r.x + r.w - m.x - 24.0, r.y + 26.0), 3.0, if d.build_cost > w.farmer.money { Color::RED } else { ui::TEXT });
             }
         }
+        Menu::Bundles { area, hovered } => {
+            let f = menu_frame(sw, sh);
+            let areas = w.bundle_areas();
+            for (i, (r, a)) in bundle_tab_rects(sw, sh, areas.len()).iter().zip(&areas).enumerate() {
+                let done = w.farmer.bundles.areas_completed.contains(a);
+                ui.button(*r, &if done { format!("{a} *") } else { a.clone() }, i == *area);
+            }
+            ui.panel(f);
+            if areas.is_empty() {
+                ui.text("There are no bundles.", Vec2::new(f.x + 48.0, f.y + 60.0), 2.0, ui::TEXT);
+            }
+            let list: Vec<_> = w.bundles.iter().filter(|b| areas.get(*area) == Some(&b.area)).collect();
+            for (bi, b) in list.iter().enumerate() {
+                let done = w.farmer.bundles.completed.contains(&b.key);
+                let y = f.y + 40.0 + bi as f32 * 84.0;
+                ui.text(&b.name, Vec2::new(f.x + 32.0, y + 8.0), 2.0, if done { Color::rgb(60, 140, 60) } else { ui::TEXT });
+                let filled = b.reqs.iter().enumerate().filter(|(i, _)| w.bundle_filled(&b.key, *i)).count();
+                ui.text(&format!("{filled}/{}", b.num_required), Vec2::new(f.x + 32.0, y + 34.0), 2.0, ui::TEXT);
+                for (ri, req) in b.reqs.iter().enumerate() {
+                    let r = bundle_req_rect(sw, sh, bi, ri);
+                    let have = w.bundle_filled(&b.key, ri) || done;
+                    ui.slot(r, *hovered == Some((bi, ri)));
+                    if req.item_id == "-1" {
+                        ui.text(&format!("{}g", req.count), Vec2::new(r.x + 2.0, r.y + 18.0), 1.5, if have { Color::rgb(60, 140, 60) } else { ui::TEXT });
+                        continue;
+                    }
+                    let item = valley_sim::item::Item::object_q(&req.item_id, req.count, req.min_quality);
+                    let (tex, src) = item_sprite(rc, w, &item);
+                    let inner = FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0);
+                    if have {
+                        ui.icon(tex, src, inner);
+                    } else {
+                        ui.icon_tinted(tex, src, inner, Color::rgba(60, 60, 60, 120));
+                    }
+                    ui.stack_number(req.count, r);
+                }
+            }
+            if let Some((bi, ri)) = hovered {
+                if let Some(req) = list.get(*bi).and_then(|b| b.reqs.get(*ri)) {
+                    if req.item_id != "-1" {
+                        let item = valley_sim::item::Item::object_q(&req.item_id, req.count, req.min_quality);
+                        draw_tooltip(ui, w, &item, sw, sh);
+                    }
+                }
+            }
+        }
+        Menu::Museum { hovered } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text("Museum Donations", Vec2::new(f.x + 16.0, f.y - 30.0), 3.0, ui::TEXT_LIGHT);
+            ui.text(&format!("Donated so far: {}", w.farmer.bundles.museum.len()), Vec2::new(f.x + 48.0, f.y + 40.0), 3.0, ui::TEXT);
+            let mut x = f.x + 48.0;
+            let mut y = f.y + 90.0;
+            for id in &w.farmer.bundles.museum {
+                let item = valley_sim::item::Item::object(id, 1);
+                let (tex, src) = item_sprite(rc, w, &item);
+                ui.icon(tex, src, FRect::new(x, y, 48.0, 48.0));
+                x += 56.0;
+                if x > f.x + f.w - 100.0 {
+                    x = f.x + 48.0;
+                    y += 56.0;
+                }
+            }
+            ui.text("Click an item below to donate it:", Vec2::new(f.x + 32.0, f.y + 360.0), 2.0, ui::TEXT);
+            for (i, r) in shop_inventory_rects(sw, sh).iter().enumerate() {
+                let item = w.farmer.inventory.get(i);
+                let ok = item.is_some_and(|it| w.museum_donatable(it));
+                ui.slot(*r, *hovered == Some(i) && ok);
+                if let Some(it) = item {
+                    hud::draw_item_in_slot(rc, ui, w, it, *r);
+                    if !ok {
+                        ui.out.fill(*r, Color::rgba(60, 40, 30, 120), ui.depth + 0.001);
+                    }
+                }
+            }
+        }
         Menu::Blacksmith { hovered } => {
             let f = menu_frame(sw, sh);
             ui.panel(f);
@@ -1660,6 +1801,10 @@ impl ValleyGame {
                 format!("slot = {}", w.farmer.current_slot)
             }
             Some("tile") => format!("{} {:?} facing {:?}", w.current, w.farmer.tile(), w.farmer.facing),
+            Some("bundles") => {
+                w.emit(valley_sim::world::WorldEvent::OpenBundles);
+                "opening bundles".into()
+            }
             _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | slot <n> | tile".into(),
         }
     }

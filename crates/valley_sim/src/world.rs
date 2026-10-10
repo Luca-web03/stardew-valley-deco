@@ -69,6 +69,8 @@ pub enum WorldEvent {
     Fade { to_black: bool },
     EventEnded,
     OpenBlacksmith,
+    OpenBundles,
+    OpenMuseum,
 }
 
 /// An item lying in the world (tool drops pop out and fly to the farmer).
@@ -162,6 +164,8 @@ pub struct World {
     pub event_data: HashMap<String, HashMap<String, String>>,
     pub event: Option<crate::events::EventRunner>,
     pub compat: Compat,
+    pub bundles: Vec<crate::bundles::BundleDef>,
+    pub museum_rewards: BTreeMap<String, crate::bundles::MuseumReward>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -262,7 +266,13 @@ impl World {
             event_data: HashMap::new(),
             event: None,
             compat: Compat::default(),
+            bundles: Vec::new(),
+            museum_rewards: BTreeMap::new(),
         };
+        w.bundles = crate::bundles::parse_bundles(&cm.load_string_dict("Data/Bundles"), &w.items);
+        if let Some(v) = cm.load_json_value("Data/MuseumRewards") {
+            w.museum_rewards = crate::bundles::parse_museum_rewards(&v);
+        }
         let names: Vec<String> = w.locations.keys().cloned().collect();
         for n in names {
             let d = cm.load_string_dict(&format!("Data/Events/{n}"));
@@ -1141,6 +1151,14 @@ impl World {
             }
             "Blacksmith" => {
                 self.emit(WorldEvent::OpenBlacksmith);
+                true
+            }
+            "Bundles" | "JunimoNote" => {
+                self.emit(WorldEvent::OpenBundles);
+                true
+            }
+            "Museum" | "MuseumMenu" | "Gunther" => {
+                self.emit(WorldEvent::OpenMuseum);
                 true
             }
             "kitchen" | "Kitchen" => {

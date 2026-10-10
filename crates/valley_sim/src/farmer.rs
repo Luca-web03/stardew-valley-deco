@@ -161,6 +161,8 @@ pub struct Farmer {
     /// Tool at the blacksmith: (tool, days left).
     #[serde(default)]
     pub tool_upgrade: Option<(crate::item::Tool, i32)>,
+    #[serde(default)]
+    pub bundles: crate::bundles::BundleProgress,
 }
 
 impl Farmer {
@@ -207,6 +209,7 @@ impl Farmer {
             professions: Vec::new(),
             pending_levelups: Vec::new(),
             tool_upgrade: None,
+            bundles: Default::default(),
         }
     }
 

@@ -6,6 +6,7 @@
 //! behaviour; constants that are best-effort approximations are marked as such.
 
 pub mod buffs;
+pub mod bundles;
 pub mod collision;
 pub mod combat;
 pub mod crafting;

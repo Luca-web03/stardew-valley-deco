@@ -376,6 +376,17 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Events/Town", json!({
             "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
         })),
+        ("Data/Bundles", json!({
+            "Garden/0": "Spring Basket/O Dev_Sprinkler 2/Dev_Turnip 3 0 Dev_Bean 3 0 Dev_Berry 2 0/0/3/Spring Basket",
+            "Garden/1": "Fresh Catch/O Dev_SpeedGro 5/Dev_Perch 1 0 Dev_Darter 1 0/1/2/Fresh Catch",
+            "Workshop/0": "Builder's Bundle/BO Dev_Juicer 1/388 50 0 390 50 0 771 20 0/2/3/Builder's Bundle",
+            "Workshop/1": "Smith's Bundle/O Dev_IronBar 3/Dev_CopperBar 2 0 Dev_Quartz 1 0 Dev_Coal 5 0/3/3/Smith's Bundle",
+            "Workshop/2": "Repair Fund/O Dev_GoldBar 1/-1 1000 1000/4/1/Repair Fund"
+        })),
+        ("Data/MuseumRewards", json!({
+            "first_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 1 }], "RewardItemId": "(O)Dev_SpeedGro", "RewardItemCount": 5 },
+            "two_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 2 }], "RewardItemId": "(BC)Dev_Furnace", "RewardItemCount": 1 }
+        })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",
             "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"

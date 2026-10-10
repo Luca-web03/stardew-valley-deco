@@ -420,6 +420,7 @@ impl ItemDb {
                     if let Some(t) = category_tag(o.data.category) {
                         tags.push(t.to_string());
                     }
+                    tags.push(format!("item_type_{}", o.data.kind.to_ascii_lowercase()));
                     tags.extend(o.data.context_tags.iter().flatten().cloned());
                 }
                 tags.push(match quality {

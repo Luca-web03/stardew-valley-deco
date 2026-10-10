@@ -90,6 +90,13 @@ pub enum Menu {
         level: i32,
         hovered: Option<usize>,
     },
+    Bundles {
+        area: usize,
+        hovered: Option<(usize, usize)>,
+    },
+    Museum {
+        hovered: Option<usize>,
+    },
 }
 
 /// Characters revealed per tick by the typewriter effect.
