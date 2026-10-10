@@ -199,6 +199,10 @@ pub struct World {
     /// Data/TV/CookingChannel (episode -> "recipe/text").
     pub cooking_channel: BTreeMap<String, String>,
     pub tailoring: Vec<crate::tailoring::TailoringRecipe>,
+    pub movies: Vec<crate::movies::MovieData>,
+    pub movie_reactions: Vec<crate::movies::NpcMovieReactions>,
+    /// Villager invited to today's movie.
+    pub movie_invite: Option<String>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
     pub mine_maps: Vec<valley_content::Map>,
     pub mine_items: crate::mines::MineItems,
@@ -341,6 +345,9 @@ impl World {
             minecarts: crate::minecarts::load(cm),
             cooking_channel: cm.load_string_dict("Data/TV/CookingChannel").into_iter().collect(),
             tailoring: cm.load_json("Data/TailoringRecipes").unwrap_or_default(),
+            movies: cm.load_json("Data/Movies").unwrap_or_default(),
+            movie_reactions: cm.load_json("Data/MoviesReactions").unwrap_or_default(),
+            movie_invite: None,
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -822,6 +829,7 @@ impl World {
         self.check_achievements();
         self.garbage_searched.clear();
         self.shop_sold.clear();
+        self.movie_invite = None;
         self.spawn_daily_debris();
         self.leave_mines();
         self.bombs.clear();
@@ -1367,6 +1375,7 @@ impl World {
         let Some(&cmd) = toks.first() else { return false };
         match cmd {
             "Tailoring" => self.open_tailoring(),
+            "Theater" | "Port.Theater" => self.watch_movie(),
             "MinecartTransport" => {
                 let network = toks.get(1).copied().unwrap_or("Default");
                 self.open_minecart(network, toks.get(2).copied())
@@ -1682,7 +1691,7 @@ impl World {
     fn interact_npc(&mut self, i: usize) {
         let me = self.farmer.tile();
         let name = self.npcs[i].name.clone();
-        if self.maybe_ask_about_child(&name) {
+        if self.maybe_ask_about_child(&name) || self.try_invite_to_movie(&name) {
             return;
         }
         let nt = self.npcs[i].tile();

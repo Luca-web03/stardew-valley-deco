@@ -127,6 +127,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                             "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
         "Dev_Cloth": { "Name": "Cloth", "DisplayName": "Cloth", "Description": "Woven fabric for the sewing machine.", "Type": "Crafting", "Category": -8, "Price": 100,
                        "SpriteIndex": ICON_FIBER, "ContextTags": ["item_cloth"] },
+        "Dev_Ticket": { "Name": "Movie Ticket", "DisplayName": "Movie Ticket", "Description": "Good for one showing. Give it to a friend to invite them along.", "Type": "Basic", "Category": 0, "Price": 250,
+                        "SpriteIndex": ICON_TICKET, "CanBeGivenAsGift": false },
         "Dev_NoteScrap": { "Name": "Note Scrap", "DisplayName": "Note Scrap", "Description": "A torn page with writing on it. Read it to see what it says.", "Type": "Basic", "Category": 0, "Price": 1,
                            "SpriteIndex": ICON_NOTE_SCRAP },
         "Dev_HomingStone": { "Name": "Homing Stone", "DisplayName": "Homing Stone", "Description": "Squeeze it to return to your farm in a flash.", "Type": "Crafting", "Category": -8, "Price": 20,
@@ -333,6 +335,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "sling", "ItemId": "(W)Dev_Slingshot", "Price": 500 },
                 { "Id": "bomb", "ItemId": "(O)Dev_Bomb", "Price": 150 }
             ]
+        },
+        "Dev_BoxOffice": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [{ "Id": "ticket", "ItemId": "(O)Dev_Ticket", "Price": 500 }]
         },
         "Dev_DuneTrader": {
             "Owners": [{ "Name": "AnyOrNone" }],
@@ -550,6 +556,26 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 ]
             }
         })),
+        ("Data/Movies", json!([
+            { "Id": "Dev_LanternFlight", "Seasons": ["Spring", "Summer"], "Title": "Lantern Flight", "Tags": ["family", "adventure"],
+              "Description": "A paper lantern drifts across the valley in search of the moon.",
+              "Scenes": [
+                  { "Id": "0", "Text": "A paper lantern slips its string and rises over the rooftops." },
+                  { "Id": "1", "Text": "It drifts past sleeping fields and a very surprised owl." },
+                  { "Id": "2", "Text": "At dawn it settles on a hill, glowing beside a field of fireflies." }
+              ] },
+            { "Id": "Dev_IronWinter", "Seasons": ["Fall", "Winter"], "Title": "The Iron Winter", "Tags": ["drama"],
+              "Description": "A blacksmith keeps a frozen town warm through the longest night.",
+              "Scenes": [
+                  { "Id": "0", "Text": "Snow buries the town; only the forge glows." },
+                  { "Id": "1", "Text": "The smith works through the night, hammer ringing like a bell." },
+                  { "Id": "2", "Text": "Morning comes, and every chimney smokes again." }
+              ] }
+        ])),
+        ("Data/MoviesReactions", json!([
+            { "NPCName": "Mara", "Reactions": [{ "Tag": "adventure", "Response": "love" }, { "Tag": "drama", "Response": "dislike" }] },
+            { "NPCName": "Tobin", "Reactions": [{ "Tag": "drama", "Response": "like" }] }
+        ])),
         ("Data/TailoringRecipes", json!([
             { "Id": "Dev_StripesFromBerries", "FirstItemTags": ["item_cloth"], "SecondItemTags": ["id_o_dev_berry"], "CraftedItemId": "(S)Dev_Stripes" },
             { "Id": "Dev_ShortsFromBeans", "FirstItemTags": ["item_cloth"], "SecondItemTags": ["id_o_dev_bean"], "CraftedItemId": "(P)Dev_Shorts" },

@@ -411,6 +411,7 @@ pub const ICON_NOTE_SCRAP: i32 = 63;
 pub const ICON_BERRY_TART: i32 = 64;
 pub const ICON_WHIRL_LURE: i32 = 65;
 pub const ICON_CORK_FLOAT: i32 = 66;
+pub const ICON_TICKET: i32 = 67;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -688,6 +689,14 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_TICKET, OBJ_COLS, 16, 16);
+        c.rect(2, 4, 12, 8, Color::rgb(240, 200, 90));
+        c.rect(5, 4, 1, 8, Color::rgb(200, 150, 60));
+        c.rect(7, 6, 5, 1, Color::rgb(150, 60, 50));
+        c.rect(7, 9, 4, 1, Color::rgb(150, 60, 50));
         c.auto_outline(OUTLINE);
     }
     {

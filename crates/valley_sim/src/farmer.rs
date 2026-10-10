@@ -227,6 +227,11 @@ pub struct Farmer {
     pub qi_coins: i32,
     #[serde(default)]
     pub qi_gems: i32,
+    /// Movies watched (ids) and villagers taken along.
+    #[serde(default)]
+    pub movies_seen: Vec<String>,
+    #[serde(default)]
+    pub movies_seen_with: Vec<String>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -329,6 +334,8 @@ impl Farmer {
             star_tokens: 0,
             qi_coins: 0,
             qi_gems: 0,
+            movies_seen: Vec::new(),
+            movies_seen_with: Vec::new(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),

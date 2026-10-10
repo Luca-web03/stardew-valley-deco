@@ -247,6 +247,9 @@ pub fn town() -> Map {
     b.house(21, 4, 8, "LockedDoorWarp 6 9 SeedShop 900 2100");
     // Mara's house.
     b.house(9, 2, 6, "Warp 0 0 Town");
+    // Movie theater with a box office sign.
+    b.house(30, 4, 6, "Theater");
+    b.set_props("Buildings", 29, 9, SIGN, &[("Action", "OpenShop Dev_BoxOffice")]);
     b.set_props("Buildings", 18, 11, SIGN, &[("Action", "Message \"Welcome to town!\"")]);
     b.set_props("Buildings", 20, 11, SIGN, &[("Action", "Billboard")]);
     b.set_props("Buildings", 30, 14, SIGN, &[("Action", "AnimalShop")]);

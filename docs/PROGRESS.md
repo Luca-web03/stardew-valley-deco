@@ -55,6 +55,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
       trash cans (Data/GarbageCans)
 - [x] Cutscene events (core command subset), festivals
+- [x] Movie theater: seasonal movies, tickets, inviting villagers,
+      reactions by movie tags (no concessions yet)
 - [x] Skills, professions, level-up screen
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
