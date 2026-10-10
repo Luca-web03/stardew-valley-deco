@@ -12,6 +12,10 @@ use crate::xnb::{self, XnbAsset};
 /// `Data/Objects`, `TileSheets/crops`).
 pub struct ContentManager {
     source: Arc<dyn ContentSource>,
+    /// Game content + placeholder pack, without mods (base for JSON merges).
+    base: Option<Arc<dyn ContentSource>>,
+    /// Loaded mods in load order, each with its own folder source.
+    mod_sources: Vec<(crate::mods::ModInfo, Arc<DirSource>)>,
     json_cache: HashMap<String, Arc<serde_json::Value>>,
     string_cache: HashMap<String, HashMap<String, String>>,
     pub warnings: Vec<String>,
@@ -27,6 +31,8 @@ impl ContentManager {
     pub fn new(source: Box<dyn ContentSource>) -> Self {
         Self {
             source: Arc::from(source),
+            base: None,
+            mod_sources: Vec::new(),
             json_cache: HashMap::new(),
             string_cache: HashMap::new(),
             warnings: Vec::new(),
@@ -49,6 +55,35 @@ impl ContentManager {
         cm.has_game_content = has;
         cm.game_dir = dir.map(|d| d.to_path_buf());
         cm
+    }
+
+    /// Game content and placeholder pack with the mods found in `mods_dir`
+    /// on top (see [`crate::mods`]).
+    pub fn with_mods(dir: Option<&std::path::Path>, mods_dir: Option<&std::path::Path>) -> Self {
+        let mut cm = Self::with_game_dir(dir);
+        let mods = mods_dir.map(crate::mods::discover).unwrap_or_default();
+        if mods.is_empty() {
+            return cm;
+        }
+        let base = cm.source.clone();
+        let mut layered = LayeredSource::default();
+        // Later mods win: highest in load order is consulted first.
+        for m in mods.iter().rev() {
+            layered.push(Box::new(DirSource::new(&m.dir)));
+        }
+        layered.push(Box::new(SharedSource(base.clone())));
+        cm.mod_sources = mods.into_iter().map(|m| {
+            let src = Arc::new(DirSource::new(&m.dir));
+            (m, src)
+        }).collect();
+        cm.base = Some(base);
+        cm.source = Arc::new(layered);
+        cm
+    }
+
+    /// Loaded mods, in load order.
+    pub fn mods(&self) -> Vec<&crate::mods::ModInfo> {
+        self.mod_sources.iter().map(|(m, _)| m).collect()
     }
 
     /// Placeholder pack only.
@@ -80,20 +115,36 @@ impl ContentManager {
     }
 
     fn read_with_ext(&self, asset: &str, exts: &[&str]) -> Option<(String, Vec<u8>)> {
+        Self::read_from(&*self.source, &self.locale, asset, exts)
+    }
+
+    fn read_from(source: &dyn ContentSource, locale: &str, asset: &str, exts: &[&str]) -> Option<(String, Vec<u8>)> {
         let base = normalize(asset);
         for ext in exts {
-            if !self.locale.is_empty() {
-                let p = format!("{base}.{}.{ext}", self.locale);
-                if let Some(b) = self.source.read(&p) {
+            if !locale.is_empty() {
+                let p = format!("{base}.{locale}.{ext}");
+                if let Some(b) = source.read(&p) {
                     return Some((ext.to_string(), b));
                 }
             }
             let p = format!("{base}.{ext}");
-            if let Some(b) = self.source.read(&p) {
+            if let Some(b) = source.read(&p) {
                 return Some((ext.to_string(), b));
             }
         }
         None
+    }
+
+    fn parse_json(&mut self, asset: &str, bytes: &[u8]) -> Option<serde_json::Value> {
+        // Tolerate a UTF-8 BOM.
+        let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
+        match serde_json::from_slice::<serde_json::Value>(bytes) {
+            Ok(v) => Some(v),
+            Err(e) => {
+                self.warnings.push(format!("{asset}: {e}"));
+                None
+            }
+        }
     }
 
     pub fn exists(&self, asset: &str) -> bool {
@@ -145,20 +196,29 @@ impl ContentManager {
         if let Some(v) = self.json_cache.get(&key) {
             return Some(v.clone());
         }
-        let (_, bytes) = self.read_with_ext(asset, &["json"])?;
-        // Tolerate a UTF-8 BOM.
-        let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
-        match serde_json::from_slice::<serde_json::Value>(bytes) {
-            Ok(v) => {
-                let v = Arc::new(v);
-                self.json_cache.insert(key, v.clone());
-                Some(v)
+        let value = if let Some(base) = self.base.clone() {
+            // Base content first, then each mod merged in load order.
+            let mut value = match Self::read_from(&*base, &self.locale, asset, &["json"]) {
+                Some((_, b)) => self.parse_json(asset, &b),
+                None => None,
+            };
+            let mods: Vec<_> = self.mod_sources.iter().map(|(m, s)| (m.name.clone(), s.clone())).collect();
+            for (name, src) in mods {
+                let Some((_, b)) = Self::read_from(&*src, &self.locale, asset, &["json"]) else { continue };
+                let Some(patch) = self.parse_json(&format!("{name}: {asset}"), &b) else { continue };
+                match value.as_mut() {
+                    Some(v) => crate::mods::merge_json(v, &patch),
+                    None => value = Some(patch),
+                }
             }
-            Err(e) => {
-                self.warnings.push(format!("{asset}: {e}"));
-                None
-            }
-        }
+            value?
+        } else {
+            let (_, bytes) = self.read_with_ext(asset, &["json"])?;
+            self.parse_json(asset, &bytes)?
+        };
+        let v = Arc::new(value);
+        self.json_cache.insert(key, v.clone());
+        Some(v)
     }
 
     pub fn load_json<T: DeserializeOwned>(&mut self, asset: &str) -> Option<T> {
@@ -226,5 +286,20 @@ impl ContentManager {
         }
         let mut look = |asset: &str, key: &str| self.string(asset, key);
         crate::strings::expand(text, &mut look)
+    }
+}
+
+/// Lets an already shared source sit inside a [`LayeredSource`].
+struct SharedSource(Arc<dyn ContentSource>);
+
+impl ContentSource for SharedSource {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        self.0.read(path)
+    }
+    fn open(&self, path: &str) -> Option<Box<dyn ReadSeek>> {
+        self.0.open(path)
+    }
+    fn describe(&self) -> String {
+        self.0.describe()
     }
 }

@@ -22,6 +22,8 @@ use valley_sim::world::NewGame;
 #[derive(Default, Clone)]
 pub struct Args {
     pub content: Option<PathBuf>,
+    /// Folder of content mods layered over the game content.
+    pub mods: Option<PathBuf>,
     pub saves: PathBuf,
     pub headless: bool,
     pub script: String,
@@ -40,6 +42,7 @@ pub struct Args {
 fn parse_args() -> Args {
     let mut a = Args {
         content: std::env::var_os("VALLEY_CONTENT").map(PathBuf::from),
+        mods: std::env::var_os("VALLEY_MODS").map(PathBuf::from),
         saves: std::env::var_os("VALLEY_SAVES").map(PathBuf::from).unwrap_or_else(default_save_dir),
         mute: std::env::var_os("VALLEY_MUTE").is_some_and(|v| !v.is_empty() && v != "0"),
         width: 1280,
@@ -50,6 +53,7 @@ fn parse_args() -> Args {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--content" => a.content = it.next().map(PathBuf::from),
+            "--mods" => a.mods = it.next().map(PathBuf::from),
             "--saves" => a.saves = it.next().map(PathBuf::from).unwrap_or(a.saves),
             "--headless" => a.headless = true,
             "--script" => a.script = it.next().unwrap_or_default(),
@@ -90,13 +94,16 @@ fn default_save_dir() -> PathBuf {
 }
 
 pub fn build_game(args: &Args) -> ValleyGame {
-    let cm = ContentManager::with_game_dir(args.content.as_deref());
+    let cm = ContentManager::with_mods(args.content.as_deref(), args.mods.as_deref());
     if let Some(dir) = &args.content {
         if !dir.exists() {
             eprintln!("warning: content folder {} does not exist; using placeholder content", dir.display());
         }
     }
     eprintln!("content: {}", cm.describe());
+    for m in cm.mods() {
+        eprintln!("mod: {} {} {}", m.name, m.version, if m.author.is_empty() { String::new() } else { format!("by {}", m.author) });
+    }
     let mut game = ValleyGame::new(cm, args.saves.clone());
     game.new_game_seed = args.seed;
     if let Some(name) = &args.new_game {

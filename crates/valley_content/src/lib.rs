@@ -17,6 +17,7 @@ pub mod audio;
 pub mod data;
 pub mod dev;
 pub mod manager;
+pub mod mods;
 pub mod map;
 pub mod props;
 pub mod source;

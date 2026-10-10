@@ -3,6 +3,9 @@ valley - clean-room farming game engine
 Options:
   --content <dir>     Unpacked game Content folder (or env VALLEY_CONTENT).
                       Without it, the built-in placeholder content is used.
+  --mods <dir>        Folder of content mods (or env VALLEY_MODS). Each
+                      subfolder mirrors Content/; JSON data is merged
+                      entry by entry, other files replace the original.
   --saves <dir>       Save folder (default: ~/.local/share/valley-rs/saves).
   --new <name>        Skip the title screen and start a new game.
   --seed <n>          World seed for new games.

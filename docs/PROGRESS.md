@@ -15,6 +15,7 @@ were not available; such values are isolated constants that can be tuned.
       crops, fish, monsters, animals, machines, recipes, letters, quests,
       an intro event
 - [x] Desktop window (macroquad) and headless scripted runner with screenshots
+- [x] Content mods: folder overlays with entry-level JSON merging
 
 ## Gameplay
 - [x] Time, calendar, weather (approx. chances), storms with lightning,

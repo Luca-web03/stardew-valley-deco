@@ -75,3 +75,18 @@ Other conventions:
 | Paid travel: `Action Port.Travel <location> <x> <y> <fare> [hhmm-hhmm]` (engine convention, 30 in-game minutes per trip) | `valley_sim::world::World::travel` |
 | Fish ponds: buildings with id `Fish Pond` or the `Port.FishPond` custom field; `Data/FishPondData` (`RequiredTags`, `SpawnTime`, `ProducedItems`, `PopulationGates`, `MaxPopulation`) | `valley_sim::fish_ponds` |
 | Kitchen fridge: `Action Fridge` tile; cooking uses backpack then fridge | `valley_sim::world::FRIDGE_TILE` |
+
+## Mods
+
+`--mods <dir>` / `VALLEY_MODS` loads every subfolder of `<dir>` as a mod
+(`valley_content::mods`):
+
+* Files mirror the Content layout (`Data/Objects.json`, `Maps/Farm.tmx`,
+  `TileSheets/crops.png`, ...).
+* JSON assets are merged into the base content: object keys are added or
+  replaced, `null` removes a key, array entries with the same `Id` are
+  replaced and others appended. Every other file type replaces the original.
+* `manifest.json` (optional): `Name`, `Version`, `Author`, `Description`,
+  `Priority` (higher loads later and wins), `Enabled`.
+* Mods load in (`Priority`, folder name) order; loaded mods are listed on
+  start-up.

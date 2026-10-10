@@ -66,6 +66,23 @@ professions, weather and seasons, day/night, saves, audio. See
 | `valley_game` | The playable module: screens, menus, HUD, input mapping, saves, music. |
 | `valley_app` | Desktop window (macroquad) + headless runner + audio output. |
 
+## Mods
+
+Point `--mods <dir>` (or `VALLEY_MODS`) at a folder of mods. Each subfolder
+mirrors the Content layout and is layered over the game content:
+
+```
+Mods/
+  BetterTurnips/
+    manifest.json          {"Name": "Better Turnips", "Version": "1.0", "Priority": 0}
+    Data/Objects.json      {"Dev_Turnip": {...}, "Dev_Driftwood": null}
+    Animals/Dev_Dog.png    replaces the original image
+```
+
+JSON assets merge entry by entry (a `null` value removes an entry; array
+entries match by `Id`), so mods only need the entries they change. Images,
+maps and audio replace the original file. See `docs/CONTENT.md`.
+
 ## Merging other games
 
 Each game is an `engine::GameModule`. Add yours next to the valley module in
