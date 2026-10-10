@@ -469,6 +469,64 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
     if darkness > 0.0 {
         out.fill(full, Color::rgba(10, 10, 60, (darkness * 255.0) as u8), DEPTH_OVERLAY);
     }
+    // Light pools at night: map "Light" property ("x y type ...") and lamp tiles.
+    if darkness > 0.2 {
+        let white = rc.assets.white(rc.textures);
+        let mut lights: Vec<(i32, i32)> = Vec::new();
+        if let Some(l) = loc.map.prop("Light") {
+            let t: Vec<i32> = l.split_whitespace().filter_map(|v| v.parse().ok()).collect();
+            for c in t.chunks(3) {
+                if c.len() >= 2 {
+                    lights.push((c[0], c[1]));
+                }
+            }
+        }
+        if let Some(b) = loc.map.layer("Buildings") {
+            let (x0, y0, x1, y1) = cam.tile_range(TILE_F, 2);
+            for y in y0.max(0)..=y1.min(b.height - 1) {
+                for x in x0.max(0)..=x1.min(b.width - 1) {
+                    if loc.map.tile_prop("Buildings", x, y, "Light").is_some_and(|v| valley_sim::location::truthy(&v)) || loc.map.tile_prop("Buildings", x, y, "Lamp").is_some() {
+                        lights.push((x, y));
+                    }
+                }
+            }
+        }
+        for (x, y) in lights {
+            let c = cam.to_screen(Vec2::new(x as f32 * TILE_F + TILE_F / 2.0, y as f32 * TILE_F + TILE_F / 2.0));
+            for (r, a) in [(200.0f32, 30u8), (140.0, 35), (80.0, 45)] {
+                out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(c.x - r / 2.0, c.y - r / 2.0), r, Color::rgba(255, 220, 140, a), DEPTH_OVERLAY + 0.0005);
+            }
+        }
+    }
+    if loc.outdoors && w.weather == valley_sim::time::Weather::Snow {
+        let white = rc.assets.white(rc.textures);
+        let t = w.game_ms as f32;
+        for i in 0..140 {
+            let seed = (i * 7919) as f32;
+            let x = (seed * 7.31 + t * 0.05 + (t / 900.0 + seed).sin() * 30.0).rem_euclid(cam.screen_w + 40.0) - 20.0;
+            let y = (seed * 3.7 + t * 0.12).rem_euclid(cam.screen_h + 40.0) - 20.0;
+            let size = 4.0 + (i % 3) as f32 * 2.0;
+            out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(x, y), size, Color::rgba(255, 255, 255, 220), DEPTH_OVERLAY + 0.001);
+        }
+    }
+    if loc.outdoors && w.weather == valley_sim::time::Weather::Wind {
+        let white = rc.assets.white(rc.textures);
+        let t = w.game_ms as f32;
+        let leaf = match w.clock.season {
+            valley_sim::time::Season::Fall => Color::rgb(220, 120, 40),
+            valley_sim::time::Season::Spring => Color::rgb(250, 190, 210),
+            _ => Color::rgb(120, 190, 80),
+        };
+        for i in 0..24 {
+            let seed = (i * 4507) as f32;
+            let x = (seed * 11.3 + t * 0.35).rem_euclid(cam.screen_w + 80.0) - 40.0;
+            let y = (seed * 5.1 + t * 0.06 + (t / 300.0 + seed).sin() * 20.0).rem_euclid(cam.screen_h + 40.0) - 20.0;
+            let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(x, y, 10.0, 6.0), DEPTH_OVERLAY + 0.001);
+            s.tint = leaf;
+            s.rotation = (t / 200.0 + seed).sin();
+            out.sprite(s);
+        }
+    }
     if loc.outdoors && w.weather.is_raining() {
         let white = rc.assets.white(rc.textures);
         let t = w.game_ms as f32;

@@ -50,7 +50,24 @@ struct Placement {
     cam: Vec2,
 }
 
+/// Player options, stored next to the saves.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct Options {
+    /// World zoom (1.0 = 4x pixel art).
+    pub zoom: f32,
+    pub music_volume: f32,
+    pub sound_volume: f32,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self { zoom: 1.0, music_volume: 0.75, sound_volume: 1.0 }
+    }
+}
+
 pub struct ValleyGame {
+    pub options: Options,
     placement: Option<Placement>,
     pub cm: ContentManager,
     pub world: Option<World>,
@@ -69,7 +86,9 @@ pub struct ValleyGame {
 
 impl ValleyGame {
     pub fn new(cm: ContentManager, save_dir: PathBuf) -> Self {
+        let options = std::fs::read_to_string(save_dir.join("..").join("options.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         Self {
+            options,
             placement: None,
             cm,
             world: None,
@@ -127,16 +146,31 @@ impl ValleyGame {
         }
     }
 
+    fn save_options(&self) {
+        let p = self.save_dir.join("..").join("options.json");
+        if let Some(d) = p.parent() {
+            let _ = std::fs::create_dir_all(d);
+        }
+        let _ = std::fs::write(p, serde_json::to_string_pretty(&self.options).unwrap_or_default());
+    }
+
+    /// Camera in *world-view* pixels (the screen divided by the zoom).
     fn camera(&self, ctx: &EngineCtx) -> Option<Camera> {
         let w = self.world.as_ref()?;
         let loc = w.location();
+        let z = self.options.zoom.max(0.25);
         Some(Camera::follow(
             w.event_camera_focus().unwrap_or_else(|| w.farmer.center()),
             loc.width() as f32 * TILE_F,
             loc.height() as f32 * TILE_F,
-            ctx.screen_w as f32,
-            ctx.screen_h as f32,
+            ctx.screen_w as f32 / z,
+            ctx.screen_h as f32 / z,
         ))
+    }
+
+    /// Mouse position in world-view pixels.
+    fn view_mouse(&self, ctx: &EngineCtx) -> Vec2 {
+        ctx.input.mouse * (1.0 / self.options.zoom.max(0.25))
     }
 
     // ------------------------------------------------------------------ update
@@ -303,7 +337,8 @@ impl ValleyGame {
             return;
         }
         let cam = self.camera(ctx);
-        self.cursor_tile = cam.map(|c| TilePos::from_world(c.to_world(ctx.input.mouse)));
+        let vm = self.view_mouse(ctx);
+        self.cursor_tile = cam.map(|c| TilePos::from_world(c.to_world(vm)));
 
         if !self.menus.is_empty() {
             self.update_menu(ctx);
@@ -352,7 +387,11 @@ impl ValleyGame {
         let events = w.drain_events();
         for e in events {
             match e {
-                WorldEvent::Sound(cue) => ctx.audio.play(&cue),
+                WorldEvent::Sound(cue) => {
+                    if self.options.sound_volume > 0.0 {
+                        ctx.audio.cmds.push(engine::SoundCmd::Play { cue, volume: self.options.sound_volume, pitch: 1.0 });
+                    }
+                }
                 WorldEvent::Hud(m) => self.toast(m),
                 WorldEvent::Pickup(item) => {
                     let name = self.world.as_ref().map(|w| w.items.display_name(&item)).unwrap_or_default();
@@ -382,7 +421,7 @@ impl ValleyGame {
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
-                WorldEvent::Music(track) => ctx.audio.music(&track),
+                WorldEvent::Music(track) => ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume }),
                 WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
                 WorldEvent::OpenMuseum => self.menus.push(Menu::Museum { hovered: None }),
                 WorldEvent::OpenBlacksmith => {
@@ -597,6 +636,21 @@ impl ValleyGame {
                     InvTab::Options => {
                         let b = options_buttons(sw, sh);
                         if ctx.input.mouse_pressed(MouseButton::Left) {
+                            let adj = option_adjust_rects(sw, sh);
+                            for (row, (minus, plus)) in adj.iter().enumerate() {
+                                let delta = if minus.contains(ctx.input.mouse) { -1.0 } else if plus.contains(ctx.input.mouse) { 1.0 } else { 0.0 };
+                                if delta != 0.0 {
+                                    action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                        let o = &mut g.options;
+                                        match row {
+                                            0 => o.zoom = (o.zoom + delta * 0.25).clamp(0.5, 2.0),
+                                            1 => o.music_volume = (o.music_volume + delta * 0.1).clamp(0.0, 1.0),
+                                            _ => o.sound_volume = (o.sound_volume + delta * 0.1).clamp(0.0, 1.0),
+                                        }
+                                        g.save_options();
+                                    }));
+                                }
+                            }
                             if b[0].contains(ctx.input.mouse) {
                                 action = Some(Box::new(|g: &mut ValleyGame, _| {
                                     g.menus.clear();
@@ -984,6 +1038,7 @@ impl ValleyGame {
         let Some(cam) = self.camera(ctx) else { return };
         let Some(w) = self.world.as_ref() else { return };
         let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
+        let first_world_cmd = out.cmds.len();
         valley_render::draw_world(&mut rc, out, w, &cam);
 
         // Cursor highlight on the targeted tile.
@@ -1007,6 +1062,22 @@ impl ValleyGame {
                     let r = FRect::new(p.x + 32.0 - m.x / 2.0 - 8.0, p.y - 110.0, m.x + 16.0, 30.0);
                     ui.fill(r, Color::rgba(255, 255, 255, 230));
                     ui.text(text, Vec2::new(r.x + 8.0, r.y + 8.0), 2.0, ui::TEXT);
+                }
+            }
+        }
+        // Apply world zoom to everything drawn so far (the HUD is drawn after).
+        let z = self.options.zoom;
+        if (z - 1.0).abs() > 1e-3 {
+            for cmd in out.cmds[first_world_cmd..].iter_mut() {
+                match cmd {
+                    engine::DrawCmd::Sprite(s) => {
+                        // Full-screen overlays stay full-screen.
+                        s.dst = FRect::new(s.dst.x * z, s.dst.y * z, s.dst.w * z, s.dst.h * z);
+                        s.origin = s.origin * z;
+                    }
+                    engine::DrawCmd::Fill { rect, .. } => {
+                        *rect = FRect::new(rect.x * z, rect.y * z, rect.w * z, rect.h * z);
+                    }
                 }
             }
         }
@@ -1170,7 +1241,14 @@ fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
 
 fn options_buttons(sw: f32, sh: f32) -> [FRect; 2] {
     let f = menu_frame(sw, sh);
-    [FRect::new(f.x + 80.0, f.y + 120.0, 360.0, 64.0), FRect::new(f.x + 80.0, f.y + 210.0, 360.0, 64.0)]
+    [FRect::new(f.x + 80.0, f.y + 40.0, 360.0, 64.0), FRect::new(f.x + 80.0, f.y + 120.0, 360.0, 64.0)]
+}
+
+/// (minus, plus) buttons for zoom, music and sound rows.
+fn option_adjust_rects(sw: f32, sh: f32) -> [(FRect, FRect); 3] {
+    let f = menu_frame(sw, sh);
+    let row = |i: f32| (FRect::new(f.x + f.w - 260.0, f.y + 40.0 + i * 70.0, 64.0, 56.0), FRect::new(f.x + f.w - 100.0, f.y + 40.0 + i * 70.0, 64.0, 56.0));
+    [row(0.0), row(1.0), row(2.0)]
 }
 
 fn shop_rows(sw: f32, sh: f32) -> Vec<FRect> {
@@ -1362,6 +1440,14 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     let b = options_buttons(sw, sh);
                     ui.button(b[0], "Save & Exit to Title", false);
                     ui.button(b[1], "Quit Game", false);
+                    let o = opts_snapshot();
+                    let labels = [format!("Zoom {:.0}%", o.0 * 100.0), format!("Music {:.0}%", o.1 * 100.0), format!("Sound {:.0}%", o.2 * 100.0)];
+                    for ((minus, plus), label) in option_adjust_rects(sw, sh).iter().zip(labels.iter()) {
+                        ui.button(*minus, "-", false);
+                        ui.button(*plus, "+", false);
+                        let m = ui.measure(label, 2.0);
+                        ui.text(label, Vec2::new(minus.x + minus.w + (plus.x - minus.x - minus.w - m.x) / 2.0, minus.y + 20.0), 2.0, ui::TEXT);
+                    }
                     ui.text("Controls: WASD move, C/left click use tool, X/right click act,", Vec2::new(f.x + 48.0, f.y + 320.0), 2.0, ui::TEXT);
                     ui.text("1-0,-,= toolbar, E/Esc menu, Shift walk, Ctrl+Tab switch game.", Vec2::new(f.x + 48.0, f.y + 348.0), 2.0, ui::TEXT);
                 }
@@ -1751,6 +1837,12 @@ fn draw_recipe_tooltip(rc: &mut RenderCtx, ui: &mut Ui, w: &World, r: &valley_si
 
 thread_local! {
     static MOUSE: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((0.0, 0.0)) };
+    static OPTS: std::cell::Cell<(f32, f32, f32)> = const { std::cell::Cell::new((1.0, 0.75, 1.0)) };
+}
+
+/// (zoom, music, sound) for drawing the options tab.
+fn opts_snapshot() -> (f32, f32, f32) {
+    OPTS.with(|o| o.get())
 }
 
 fn ui_mouse_hint() -> Vec2 {
@@ -1821,6 +1913,7 @@ impl GameModule for ValleyGame {
 
     fn update(&mut self, ctx: &mut EngineCtx) {
         MOUSE.with(|m| m.set((ctx.input.mouse.x, ctx.input.mouse.y)));
+        OPTS.with(|o| o.set((self.options.zoom, self.options.music_volume, self.options.sound_volume)));
         self.fade.alpha += (self.fade.target - self.fade.alpha).clamp(-0.05, 0.05);
         if self.fade.target >= 1.0 && self.fade.alpha >= 1.0 {
             self.fade.target = 0.0;
