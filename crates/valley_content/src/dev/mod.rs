@@ -32,6 +32,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/furniture.png", art::furniture().encode_png());
     m.insert("Buildings/Dev_Silo.png", art::silo().encode_png());
     m.insert("Buildings/Dev_Pond.png", art::pond().encode_png());
+    m.insert("Buildings/Dev_Obelisk.png", art::obelisk().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
@@ -120,6 +121,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "SpriteIndex": ICON_GUARD_RING, "CustomFields": { "Port.Defense": "2" } },
         "Dev_MagnetRing": { "Name": "Magnet Ring", "DisplayName": "Magnet Ring", "Description": "Pulls items from further away.", "Type": "Ring", "Category": -96, "Price": 400,
                             "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
+        "Dev_HomingStone": { "Name": "Homing Stone", "DisplayName": "Homing Stone", "Description": "Squeeze it to return to your farm in a flash.", "Type": "Crafting", "Category": -8, "Price": 20,
+                             "SpriteIndex": ICON_HOMING_STONE, "CustomFields": { "Port.WarpTo": "Farm" } },
+        "Dev_DuneCharm": { "Name": "Dune Charm", "DisplayName": "Dune Charm", "Description": "Smells faintly of hot sand. Takes you to the dunes.", "Type": "Crafting", "Category": -8, "Price": 40,
+                           "SpriteIndex": ICON_DUNE_CHARM, "CustomFields": { "Port.WarpTo": "Dev_Dunes 10 14" } },
         "Dev_Bomb": { "Name": "Blast Charge", "DisplayName": "Blast Charge", "Description": "Clears rocks in a small radius. Stand back!", "Type": "Crafting", "Category": -8, "Price": 50,
                       "SpriteIndex": ICON_BOMB, "CustomFields": { "BombRadius": "3" } },
         "Dev_CrabPot": obj("Crab Pot", "Crafting", -8, 50, ICON_CRAB_POT, -300),
@@ -214,6 +219,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Furnace": "Dev_CopperOre 15 390 20/Home/Dev_Furnace/true/default/",
         "Tapper": "388 30 Dev_CopperBar 1/Home/Dev_Tapper/true/default/",
         "Blast Charge": "Dev_CopperOre 4 Dev_Coal 1/Home/Dev_Bomb/false/default/",
+        "Homing Stone": "390 10 Dev_Quartz 1/Home/Dev_HomingStone 3/false/default/",
         "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
         "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
     });
@@ -514,6 +520,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
               "ProducedItems": [{ "ItemId": "(O)Dev_Bait", "RequiredPopulation": 1, "Chance": 0.4, "MinQuantity": 1, "MaxQuantity": 3 }] }
         ])),
         ("Data/Buildings", json!({
+            "Dev_Obelisk": {
+                "Name": "Dune Obelisk", "Description": "Touch it to travel to the dunes.", "Texture": "Buildings\\Dev_Obelisk",
+                "Size": { "X": 2, "Y": 3 }, "BuildCost": 5000, "BuildDays": 2,
+                "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 200 }, { "ItemId": "(O)Dev_GoldBar", "Amount": 2 }],
+                "DefaultAction": "ObeliskWarp Dev_Dunes 10 14 true"
+            },
             "Dev_Pond": {
                 "Name": "Fish Pond", "Description": "Raise fish of one kind. They multiply and share what they find.", "Texture": "Buildings\\Dev_Pond",
                 "Size": { "X": 3, "Y": 3 }, "BuildCost": 1500, "BuildDays": 1,

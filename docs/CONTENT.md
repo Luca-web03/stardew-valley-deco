@@ -84,6 +84,8 @@ Other conventions:
 | Kitchen fridge: `Action Fridge` tile; cooking uses backpack then fridge | `valley_sim::world::FRIDGE_TILE` |
 
 | Clothing: `Data/Hats` (slash format), `Data/Shirts` / `Data/Pants` (`DefaultColor` tints the generated farmer), qualified ids `(H)`, `(S)`, `(P)` | `valley_sim::item::ClothingInfo` |
+| Warp items: `Port.WarpTo` custom field ("<location> [x y]") on an object, or well-known totem ids (destination = the location's `DefaultArrivalTile`, approx.) | `valley_sim::world::World::warp_totem_target` |
+| Buildings: `DefaultAction` runs as a tile action on non-door tiles; `ObeliskWarp <location> <x> <y>` teleports | `valley_sim::farm`, `World::teleport` |
 
 ## Mods
 

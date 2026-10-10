@@ -394,6 +394,8 @@ pub const ICON_CRAB_POT: i32 = 57;
 pub const ICON_BAIT: i32 = 58;
 pub const ICON_CRAWLER: i32 = 59;
 pub const ICON_BATTERY: i32 = 60;
+pub const ICON_HOMING_STONE: i32 = 61;
+pub const ICON_DUNE_CHARM: i32 = 62;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -671,6 +673,21 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_HOMING_STONE, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 5.5, 4.5, Color::rgb(120, 140, 170));
+        for (x, y) in [(6, 8), (7, 7), (9, 7), (10, 9), (8, 10)] {
+            c.px(x, y, Color::rgb(170, 240, 255));
+        }
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_DUNE_CHARM, OBJ_COLS, 16, 16);
+        c.rect(7, 2, 2, 4, Color::rgb(140, 90, 50));
+        c.ellipse(8.0, 10.0, 4.0, 4.5, Color::rgb(230, 170, 80));
+        c.ellipse(8.0, 10.0, 2.0, 2.0, Color::rgb(250, 230, 150));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1421,6 +1438,23 @@ pub fn child() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// Obelisk building (32x48, 2x3 tiles). Original design: a carved stone
+/// pillar with a glowing band.
+pub fn obelisk() -> Image {
+    let mut img = Image::new(32, 48);
+    let mut c = Cell { ox: 0, oy: 0, w: 32, h: 48, img: &mut img };
+    let stone = Color::rgb(150, 140, 160);
+    c.rect(4, 40, 24, 6, shade(stone, -20));
+    for y in 4..40 {
+        let inset = (y - 4) / 8;
+        c.rect(9 - inset, y, 14 + inset * 2, 1, if y % 6 == 0 { shade(stone, -15) } else { stone });
+    }
+    c.rect(14, 0, 4, 4, stone);
+    c.rect(10, 18, 12, 3, Color::rgb(230, 170, 80));
+    c.auto_outline(OUTLINE);
     img
 }
 

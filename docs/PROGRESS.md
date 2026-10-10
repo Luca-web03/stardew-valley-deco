@@ -60,7 +60,7 @@ were not available; such values are isolated constants that can be tuned.
 
 ## Not yet
 - [x] Deep cavern below the mines (shafts, tougher floors), paid travel
-      between areas, placeholder desert
+      between areas, warp totems and obelisks, placeholder desert
 - [ ] Area-specific mechanics beyond that (island, volcano, desert shops
       and events)
 - [ ] Real-content farmer sprite composition (generated placeholder farmer

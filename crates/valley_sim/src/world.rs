@@ -39,6 +39,9 @@ pub struct DayReport {
 
 /// Things the front end should react to (sounds, UI, transitions).
 /// Minutes a paid trip (Port.Travel) takes.
+/// Well-known warp totem object ids and where they lead.
+const WARP_TOTEMS: &[(&str, &str)] = &[("688", "Farm"), ("689", "Mountain"), ("690", "Beach"), ("261", "Desert"), ("886", "IslandSouth")];
+
 /// Sentinel "tile" that addresses the kitchen fridge in chest menus.
 pub const FRIDGE_TILE: TilePos = TilePos { x: -1, y: -1 };
 
@@ -65,6 +68,8 @@ pub enum WorldEvent {
     OpenOrderBoard,
     /// Ask before jumping down a deep-cavern shaft.
     ShaftPrompt,
+    /// Brief screen flash (magical travel).
+    Flash,
     /// Offer a paid trip (bus, boat...) to another location.
     TravelPrompt { location: String, tile: TilePos, fare: i32 },
     Warped { from: String, to: String },
@@ -1268,6 +1273,12 @@ impl World {
 
         // Planting / fertilizing / placing / eating with the held item.
         let slot = self.farmer.current_slot;
+        // Warp items act before placement (they can be "crafting" objects).
+        if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
+            if self.use_warp_totem(slot, &id) {
+                return true;
+            }
+        }
         if let Some(item) = self.farmer.current_item().cloned() {
             if self.is_placeable(&item) && self.place_current(target) {
                 return true;
@@ -1317,10 +1328,18 @@ impl World {
         true
     }
 
+    pub(crate) fn run_action_pub(&mut self, action: &str) -> bool {
+        self.run_action(action)
+    }
+
     fn run_action(&mut self, action: &str) -> bool {
         let toks: Vec<&str> = action.split_whitespace().collect();
         let Some(&cmd) = toks.first() else { return false };
         match cmd {
+            "ObeliskWarp" if toks.len() >= 4 => {
+                let (Ok(x), Ok(y)) = (toks[2].parse(), toks[3].parse()) else { return false };
+                self.teleport(toks[1], TilePos::new(x, y))
+            }
             "Warp" | "WarpCommunityCenter" | "Door" if toks.len() >= 4 => {
                 let (Ok(x), Ok(y)) = (toks[1].parse(), toks[2].parse()) else { return false };
                 self.warp_farmer(toks[3], TilePos::new(x, y), Some(Dir::Up));
@@ -1431,6 +1450,56 @@ impl World {
             }
             _ => false,
         }
+    }
+
+    /// Instant magical travel (obelisks, totems) with a flash.
+    pub fn teleport(&mut self, location: &str, tile: TilePos) -> bool {
+        if !self.locations.contains_key(location) {
+            self.emit(WorldEvent::Message(format!("{location} can't be reached.")));
+            return true;
+        }
+        self.sound("wand");
+        self.warp_farmer(location, tile, Some(Dir::Down));
+        self.emit(WorldEvent::Flash);
+        true
+    }
+
+    /// Where a warp totem leads: `Port.WarpTo` ("<location> [x y]") on the
+    /// object, else well-known totem ids (approx. destinations: the
+    /// location's arrival tile).
+    pub fn warp_totem_target(&self, id: &str) -> Option<(String, TilePos)> {
+        let spec = self.items.object(id).and_then(|o| o.data.custom_fields.as_ref()).and_then(|f| f.get("Port.WarpTo")).cloned().or_else(|| {
+            WARP_TOTEMS.iter().find(|(k, _)| *k == id).map(|(_, loc)| loc.to_string())
+        })?;
+        let t: Vec<&str> = spec.split_whitespace().collect();
+        let loc = t.first()?.to_string();
+        let tile = match (t.get(1).and_then(|v| v.parse().ok()), t.get(2).and_then(|v| v.parse().ok())) {
+            (Some(x), Some(y)) => TilePos::new(x, y),
+            _ if loc == "Farm" => {
+                let e = self.locations.get("Farm").and_then(|f| f.map_prop_tile("FarmHouseEntry")).unwrap_or(TilePos::new(10, 10));
+                TilePos::new(e.x, e.y + 2)
+            }
+            _ => self.arrival_tile(&loc)?,
+        };
+        Some((loc, tile))
+    }
+
+    fn use_warp_totem(&mut self, slot: usize, id: &str) -> bool {
+        let Some((loc, tile)) = self.warp_totem_target(id) else { return false };
+        if !self.locations.contains_key(&loc) {
+            return false;
+        }
+        self.farmer.inventory.reduce(slot, 1);
+        self.teleport(&loc, tile)
+    }
+
+    /// A location's DefaultArrivalTile, or its first open tile.
+    pub fn arrival_tile(&self, location: &str) -> Option<TilePos> {
+        if let Some(p) = self.location_data.get(location).and_then(|d| d.default_arrival_tile.as_ref()) {
+            return Some(TilePos::new(p.x, p.y));
+        }
+        let l = self.locations.get(location)?;
+        (0..l.height()).flat_map(|y| (0..l.width()).map(move |x| TilePos::new(x, y))).find(|p| crate::collision::tile_passable(l, *p))
     }
 
     /// Pay the fare and travel (the trip takes half an hour).

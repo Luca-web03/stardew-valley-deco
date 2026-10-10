@@ -477,6 +477,9 @@ pub struct BuildingData {
     pub max_occupants: i32,
     pub valid_occupant_types: Vec<String>,
     pub build_condition: Option<String>,
+    /// Tile action run when any non-door tile of the building is used
+    /// (e.g. "ObeliskWarp Beach 20 4 true").
+    pub default_action: Option<String>,
     pub custom_fields: Option<BTreeMap<String, String>>,
 }
 
@@ -498,6 +501,7 @@ impl Default for BuildingData {
             max_occupants: 0,
             valid_occupant_types: vec![],
             build_condition: None,
+            default_action: None,
             custom_fields: None,
         }
     }

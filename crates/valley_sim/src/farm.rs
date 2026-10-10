@@ -193,6 +193,11 @@ impl World {
         }
         let Some(data) = self.buildings_data.get(&b.kind).cloned() else { return false };
         let door = self.door_tile(&b, &data);
+        if t != door || b.interior.is_none() {
+            if let Some(action) = data.default_action.clone().filter(|a| !a.trim().is_empty()) {
+                return self.run_action_pub(&action);
+            }
+        }
         if t != door {
             // Animal door toggles when clicked.
             if let Some(ad) = &data.animal_door {

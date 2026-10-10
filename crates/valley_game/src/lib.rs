@@ -569,6 +569,7 @@ impl ValleyGame {
                 WorldEvent::OpenCarpenter(list) => self.menus.push(Menu::Carpenter { list, hovered: None }),
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
+                WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::ShaftPrompt => self.menus.push(Menu::Question {
                     text: "It's a long way down. Jump in?".into(),
                     options: vec!["Jump".into(), "Stay".into()],
