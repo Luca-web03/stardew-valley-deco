@@ -181,6 +181,9 @@ pub struct World {
     pub pending_question: Option<(String, dialogue::Question)>,
     pub fruit_trees: BTreeMap<String, valley_content::data::FruitTreeData>,
     pub wild_trees: BTreeMap<String, valley_content::data::WildTreeData>,
+    pub bombs: Vec<crate::equipment::LitBomb>,
+    pub explosions: Vec<crate::equipment::Explosion>,
+    pub trap_fish: Vec<crate::equipment::TrapFish>,
 }
 
 /// Fallbacks for content maps that don't carry this engine's helper
@@ -291,7 +294,11 @@ impl World {
             pending_question: None,
             fruit_trees: cm.load_dict("Data/FruitTrees"),
             wild_trees: cm.load_dict("Data/WildTrees"),
+            bombs: Vec::new(),
+            explosions: Vec::new(),
+            trap_fish: cm.load_string_dict("Data/Fish").iter().filter_map(|(k, v)| crate::equipment::parse_trap(k, v)).collect(),
         };
+        w.trap_fish.sort_by(|a, b| a.id.cmp(&b.id));
         for key in cm.load_string_dict("Data/Festivals/FestivalDates").keys() {
             let data = cm.load_string_dict(&format!("Data/Festivals/{key}"));
             if let Some(f) = crate::festivals::parse_festival(key, data) {
@@ -703,8 +710,11 @@ impl World {
         }
         self.animals_overnight();
         self.orchard_overnight();
+        self.crab_pots_overnight();
         self.spawn_daily_debris();
         self.leave_mines();
+        self.bombs.clear();
+        self.explosions.clear();
         self.dropped.clear();
         self.floaters.clear();
         self.weapon_swing = None;
@@ -797,6 +807,7 @@ impl World {
         self.update_farmer(input, dt);
         self.update_npcs(dt);
         self.update_monsters(dt);
+        self.update_bombs(dt);
         self.update_animals(dt);
         self.update_dropped(dt);
     }
@@ -885,7 +896,7 @@ impl World {
         }
 
         // Movement (each axis separately so the farmer slides along walls).
-        let speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.farmer.buff_totals().speed as f32 * 0.5 };
+        let speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.total_attrs().speed as f32 * 0.5 };
         let mut moved = false;
         if input.move_x != 0 || input.move_y != 0 {
             self.farmer.facing = if input.move_y < 0 {
@@ -1091,6 +1102,9 @@ impl World {
         }
         // Trees: tappers and fruit.
         if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) {
+            return true;
+        }
+        if self.crab_pot_action(target) || self.place_bomb(target) {
             return true;
         }
         if self.interact_building(target) {
@@ -1641,6 +1655,7 @@ impl World {
 
     fn update_dropped(&mut self, dt: u32) {
         let center = self.farmer.center();
+        let magnet = 128.0 + self.total_attrs().magnetic_radius as f32 * 64.0;
         let mut picked = Vec::new();
         for (i, d) in self.dropped.iter_mut().enumerate() {
             if d.location != self.current {
@@ -1663,11 +1678,11 @@ impl World {
             }
             let to = center - d.pos;
             let dist = to.length();
-            if dist < 128.0 {
+            if dist < magnet {
                 if dist < 24.0 {
                     picked.push(i);
                 } else {
-                    d.pos += to.normalized() * (6.0 + (128.0 - dist) / 16.0);
+                    d.pos += to.normalized() * (6.0 + (magnet - dist).max(0.0) / 16.0);
                 }
             }
         }

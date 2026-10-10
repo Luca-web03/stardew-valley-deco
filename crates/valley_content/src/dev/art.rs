@@ -340,6 +340,13 @@ pub const ICON_TREE_SEED: i32 = 49;
 pub const ICON_SYRUP: i32 = 50;
 pub const ICON_ARTIFACT_SPOT: i32 = 51;
 pub const ICON_OLD_COIN: i32 = 52;
+pub const ICON_GUARD_RING: i32 = 53;
+pub const ICON_MAGNET_RING: i32 = 54;
+pub const ICON_BOOTS: i32 = 55;
+pub const ICON_BOMB: i32 = 56;
+pub const ICON_CRAB_POT: i32 = 57;
+pub const ICON_BAIT: i32 = 58;
+pub const ICON_CRAWLER: i32 = 59;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -561,6 +568,54 @@ pub fn objects() -> Image {
         let mut c = Cell::at(&mut img, ICON_AMBERITE, OBJ_COLS, 16, 16);
         c.ellipse(8.0, 9.0, 4.5, 5.0, Color::rgb(240, 160, 40));
         c.px(7, 7, Color::rgb(255, 230, 160));
+        c.auto_outline(OUTLINE);
+    }
+    for (idx, gem) in [(ICON_GUARD_RING, Color::rgb(80, 160, 230)), (ICON_MAGNET_RING, Color::rgb(220, 70, 70))] {
+        let mut c = Cell::at(&mut img, idx, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 5.0, 4.0, Color::rgb(200, 170, 80));
+        c.ellipse(8.0, 10.0, 3.0, 2.2, Color::TRANSPARENT);
+        c.ellipse(8.0, 5.0, 2.2, 2.2, gem);
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BOOTS, OBJ_COLS, 16, 16);
+        c.rect(4, 3, 5, 9, Color::rgb(120, 80, 50));
+        c.rect(4, 11, 9, 3, Color::rgb(100, 65, 40));
+        c.rect(4, 13, 9, 1, Color::rgb(60, 40, 30));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BOMB, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 4.5, 4.5, Color::rgb(45, 45, 55));
+        c.px(6, 8, Color::rgb(120, 120, 140));
+        c.rect(8, 3, 1, 3, Color::rgb(150, 120, 80));
+        c.px(9, 2, Color::rgb(250, 200, 80));
+        c.auto_outline(Color::rgb(15, 15, 20));
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_CRAB_POT, OBJ_COLS, 16, 16);
+        c.rect(3, 6, 10, 8, Color::rgb(150, 110, 70));
+        for x in (4..13).step_by(3) {
+            c.rect(x, 6, 1, 8, Color::rgb(100, 70, 45));
+        }
+        c.rect(3, 5, 10, 1, Color::rgb(90, 60, 40));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_BAIT, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 5.0, 4.0, Color::rgb(170, 120, 90));
+        c.px(6, 9, Color::rgb(220, 180, 150));
+        c.px(10, 11, Color::rgb(220, 180, 150));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_CRAWLER, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 4.5, 3.0, Color::rgb(170, 70, 50));
+        c.rect(3, 7, 2, 2, Color::rgb(200, 90, 60));
+        c.rect(11, 7, 2, 2, Color::rgb(200, 90, 60));
+        for x in [5, 7, 9, 11] {
+            c.px(x, 13, Color::rgb(140, 60, 40));
+        }
         c.auto_outline(OUTLINE);
     }
     {

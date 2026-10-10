@@ -96,7 +96,7 @@ impl World {
             Item::Object { id, .. } => {
                 sprinkler_shape(&self.items, id).is_some() || self.items.object(id).is_some_and(|o| o.data.category == category::CRAFTING_PLACEABLE)
             }
-            Item::Tool(_) | Item::Weapon { .. } => false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => false,
         }
     }
 
@@ -131,7 +131,7 @@ impl World {
                 };
                 PlacedObject::new(id, false, kind)
             }
-            Item::Tool(_) | Item::Weapon { .. } => return false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => return false,
         };
         self.location_mut().state.objects.insert(t, obj);
         self.farmer.inventory.reduce(slot, 1);
@@ -144,6 +144,7 @@ impl World {
         let Some(o) = self.location().object(t).cloned() else { return false };
         match &o.kind {
             ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::ArtifactSpot => return false,
+            ObjKind::CrabPot { catch: Some(_), .. } => return false,
             ObjKind::Tapper { .. } => {
                 if let Some(TerrainFeature::Tree(tr)) = self.location_mut().terrain_mut(t) {
                     tr.tapped = false;

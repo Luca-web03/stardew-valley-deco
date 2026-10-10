@@ -108,6 +108,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
         "Dev_Bouquet": obj("Bouquet", "Basic", 0, 100, ICON_BOUQUET, -300),
+        "Dev_GuardRing": { "Name": "Guard Ring", "DisplayName": "Guard Ring", "Description": "Defense +2.", "Type": "Ring", "Category": -96, "Price": 400,
+                           "SpriteIndex": ICON_GUARD_RING, "CustomFields": { "Port.Defense": "2" } },
+        "Dev_MagnetRing": { "Name": "Magnet Ring", "DisplayName": "Magnet Ring", "Description": "Pulls items from further away.", "Type": "Ring", "Category": -96, "Price": 400,
+                            "SpriteIndex": ICON_MAGNET_RING, "CustomFields": { "Port.Magnet": "2" } },
+        "Dev_Bomb": { "Name": "Blast Charge", "DisplayName": "Blast Charge", "Description": "Clears rocks in a small radius. Stand back!", "Type": "Crafting", "Category": -8, "Price": 50,
+                      "SpriteIndex": ICON_BOMB, "CustomFields": { "BombRadius": "3" } },
+        "Dev_CrabPot": obj("Crab Pot", "Crafting", -8, 50, ICON_CRAB_POT, -300),
+        "Dev_Bait": obj("Bait", "Basic", -21, 1, ICON_BAIT, -300),
+        "Dev_Crawler": obj("Pond Crawler", "Fish", -4, 60, ICON_CRAWLER, 5),
         "Dev_PlumSapling": obj("Plum Sapling", "Basic", -74, 300, ICON_PLUM_SAPLING, -300),
         "Dev_Plum": obj("Plum", "Basic", -79, 70, ICON_PLUM, 15),
         "Dev_TreeSeed": obj("Tree Seed", "Basic", -74, 5, ICON_TREE_SEED, -300),
@@ -189,6 +198,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Fertilizer": "771 2/Home/Dev_Fertilizer 5/false/l 1/",
         "Furnace": "Dev_CopperOre 15 390 20/Home/Dev_Furnace/true/default/",
         "Tapper": "388 30 Dev_CopperBar 1/Home/Dev_Tapper/true/default/",
+        "Blast Charge": "Dev_CopperOre 4 Dev_Coal 1/Home/Dev_Bomb/false/default/",
+        "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -225,6 +236,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "TreeSyrup_Name": "Tree Syrup", "TreeSyrup_Description": "Sticky and sweet.",
         "ArtifactSpot_Name": "Artifact Spot", "ArtifactSpot_Description": "Something is buried here.",
         "OldCoin_Name": "Old Coin", "OldCoin_Description": "A worn coin from long ago.",
+        "CrabPot_Name": "Crab Pot", "CrabPot_Description": "Place it in water and add bait.",
+        "Bait_Name": "Bait", "Bait_Description": "Crab pots need this.",
+        "PondCrawler_Name": "Pond Crawler", "PondCrawler_Description": "A little clawed critter from the pond.",
         "Egg_Name": "Egg", "Egg_Description": "Fresh from the henhouse.",
         "GoatMilk_Name": "Goat Milk", "GoatMilk_Description": "Rich and creamy.",
         "Hay_Name": "Hay", "Hay_Description": "Dried grass for animal feed.",
@@ -261,7 +275,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [
                 { "Id": "hay", "ItemId": "(O)Dev_Hay", "Price": 50 },
-                { "Id": "pail", "ItemId": "(T)MilkPail", "Price": 500 }
+                { "Id": "pail", "ItemId": "(T)MilkPail", "Price": 500 },
+                { "Id": "bait", "ItemId": "(O)Dev_Bait", "Price": 5 },
+                { "Id": "boots", "ItemId": "(B)Dev_WorkBoots", "Price": 500 },
+                { "Id": "ring", "ItemId": "(O)Dev_GuardRing", "Price": 800 },
+                { "Id": "magnet", "ItemId": "(O)Dev_MagnetRing", "Price": 800 }
             ]
         },
         "SeedShop": {
@@ -358,7 +376,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/CraftingRecipes", recipes),
         ("Data/Fish", json!({
             "Dev_Perch": "Pond Perch/25/smooth/4/14/600 2600/spring summer fall/both/x/1/.4/.1/0/false",
-            "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false"
+            "Dev_Darter": "River Darter/55/dart/3/9/600 1900/spring summer/sunny/x/2/.3/.1/0/false",
+            "Dev_Crawler": "Pond Crawler/trap/.6/x/freshwater/1/6/false"
+        })),
+        ("Data/Boots", json!({
+            "Dev_WorkBoots": "Work Boots/Sturdy and comfortable./300/2/0/0/Work Boots/0/55/Maps\\springobjects"
         })),
         ("Strings/Objects", strings),
         ("Data/CookingRecipes", json!({

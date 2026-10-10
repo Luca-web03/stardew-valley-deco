@@ -209,6 +209,7 @@ impl World {
                 hits.push(i);
             }
         }
+        let attack_bonus = self.total_attrs().attack;
         let mut killed = Vec::new();
         for i in hits {
             let m = &mut self.monsters[i];
@@ -218,7 +219,7 @@ impl World {
             }
             let mut dmg = rng.range(min.max(0), max.max(min) + 1);
             let crit = if self.farmer.has_profession("scout") { crit * 1.5 } else { crit };
-            let mut mult = 1.0 + self.farmer.buff_totals().attack as f32 * 0.03;
+            let mut mult = 1.0 + attack_bonus as f32 * 0.03;
             if self.farmer.has_profession("fighter") {
                 mult *= 1.1;
             }
@@ -374,7 +375,7 @@ impl World {
     }
 
     pub fn farmer_defense(&self) -> i32 {
-        self.farmer.buff_totals().defense
+        self.total_attrs().defense
             + self.farmer
             .inventory
             .get(self.farmer.current_slot)

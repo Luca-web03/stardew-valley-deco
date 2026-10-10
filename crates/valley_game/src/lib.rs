@@ -751,6 +751,18 @@ impl ValleyGame {
                                         *held = None;
                                     }
                                 }
+                            } else if let Some(e) = equip_rects(sw, sh).iter().position(|r| r.contains(ctx.input.mouse)) {
+                                if let Some(w) = self.world.as_mut() {
+                                    match *held {
+                                        Some(h) => {
+                                            w.equip(h);
+                                            *held = None;
+                                        }
+                                        None => {
+                                            w.unequip(e);
+                                        }
+                                    }
+                                }
                             } else if let Some(trash) = trash_rect(sw, sh).filter(|r| r.contains(ctx.input.mouse)) {
                                 let _ = trash;
                                 if let (Some(h), Some(w)) = (*held, self.world.as_mut()) {
@@ -1478,6 +1490,14 @@ fn inventory_slot_rects(sw: f32, sh: f32) -> Vec<FRect> {
         .collect()
 }
 
+/// Equipment slots (ring 1, ring 2, boots) in the items tab.
+fn equip_rects(sw: f32, sh: f32) -> [FRect; 3] {
+    let f = menu_frame(sw, sh);
+    let x = f.x + f.w - 300.0;
+    let y = f.y + 300.0;
+    [FRect::new(x, y, 64.0, 64.0), FRect::new(x + 76.0, y, 64.0, 64.0), FRect::new(x + 152.0, y, 64.0, 64.0)]
+}
+
 fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
     let f = menu_frame(sw, sh);
     Some(FRect::new(f.x + f.w - 112.0, f.y + f.h - 112.0, 64.0, 64.0))
@@ -1620,6 +1640,19 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     if let Some(t) = trash_rect(sw, sh) {
                         ui.slot(t, false);
                         ui.text("Trash", Vec2::new(t.x + 4.0, t.y + 24.0), 2.0, ui::TEXT);
+                    }
+                    let er = equip_rects(sw, sh);
+                    for (k, (r, label)) in er.iter().zip(["Ring", "Ring", "Boots"]).enumerate() {
+                        ui.slot(*r, false);
+                        let item = if k < 2 { w.farmer.rings[k].as_ref() } else { w.farmer.boots.as_ref() };
+                        match item {
+                            Some(it) => hud::draw_item_in_slot(rc, ui, w, it, *r),
+                            None => ui.text(label, Vec2::new(r.x + 4.0, r.y + 24.0), 1.5, Color::rgba(70, 36, 20, 140)),
+                        }
+                    }
+                    let a = w.equipment_attrs();
+                    if a.defense != 0 || a.attack != 0 || a.magnetic_radius != 0 {
+                        ui.text(&a.describe().join(", "), Vec2::new(er[0].x, er[0].y + 76.0), 2.0, ui::TEXT);
                     }
                     let info_y = f.y + 300.0;
                     ui.text(&format!("{}  -  {} Farm", w.farmer.name, w.farmer.farm_name), Vec2::new(f.x + 48.0, info_y), 3.0, ui::TEXT);

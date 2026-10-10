@@ -150,6 +150,16 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
             out.draw(tex, IRect::new(if down { 0 } else { 16 }, 0, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.002);
             continue;
         }
+        if let ObjKind::CrabPot { catch, .. } = &o.kind {
+            let bob = ((w.game_ms as f32) / 500.0 + p.x as f32).sin() * 3.0;
+            let (tex, src) = object_sprite(rc, w, &o.item_id);
+            out.sprite(Sprite::new(tex, src, FRect::new(pos.x, pos.y + bob, TILE_F, TILE_F), DEPTH_GROUND + 0.003));
+            if let Some(c) = catch {
+                let (ctex, csrc) = item_sprite(rc, w, c);
+                out.sprite(Sprite::new(ctex, csrc, FRect::new(pos.x + 16.0, pos.y - 30.0 + bob, 32.0, 32.0), DEPTH_SORT_MAX + 0.01));
+            }
+            continue;
+        }
         if o.big {
             let (tex, src) = big_sprite(rc, w, &o.item_id);
             let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
@@ -394,6 +404,25 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         draw_fishing_world(rc, out, w, cam, map_h);
     }
 
+    // Lit bombs and explosions.
+    let white = rc.assets.white(rc.textures);
+    for b in w.bombs.iter().filter(|b| b.location == loc_name) {
+        let p = cam.to_screen(Vec2::new((b.tile.x * TILE) as f32, (b.tile.y * TILE) as f32));
+        let flash = (b.fuse_ms / 120) % 2 == 0;
+        let r = FRect::new(p.x + 16.0, p.y + 16.0, 32.0, 32.0);
+        out.fill(r, if flash { Color::rgb(240, 70, 50) } else { Color::rgb(40, 40, 45) }, sort_depth((b.tile.y * TILE + TILE) as f32, map_h));
+        out.fill(FRect::new(p.x + 30.0, p.y + 6.0, 4.0, 10.0), Color::rgb(250, 220, 90), sort_depth((b.tile.y * TILE + TILE) as f32, map_h) + 0.0001);
+    }
+    for e in w.explosions.iter().filter(|e| e.location == loc_name) {
+        let c = cam.to_screen(e.center);
+        let t = 1.0 - e.ms as f32 / 400.0;
+        let rad = e.radius as f32 * TILE_F * (0.4 + 0.6 * t);
+        for (k, col) in [(1.0f32, Color::rgba(255, 140, 40, 120)), (0.6, Color::rgba(255, 220, 120, 160)), (0.3, Color::rgba(255, 255, 230, 200))] {
+            let rr = rad * k;
+            out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(c.x - rr, c.y - rr), rr * 2.0, col.with_alpha(1.0 - t), DEPTH_OVERLAY + 0.003);
+        }
+    }
+
     draw_layer(rc, out, cam, loc, "Front", DEPTH_FRONT, season, ms);
     draw_layer(rc, out, cam, loc, "AlwaysFront", DEPTH_ALWAYS_FRONT, season, ms);
 
@@ -607,6 +636,16 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
     match item {
         Item::Object { id, .. } => object_sprite(rc, w, id),
         Item::Big { id, .. } => big_sprite(rc, w, id),
+        Item::Boots { id } => {
+            let (tex_name, idx) = match w.items.boots.get(id) {
+                Some(b) => (b.texture.clone().unwrap_or_else(|| "Maps/springobjects".into()).replace('\\', "/"), b.sprite_index),
+                None => ("Maps/springobjects".to_string(), 0),
+            };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let (tw, _) = rc.textures.size(tex);
+            let cols = (tw / 16).max(1) as i32;
+            (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
         Item::Weapon { id } => {
             let (tex_name, idx) = match w.items.weapons.get(id) {
                 Some(d) => (if d.texture.is_empty() { "TileSheets/weapons".to_string() } else { d.texture.replace('\\', "/") }, d.sprite_index),

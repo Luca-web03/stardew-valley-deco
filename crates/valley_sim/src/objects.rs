@@ -22,6 +22,8 @@ pub enum ObjKind {
     Tapper { output: Option<Item>, days_left: i32 },
     /// Diggable artifact spot.
     ArtifactSpot,
+    /// Crab pot on a water tile.
+    CrabPot { bait: bool, catch: Option<Item> },
     /// Any other placed item.
     Placed,
 }

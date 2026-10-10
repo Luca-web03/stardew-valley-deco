@@ -225,6 +225,10 @@ pub struct Farmer {
     /// Dialogue response ids chosen so far.
     #[serde(default)]
     pub dialogue_answers: Vec<String>,
+    #[serde(default)]
+    pub rings: [Option<Item>; 2],
+    #[serde(default)]
+    pub boots: Option<Item>,
 }
 
 impl Farmer {
@@ -275,6 +279,8 @@ impl Farmer {
             spouse: None,
             appearance: Appearance::default(),
             dialogue_answers: Vec::new(),
+            rings: [None, None],
+            boots: None,
         }
     }
 

@@ -152,6 +152,8 @@ pub enum Item {
     Tool(Tool),
     /// Melee weapon from Data/Weapons.
     Weapon { id: String },
+    /// Footwear from Data/Boots.
+    Boots { id: String },
 }
 
 impl Item {
@@ -168,14 +170,14 @@ impl Item {
     pub fn stack(&self) -> i32 {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
-            Item::Tool(_) | Item::Weapon { .. } => 1,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
-            Item::Tool(_) | Item::Weapon { .. } => {}
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } => {}
         }
     }
 
@@ -236,6 +238,7 @@ impl Item {
             Item::Big { id, .. } => format!("(BC){id}"),
             Item::Tool(t) => format!("(T){}", t.kind.data_key()),
             Item::Weapon { id } => format!("(W){id}"),
+            Item::Boots { id } => format!("(B){id}"),
         }
     }
 
@@ -246,9 +249,9 @@ impl Item {
         }
     }
 
-    /// Tools and weapons can't be sold, shipped or stacked.
+    /// Tools, weapons and boots can't be stacked.
     pub fn is_equipment(&self) -> bool {
-        matches!(self, Item::Tool(_) | Item::Weapon { .. })
+        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. })
     }
 }
 
@@ -303,6 +306,35 @@ impl BigInfo {
     }
 }
 
+/// Footwear (`Data/Boots`, public slash format:
+/// name/description/price/defense/immunity/colorIndex/displayName/...).
+#[derive(Clone, Debug, PartialEq)]
+pub struct BootsInfo {
+    pub name: String,
+    pub description: String,
+    pub price: i32,
+    pub defense: i32,
+    pub immunity: i32,
+    pub display_name: String,
+    pub sprite_index: i32,
+    pub texture: Option<String>,
+}
+
+pub fn parse_boots(id: &str, s: &str) -> Option<BootsInfo> {
+    let f: Vec<&str> = s.split('/').collect();
+    let num = |i: usize| f.get(i).and_then(|v| v.trim().parse::<i32>().ok()).unwrap_or(0);
+    Some(BootsInfo {
+        name: f.first()?.to_string(),
+        description: f.get(1).unwrap_or(&"").to_string(),
+        price: num(2),
+        defense: num(3),
+        immunity: num(4),
+        display_name: f.get(6).filter(|s| !s.is_empty()).or(f.first()).unwrap_or(&"").to_string(),
+        sprite_index: f.get(8).and_then(|v| v.parse().ok()).unwrap_or_else(|| id.parse().unwrap_or(0)),
+        texture: f.get(9).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+    })
+}
+
 /// Implicit context tags for an object category (public data convention).
 pub fn category_tag(cat: i32) -> Option<&'static str> {
     Some(match cat {
@@ -344,6 +376,7 @@ pub struct ItemDb {
     pub crops: BTreeMap<String, CropData>,
     pub tools: BTreeMap<String, ToolData>,
     pub weapons: BTreeMap<String, WeaponData>,
+    pub boots: BTreeMap<String, BootsInfo>,
     /// Preloaded string tables used at runtime (lowercased asset name).
     pub strings: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
@@ -374,6 +407,13 @@ impl ItemDb {
         db.crops = cm.load_dict::<CropData>("Data/Crops");
         db.tools = cm.load_dict::<ToolData>("Data/Tools");
         db.weapons = cm.load_dict::<WeaponData>("Data/Weapons");
+        for (id, raw) in cm.load_string_dict("Data/Boots") {
+            if let Some(mut b) = parse_boots(&id, &raw) {
+                b.display_name = cm.expand(&b.display_name);
+                b.description = cm.expand(&b.description);
+                db.boots.insert(id, b);
+            }
+        }
         for w in db.weapons.values_mut() {
             w.display_name = cm.expand(&w.display_name);
             if w.display_name.is_empty() {
@@ -438,6 +478,7 @@ impl ItemDb {
             }
             Item::Tool(_) => tags.push("category_tool".into()),
             Item::Weapon { .. } => tags.push("category_weapon".into()),
+            Item::Boots { .. } => tags.push("category_boots".into()),
         }
         tags
     }
@@ -465,6 +506,7 @@ impl ItemDb {
             Item::Object { id, .. } => self.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Big { id, .. } => self.big(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Boots { id } => self.boots.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
                 match t.level {
@@ -483,6 +525,7 @@ impl ItemDb {
             Item::Object { id, .. } => self.object(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Big { id, .. } => self.big(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Weapon { id } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
+            Item::Boots { id } => self.boots.get(id).map(|b| format!("{}\nDefense +{}", b.description, b.defense)).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
     }
@@ -495,6 +538,7 @@ impl ItemDb {
                 (base as f32 * quality.price_mult()).floor() as i32
             }
             Item::Big { id, .. } => self.big(id).map(|b| b.data.price).unwrap_or(0),
+            Item::Boots { id } => self.boots.get(id).map(|b| b.price / 2).unwrap_or(0),
             Item::Tool(_) | Item::Weapon { .. } => 0,
         }
     }
@@ -511,6 +555,7 @@ impl ItemDb {
             "O" => self.objects.contains_key(id).then(|| Item::object(id, stack)),
             "BC" => self.bigs.contains_key(id).then(|| Item::big(id, stack)),
             "W" => self.weapons.contains_key(id).then(|| Item::Weapon { id: id.to_string() }),
+            "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
             "T" => ToolKind::from_key(id).map(|k| Item::Tool(Tool::new(k))),
             _ => None,
         }

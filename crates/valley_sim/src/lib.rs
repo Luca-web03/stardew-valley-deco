@@ -11,6 +11,7 @@ pub mod collision;
 pub mod combat;
 pub mod crafting;
 pub mod crop;
+pub mod equipment;
 pub mod machines;
 pub mod mines;
 pub mod dialogue;
