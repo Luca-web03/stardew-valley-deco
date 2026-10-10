@@ -40,6 +40,8 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
+    m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
+    m.insert("TileSheets/Dev_Clothes.png", art::clothes().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
@@ -285,6 +287,18 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "MilkPail": tool("MilkPail", "Milk Pail", 6, 0),
     });
     let shops = json!({
+        "Dev_Tailor": {
+            "Owners": [{ "Name": "AnyOrNone" }],
+            "Items": [
+                { "Id": "straw", "ItemId": "(H)Dev_StrawHat", "Price": 300 },
+                { "Id": "cap", "ItemId": "(H)Dev_Cap", "Price": 250 },
+                { "Id": "beanie", "ItemId": "(H)Dev_Beanie", "Price": 250, "Condition": "SEASON Fall Winter" },
+                { "Id": "tee", "ItemId": "(S)Dev_Tee" },
+                { "Id": "stripes", "ItemId": "(S)Dev_Stripes" },
+                { "Id": "work", "ItemId": "(P)Dev_WorkPants" },
+                { "Id": "shorts", "ItemId": "(P)Dev_Shorts", "Condition": "SEASON Summer" }
+            ]
+        },
         "AdventureShop": {
             "Owners": [{ "Name": "AnyOrNone" }],
             "Items": [
@@ -475,6 +489,19 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Quests", json!({
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
             "Dev_Q2": "ItemDelivery/A Gift for Mara/Mara would love to try something from your farm./Bring Mara a turnip./Mara Dev_Turnip 1/-1/100//false/Oh, it's lovely! Thank you, @."
+        })),
+        ("Data/Hats", json!({
+            "Dev_StrawHat": "Straw Hat/Woven for long days in the sun./true/false//Straw Hat/0/Characters\\Farmer\\Dev_Hats",
+            "Dev_Cap": "Field Cap/Keeps the glare out of your eyes./true/false//Field Cap/1/Characters\\Farmer\\Dev_Hats",
+            "Dev_Beanie": "Knit Beanie/Warm and a little itchy./hide/false//Knit Beanie/2/Characters\\Farmer\\Dev_Hats"
+        })),
+        ("Data/Shirts", json!({
+            "Dev_Tee": { "Name": "Plain Tee", "DisplayName": "Plain Tee", "Description": "A soft cotton shirt.", "Price": 100, "Texture": "TileSheets\\Dev_Clothes", "SpriteIndex": 3, "DefaultColor": "240 240 235" },
+            "Dev_Stripes": { "Name": "Sailor Stripes", "DisplayName": "Sailor Stripes", "Description": "Blue with white stripes.", "Price": 250, "Texture": "TileSheets\\Dev_Clothes", "SpriteIndex": 4, "DefaultColor": "70 120 190" }
+        })),
+        ("Data/Pants", json!({
+            "Dev_WorkPants": { "Name": "Work Pants", "DisplayName": "Work Pants", "Description": "Sturdy and patched at the knees.", "Price": 200, "Texture": "TileSheets\\Dev_Clothes", "SpriteIndex": 5, "DefaultColor": "90 80 70" },
+            "Dev_Shorts": { "Name": "Khaki Shorts", "DisplayName": "Khaki Shorts", "Description": "For hot days.", "Price": 150, "Texture": "TileSheets\\Dev_Clothes", "SpriteIndex": 6, "DefaultColor": "170 140 90" }
         })),
         ("Data/FishPondData", json!([
             { "Id": "Dev_Perch", "RequiredTags": ["id_o_dev_perch"], "SpawnTime": 2, "MaxPopulation": 7,

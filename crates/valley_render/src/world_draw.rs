@@ -563,7 +563,7 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
     let lay = rc.assets.layouts(rc.cm);
     let tex = match &lay.farmer.texture {
         Some(t) => rc.assets.tex(rc.cm, rc.textures, t),
-        None => farmer_texture(rc, &f.appearance),
+        None => farmer_texture(rc, &w.worn_appearance()),
     };
     let shadow = rc.assets.shadow(rc.textures);
     let p = cam.to_screen(f.pos);
@@ -576,6 +576,9 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
     let blink = f.invincible_ms > 0 && (f.invincible_ms / 80) % 2 == 0;
     if !blink {
         out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+        if let Some(valley_sim::item::Item::Clothing { id, .. }) = &f.hat {
+            draw_hat(rc, out, w, id, f.facing, Vec2::new(p.x, p.y - TILE_F), frame, depth + 0.0001);
+        }
     }
 
     // Charge meter above the head while charging an upgraded tool.
@@ -831,6 +834,17 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
         Item::Object { id, .. } => object_sprite(rc, w, id),
         Item::Big { id, .. } => big_sprite(rc, w, id),
         Item::Furniture { id } => furniture_sprite(rc, w, id),
+        Item::Clothing { slot, id } => {
+            let lay = rc.assets.layouts(rc.cm);
+            let (tex_name, idx) = match w.items.clothing(*slot, id) {
+                Some(c) => (c.texture.clone().unwrap_or_else(|| lay.clothing_icons.texture.clone()).replace('\\', "/"), c.sprite_index),
+                None => (lay.clothing_icons.texture.clone(), 0),
+            };
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let (tw, _) = rc.textures.size(tex);
+            let cols = (tw / 16).max(1) as i32;
+            (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
         Item::Boots { id } => {
             let (tex_name, idx) = match w.items.boots.get(id) {
                 Some(b) => (b.texture.clone().unwrap_or_else(|| "Maps/springobjects".into()).replace('\\', "/"), b.sprite_index),
@@ -927,6 +941,26 @@ pub fn farmer_texture(rc: &mut RenderCtx, a: &valley_sim::farmer::Appearance) ->
     let c = |v: [u8; 3]| Color::rgb(v[0], v[1], v[2]);
     let look = valley_content::dev::art::Look { skin: c(a.skin), hair: c(a.hair), shirt: c(a.shirt), legs: c(a.pants), long_hair: a.long_hair, beard: false };
     rc.assets.generated(rc.textures, &a.texture_name(), || valley_content::dev::art::character(&look))
+}
+
+/// A worn hat over a character sprite whose top-left is at `at`.
+fn draw_hat(rc: &mut RenderCtx, out: &mut DrawList, w: &World, id: &str, facing: Dir, at: Vec2, frame: i32, depth: f32) {
+    let lay = rc.assets.layouts(rc.cm).hats;
+    let Some(hat) = w.items.hats.get(id) else { return };
+    let tex = rc.assets.tex(rc.cm, rc.textures, &hat.texture.clone().unwrap_or(lay.texture.clone()).replace('\\', "/"));
+    let (tw, _) = rc.textures.size(tex);
+    let cols = (tw as i32 / lay.cell_w.max(1)).max(1);
+    let i = hat.sprite_index.max(0);
+    let row = lay.facing_rows[match facing {
+        Dir::Down => 0,
+        Dir::Right => 1,
+        Dir::Up => 2,
+        Dir::Left => 3,
+    }];
+    let src = IRect::new((i % cols) * lay.cell_w, ((i / cols) * 4 + row) * lay.cell_h, lay.cell_w, lay.cell_h);
+    // Bob with the walk cycle like the head does.
+    let bob = if frame % 2 == 1 { ZOOM } else { 0.0 };
+    out.draw(tex, src, Vec2::new(at.x + lay.offset[0] as f32 * ZOOM, at.y + lay.offset[1] as f32 * ZOOM + bob), ZOOM, depth);
 }
 
 /// Texture + source rect of a furniture piece (sprite size from its data).

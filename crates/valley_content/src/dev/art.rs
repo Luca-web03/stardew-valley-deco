@@ -1444,6 +1444,86 @@ pub fn pond() -> Image {
     img
 }
 
+/// Draw placeholder hat `kind` (0 straw, 1 cap, 2 beanie) facing `dir`
+/// (0 down, 1 right, 2 up, 3 left) into a 16x16 cell. Original designs.
+fn paint_hat(c: &mut Cell, kind: i32, dir: i32) {
+    let side = dir == 1 || dir == 3;
+    let flip = |x: i32| if dir == 3 { 15 - x } else { x };
+    match kind {
+        0 => {
+            let straw = Color::rgb(230, 200, 120);
+            c.rect(1, 9, 14, 2, straw);
+            c.rect(4, 4, 8, 6, straw);
+            c.rect(4, 8, 8, 1, Color::rgb(170, 70, 50));
+        }
+        1 => {
+            let cap = Color::rgb(60, 110, 180);
+            c.rect(4, 4, 8, 5, cap);
+            c.rect(5, 3, 6, 1, cap);
+            if side {
+                for x in 10..14 {
+                    c.px(flip(x), 8, shade(cap, -30));
+                }
+            } else if dir == 0 {
+                c.rect(4, 9, 8, 1, shade(cap, -30));
+            }
+        }
+        _ => {
+            let knit = Color::rgb(200, 80, 90);
+            c.rect(4, 4, 8, 6, knit);
+            c.rect(5, 3, 6, 1, knit);
+            c.rect(4, 8, 8, 2, shade(knit, 30));
+            c.rect(7, 1, 2, 2, Color::rgb(240, 240, 230));
+        }
+    }
+    c.auto_outline(OUTLINE);
+}
+
+/// Worn hats sheet: 3 hats (columns) x 4 facings (rows), 16x16 cells.
+pub fn hats() -> Image {
+    let mut img = Image::new(48, 64);
+    for kind in 0..3 {
+        for dir in 0..4 {
+            let mut c = Cell { ox: kind * 16, oy: dir * 16, w: 16, h: 16, img: &mut img };
+            paint_hat(&mut c, kind, dir);
+        }
+    }
+    img
+}
+
+/// Clothing icons, 16x16: 0-2 hats, 3 tee, 4 striped shirt, 5 work pants,
+/// 6 shorts. Original designs.
+pub fn clothes() -> Image {
+    let mut img = Image::new(128, 16);
+    for kind in 0..3 {
+        let mut c = Cell { ox: kind * 16, oy: 0, w: 16, h: 16, img: &mut img };
+        paint_hat(&mut c, kind, 0);
+    }
+    for (i, (body, stripe)) in [(Color::rgb(240, 240, 235), None), (Color::rgb(70, 120, 190), Some(Color::rgb(230, 230, 240)))].iter().enumerate() {
+        let mut c = Cell { ox: (3 + i as i32) * 16, oy: 0, w: 16, h: 16, img: &mut img };
+        c.rect(4, 3, 8, 11, *body);
+        c.rect(1, 3, 3, 4, *body);
+        c.rect(12, 3, 3, 4, *body);
+        c.rect(6, 3, 4, 1, shade(*body, -40));
+        if let Some(s) = stripe {
+            for y in (5..14).step_by(3) {
+                c.rect(4, y, 8, 1, *s);
+            }
+        }
+        c.auto_outline(OUTLINE);
+    }
+    for (i, (col, long)) in [(Color::rgb(90, 80, 70), true), (Color::rgb(170, 140, 90), false)].iter().enumerate() {
+        let mut c = Cell { ox: (5 + i as i32) * 16, oy: 0, w: 16, h: 16, img: &mut img };
+        let h = if *long { 12 } else { 7 };
+        c.rect(4, 2, 8, 3, *col);
+        c.rect(4, 4, 3, h, *col);
+        c.rect(9, 4, 3, h, *col);
+        c.rect(4, 2, 8, 1, shade(*col, -30));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
 /// Traveling cart (48x32, 3x2 tiles). Original design: a wooden wagon
 /// with a striped awning, crates and two spoked wheels.
 pub fn cart() -> Image {

@@ -96,7 +96,7 @@ impl World {
             Item::Object { id, .. } => {
                 sprinkler_shape(&self.items, id).is_some() || self.items.object(id).is_some_and(|o| o.data.category == category::CRAFTING_PLACEABLE)
             }
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } => false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } => false,
         }
     }
 
@@ -131,7 +131,7 @@ impl World {
                 };
                 PlacedObject::new(id, false, kind)
             }
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } => return false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } => return false,
         };
         self.location_mut().state.objects.insert(t, obj);
         self.farmer.inventory.reduce(slot, 1);

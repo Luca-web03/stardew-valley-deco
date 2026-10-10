@@ -44,9 +44,16 @@ their defaults:
   "crops":     { "frame_w": 16, "frame_h": 32, "frames_per_crop": 8, "crops_per_row": 2 },
   "hoe_dirt":  { "texture": "TerrainFeatures/hoeDirt", "cols": 4, "watered_offset": [64, 0] },
   "trees":     { "texture": "TerrainFeatures/tree{kind}_{season}", "canopy": [0, 0, 48, 96], "stump": [32, 96, 16, 32] },
-  "farmer":    { "texture": "Characters/Farmer/my_simple_sheet" }
+  "farmer":    { "texture": "Characters/Farmer/my_simple_sheet" },
+  "hats":      { "texture": "Characters/Farmer/hats", "cell_w": 20, "cell_h": 20, "facing_rows": [0, 1, 3, 2], "offset": [-2, -5] },
+  "clothing_icons": { "texture": "TileSheets/my_clothing_icons" }
 }
 ```
+
+* `hats`: each hat is one column of four cells (down, right, up, left in
+  `facing_rows` order) and hats fill the sheet left to right; `offset` places
+  the cell relative to the farmer sprite (art pixels). The values above are a
+  starting point for a 20x20 hat sheet, not verified against real files.
 
 * `character.rows` are the sheet rows for facing down, right, up and left.
 * `trees.texture` substitutes `{kind}` (tree type id) and `{season}`.
@@ -75,6 +82,8 @@ Other conventions:
 | Paid travel: `Action Port.Travel <location> <x> <y> <fare> [hhmm-hhmm]` (engine convention, 30 in-game minutes per trip) | `valley_sim::world::World::travel` |
 | Fish ponds: buildings with id `Fish Pond` or the `Port.FishPond` custom field; `Data/FishPondData` (`RequiredTags`, `SpawnTime`, `ProducedItems`, `PopulationGates`, `MaxPopulation`) | `valley_sim::fish_ponds` |
 | Kitchen fridge: `Action Fridge` tile; cooking uses backpack then fridge | `valley_sim::world::FRIDGE_TILE` |
+
+| Clothing: `Data/Hats` (slash format), `Data/Shirts` / `Data/Pants` (`DefaultColor` tints the generated farmer), qualified ids `(H)`, `(S)`, `(P)` | `valley_sim::item::ClothingInfo` |
 
 ## Mods
 

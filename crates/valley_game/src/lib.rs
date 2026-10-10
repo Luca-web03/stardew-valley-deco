@@ -1564,12 +1564,14 @@ fn inventory_slot_rects(sw: f32, sh: f32) -> Vec<FRect> {
         .collect()
 }
 
-/// Equipment slots (ring 1, ring 2, boots) in the items tab.
-fn equip_rects(sw: f32, sh: f32) -> [FRect; 3] {
+/// Equipment slots in the items tab: ring 1, ring 2, boots (top row) and
+/// hat, shirt, pants (second row); indices match `World::unequip`.
+fn equip_rects(sw: f32, sh: f32) -> [FRect; 6] {
     let f = menu_frame(sw, sh);
     let x = f.x + f.w - 300.0;
     let y = f.y + 300.0;
-    [FRect::new(x, y, 64.0, 64.0), FRect::new(x + 76.0, y, 64.0, 64.0), FRect::new(x + 152.0, y, 64.0, 64.0)]
+    let r = |i: usize| FRect::new(x + (i % 3) as f32 * 76.0, y + (i / 3) as f32 * 76.0, 64.0, 64.0);
+    [r(0), r(1), r(2), r(3), r(4), r(5)]
 }
 
 fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
@@ -1716,9 +1718,15 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                         ui.text("Trash", Vec2::new(t.x + 4.0, t.y + 24.0), 2.0, ui::TEXT);
                     }
                     let er = equip_rects(sw, sh);
-                    for (k, (r, label)) in er.iter().zip(["Ring", "Ring", "Boots"]).enumerate() {
+                    for (k, (r, label)) in er.iter().zip(["Ring", "Ring", "Boots", "Hat", "Shirt", "Pants"]).enumerate() {
                         ui.slot(*r, false);
-                        let item = if k < 2 { w.farmer.rings[k].as_ref() } else { w.farmer.boots.as_ref() };
+                        let item = match k {
+                            0 | 1 => w.farmer.rings[k].as_ref(),
+                            2 => w.farmer.boots.as_ref(),
+                            3 => w.farmer.hat.as_ref(),
+                            4 => w.farmer.shirt_item.as_ref(),
+                            _ => w.farmer.pants_item.as_ref(),
+                        };
                         match item {
                             Some(it) => hud::draw_item_in_slot(rc, ui, w, it, *r),
                             None => ui.text(label, Vec2::new(r.x + 4.0, r.y + 24.0), 1.5, Color::rgba(70, 36, 20, 140)),
@@ -1726,7 +1734,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                     let a = w.equipment_attrs();
                     if a.defense != 0 || a.attack != 0 || a.magnetic_radius != 0 {
-                        ui.text(&a.describe().join(", "), Vec2::new(er[0].x, er[0].y + 76.0), 2.0, ui::TEXT);
+                        ui.text(&a.describe().join(", "), Vec2::new(er[0].x, er[3].y + 76.0), 2.0, ui::TEXT);
                     }
                     let info_y = f.y + 300.0;
                     ui.text(&format!("{}  -  {} Farm", w.farmer.name, w.farmer.farm_name), Vec2::new(f.x + 48.0, info_y), 3.0, ui::TEXT);
@@ -2340,6 +2348,20 @@ impl ValleyGame {
                 format!("time = {}", w.clock.time)
             }
             Some("child") => w.debug_add_child(num(1).unwrap_or(0)),
+            Some("wear") if t.len() >= 2 => match w.items.create(t[1], 1) {
+                Some(item @ valley_sim::item::Item::Clothing { .. }) => {
+                    let slot = w.farmer.inventory.slots.iter().position(|s| s.is_none());
+                    match slot {
+                        Some(i) => {
+                            w.farmer.inventory.slots[i] = Some(item);
+                            w.equip(i);
+                            format!("wearing {}", t[1])
+                        }
+                        None => "inventory full".into(),
+                    }
+                }
+                _ => format!("{} isn't clothing", t[1]),
+            },
             Some("day") => {
                 w.end_day(false);
                 format!("now day {} of {}", w.clock.day, w.clock.season.name())
@@ -2353,7 +2375,7 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenBundles);
                 "opening bundles".into()
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | bundles | slot <n> | tile".into(),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile".into(),
         }
     }
 }

@@ -241,6 +241,13 @@ pub struct Farmer {
     pub rings: [Option<Item>; 2],
     #[serde(default)]
     pub boots: Option<Item>,
+    /// Worn clothing (hat, shirt, pants).
+    #[serde(default)]
+    pub hat: Option<Item>,
+    #[serde(default)]
+    pub shirt_item: Option<Item>,
+    #[serde(default)]
+    pub pants_item: Option<Item>,
     /// Farmhouse upgrade level (0 = starting cabin).
     #[serde(default)]
     pub house_level: i32,
@@ -315,6 +322,9 @@ impl Farmer {
             dialogue_answers: Vec::new(),
             rings: [None, None],
             boots: None,
+            hat: None,
+            shirt_item: None,
+            pants_item: None,
             house_level: 0,
             house_upgrade_days: 0,
             hay_storage: 0,

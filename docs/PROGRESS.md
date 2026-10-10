@@ -21,7 +21,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Time, calendar, weather (approx. chances), storms with lightning,
       night darkening and light pools, rain / snow / wind visuals
 - [x] Farmer movement/collision, warps, doors, bed, passing out, footsteps,
-      appearance customization
+      appearance customization, clothing (hats, shirts, pants)
 - [x] Tools: hoe, can, axe, pickaxe, scythe, rod, milk pail, shears;
       stamina; upgrades at the forge; charged area swings
 - [x] Crops: phases, watering, regrowth, seasons, quality formula,

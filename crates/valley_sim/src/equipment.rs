@@ -49,9 +49,20 @@ impl World {
         item.object_id().and_then(|id| self.items.object(id)).is_some_and(|o| o.data.kind.eq_ignore_ascii_case("Ring") || o.data.category == -96)
     }
 
-    /// Equip the item in inventory `slot` (ring or boots), swapping out the old one.
+    /// Equip the item in inventory `slot` (ring, boots or clothing), swapping out the old one.
     pub fn equip(&mut self, slot: usize) -> bool {
         let Some(item) = self.farmer.inventory.get(slot).cloned() else { return false };
+        if let Item::Clothing { slot: kind, .. } = &item {
+            let worn = match kind {
+                crate::item::ClothingSlot::Hat => &mut self.farmer.hat,
+                crate::item::ClothingSlot::Shirt => &mut self.farmer.shirt_item,
+                crate::item::ClothingSlot::Pants => &mut self.farmer.pants_item,
+            };
+            let old = worn.replace(item);
+            self.farmer.inventory.slots[slot] = old;
+            self.sound("dwop");
+            return true;
+        }
         if matches!(item, Item::Boots { .. }) {
             let old = self.farmer.boots.replace(item);
             self.farmer.inventory.slots[slot] = old;
@@ -73,11 +84,14 @@ impl World {
         false
     }
 
-    /// Unequip ring 0/1 (`which` 0..=1) or boots (`which` 2).
+    /// Unequip ring 0/1 (`which` 0..=1), boots (2), hat (3), shirt (4) or pants (5).
     pub fn unequip(&mut self, which: usize) -> bool {
         let item = match which {
             0 | 1 => self.farmer.rings[which].clone(),
-            _ => self.farmer.boots.clone(),
+            2 => self.farmer.boots.clone(),
+            3 => self.farmer.hat.clone(),
+            4 => self.farmer.shirt_item.clone(),
+            _ => self.farmer.pants_item.clone(),
         };
         let Some(item) = item else { return false };
         if !self.farmer.inventory.can_fit(&item) {
@@ -85,10 +99,29 @@ impl World {
         }
         match which {
             0 | 1 => self.farmer.rings[which] = None,
-            _ => self.farmer.boots = None,
+            2 => self.farmer.boots = None,
+            3 => self.farmer.hat = None,
+            4 => self.farmer.shirt_item = None,
+            _ => self.farmer.pants_item = None,
         }
         self.farmer.inventory.add(item);
         true
+    }
+
+    /// The farmer's look with worn clothing colours applied.
+    pub fn worn_appearance(&self) -> crate::farmer::Appearance {
+        let mut a = self.farmer.appearance.clone();
+        let color = |item: &Option<Item>| match item {
+            Some(Item::Clothing { slot, id }) => self.items.clothing(*slot, id).and_then(|c| c.color),
+            _ => None,
+        };
+        if let Some(c) = color(&self.farmer.shirt_item) {
+            a.shirt = c;
+        }
+        if let Some(c) = color(&self.farmer.pants_item) {
+            a.pants = c;
+        }
+        a
     }
 
     /// Attributes from rings and boots.

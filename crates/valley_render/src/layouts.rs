@@ -72,9 +72,47 @@ pub struct FarmerLayout {
     pub texture: Option<String>,
 }
 
+/// Worn hats: each hat is one column of four cells (one per facing) in a
+/// band; hats fill the sheet left to right, then the next band.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct HatLayout {
+    /// Sheet used when a hat's data names no texture.
+    pub texture: String,
+    pub cell_w: i32,
+    pub cell_h: i32,
+    /// Row within a hat's band for facing down, right, up, left.
+    pub facing_rows: [i32; 4],
+    /// Where the cell's top-left goes relative to the farmer sprite's
+    /// top-left, in art pixels.
+    pub offset: [i32; 2],
+}
+
+impl Default for HatLayout {
+    fn default() -> Self {
+        Self { texture: "Characters/Farmer/Dev_Hats".into(), cell_w: 16, cell_h: 16, facing_rows: [0, 1, 2, 3], offset: [0, -3] }
+    }
+}
+
+/// Icons for clothing items: a 16x16 grid on this sheet unless the item's
+/// data names its own texture.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct ClothingIconLayout {
+    pub texture: String,
+}
+
+impl Default for ClothingIconLayout {
+    fn default() -> Self {
+        Self { texture: "TileSheets/Dev_Clothes".into() }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct Layouts {
+    pub hats: HatLayout,
+    pub clothing_icons: ClothingIconLayout,
     pub character: CharacterLayout,
     pub crops: CropLayout,
     pub hoe_dirt: HoeDirtLayout,
