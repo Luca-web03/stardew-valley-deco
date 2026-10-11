@@ -36,7 +36,21 @@ pub enum RockKind {
     Copper,
     Iron,
     Gold,
+    /// A gem node (index into `GEM_NODES`).
+    Gem(u8),
 }
+
+/// Gem nodes: (node object id, gem object id, placeholder gem id, first
+/// mine level). Depth bands follow the public mine guides (approx.).
+pub const GEM_NODES: &[(&str, &str, &str, i32)] = &[
+    ("8", "66", "Dev_Amethyst", 1),
+    ("10", "68", "Dev_Topaz", 1),
+    ("14", "62", "Dev_Aquamarine", 40),
+    ("6", "70", "Dev_Jade", 40),
+    ("12", "60", "Dev_Emerald", 80),
+    ("4", "64", "Dev_Ruby", 80),
+    ("2", "72", "72", 80),
+];
 
 /// Item ids used by the mines, resolved against loaded data so the same
 /// code works with real content (well-known ids) or the placeholder pack.
@@ -242,6 +256,16 @@ impl World {
 
         // Rocks and ore nodes.
         let mi = self.mine_items.clone();
+        let gem_nodes: Vec<(u8, String)> = GEM_NODES
+            .iter()
+            .enumerate()
+            .filter(|(_, g)| level >= g.3 && level < 120)
+            .filter_map(|(i, g)| {
+                let node = [g.0, "Dev_GemNode"].into_iter().find(|id| self.items.objects.contains_key(*id))?;
+                [g.1, g.2].into_iter().find(|id| self.items.objects.contains_key(*id))?;
+                Some((i as u8, node.to_string()))
+            })
+            .collect();
         let mut stones = 0;
         for y in 0..loc.height() {
             for x in 0..loc.width() {
@@ -253,7 +277,12 @@ impl World {
                     continue;
                 }
                 let ore_roll = rng.next_f64();
+                let gem = (ore_roll > 0.985).then(|| rng.pick(&gem_nodes).cloned()).flatten();
                 let (kind, sprite) = match level {
+                    _ if gem.is_some() => {
+                        let (i, node) = gem.unwrap();
+                        (RockKind::Gem(i), Some(node))
+                    }
                     l if l >= 80 && ore_roll < 0.05 => (RockKind::Gold, mi.gold_node.clone()),
                     l if l >= 40 && ore_roll < 0.06 => (RockKind::Iron, mi.iron_node.clone()),
                     _ if ore_roll < 0.07 => (RockKind::Copper, mi.copper_node.clone()),
@@ -265,6 +294,7 @@ impl World {
                     RockKind::Copper => 3,
                     RockKind::Iron => 4,
                     RockKind::Gold => 6,
+                    RockKind::Gem(_) => 5,
                 };
                 let mut o = PlacedObject::new(&sprite, false, ObjKind::MineRock { rock: kind, health });
                 o.flip = rng.chance(0.5);
@@ -316,6 +346,11 @@ impl World {
     }
 
     /// Break a mine rock at `t` with pickaxe power `power`.
+    /// Hit a mine rock as the pickaxe would (for tools and tests).
+    pub fn hit_mine_rock_pub(&mut self, t: TilePos, power: i32) -> bool {
+        self.hit_mine_rock(t, power)
+    }
+
     pub(crate) fn hit_mine_rock(&mut self, t: TilePos, power: i32) -> bool {
         let Some(PlacedObject { kind: ObjKind::MineRock { rock, health }, .. }) = self.location().object(t).cloned() else { return false };
         let left = health - power;
@@ -346,6 +381,14 @@ impl World {
                     if rng.chance((0.02 + level as f64 / 4000.0) * if self.farmer.has_profession("excavator") { 2.0 } else { 1.0 }) {
                         self.spawn_drop(Item::object(g, 1), c);
                     }
+                }
+            }
+            RockKind::Gem(i) => {
+                let g = GEM_NODES[i as usize % GEM_NODES.len()];
+                if let Some(id) = [g.1, g.2].into_iter().find(|id| self.items.objects.contains_key(*id)) {
+                    // Geologists often find gems in pairs (approx. chance).
+                    let n = if self.farmer.has_profession("geologist") && rng.chance(0.5) { 2 } else { 1 };
+                    self.spawn_drop(Item::object(id, n), c);
                 }
             }
             RockKind::Copper | RockKind::Iron | RockKind::Gold => {

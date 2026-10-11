@@ -542,6 +542,10 @@ impl World {
         let Some(id) = self.farmer.inventory.get(slot).and_then(|i| i.object_id()).map(String::from) else { return false };
         let Some((_, speed, _)) = fertilizer_effect(&self.items, &id) else { return false };
         let crops = self.items.crops.clone();
+        let base = match self.location().terrain(t) {
+            Some(TerrainFeature::HoeDirt(d)) => d.crop.as_ref().and_then(|c| crops.get(&c.seed_id)).map(|data| self.crop_speed_bonus(t, data)).unwrap_or(0.0),
+            _ => 0.0,
+        };
         let applied = {
             let Some(TerrainFeature::HoeDirt(d)) = self.location_mut().terrain_mut(t) else { return false };
             if d.fertilizer.is_some() {
@@ -552,7 +556,7 @@ impl World {
                     Some(c) => {
                         if speed > 0.0 {
                             if let Some(data) = crops.get(&c.seed_id) {
-                                c.apply_speed_bonus(data, speed);
+                                c.apply_speed_bonus(data, base + speed);
                             }
                         }
                         d.fertilizer = Some(id.clone());

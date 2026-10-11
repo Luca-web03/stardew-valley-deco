@@ -324,10 +324,14 @@ impl World {
     /// Pet an animal (action button).
     pub(crate) fn pet_animal(&mut self, t: TilePos) -> bool {
         let Some(i) = self.animal_at(t) else { return false };
+        // Coopmasters and shepherds befriend their animals quicker (approx.).
+        let house = self.animals_data.get(&self.animals[i].kind).map(|d| d.house.clone()).unwrap_or_default();
+        let quick = (house.eq_ignore_ascii_case("Coop") && self.farmer.has_profession("coopmaster")) || (house.eq_ignore_ascii_case("Barn") && self.farmer.has_profession("shepherd"));
+        let gain = if quick { 23 } else { 15 };
         let a = &mut self.animals[i];
         if !a.petted_today {
             a.petted_today = true;
-            a.friendship = (a.friendship + 15).min(1000);
+            a.friendship = (a.friendship + gain).min(1000);
         }
         a.emote_ms = 1200;
         let sound = self.animals_data.get(&self.animals[i].kind).and_then(|d| d.sound.clone()).unwrap_or_else(|| "cluck".into());

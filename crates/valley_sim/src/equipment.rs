@@ -330,15 +330,24 @@ impl World {
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, 710]));
         let traps = self.trap_fish.clone();
         let trash = ["168", "Dev_Driftwood"].iter().find(|id| self.items.objects.contains_key(**id)).map(|s| s.to_string());
+        // Luremasters need no bait; mariners never pull up trash.
+        let luremaster = self.farmer.has_profession("luremaster");
+        let mariner = self.farmer.has_profession("mariner");
         for loc in self.locations.values_mut() {
             for o in loc.state.objects.values_mut() {
-                let ObjKind::CrabPot { bait: true, catch: None } = &o.kind else { continue };
+                let ObjKind::CrabPot { bait, catch: None } = &o.kind else { continue };
+                if !*bait && !luremaster {
+                    continue;
+                }
                 let mut got = None;
                 for t in &traps {
                     if rng.chance(t.chance) {
                         got = Some(Item::object(&t.id, 1));
                         break;
                     }
+                }
+                if got.is_none() && mariner {
+                    got = rng.pick(&traps).map(|t| Item::object(&t.id, 1));
                 }
                 let got = got.or_else(|| trash.as_ref().map(|id| Item::object(id, 1)));
                 o.kind = ObjKind::CrabPot { bait: false, catch: got };

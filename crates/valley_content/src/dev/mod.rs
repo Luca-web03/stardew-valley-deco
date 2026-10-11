@@ -145,6 +145,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_CopperNode": obj("Stone", "Litter", 0, 0, ICON_COPPER_NODE, -300),
         "Dev_IronNode": obj("Stone", "Litter", 0, 0, ICON_IRON_NODE, -300),
         "Dev_GoldNode": obj("Stone", "Litter", 0, 0, ICON_GOLD_NODE, -300),
+        "Dev_GemNode": obj("Gem Stone", "Litter", 0, 0, ICON_GEM_NODE, -300),
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
         "Dev_Bouquet": obj("Bouquet", "Basic", 0, 100, ICON_BOUQUET, -300),

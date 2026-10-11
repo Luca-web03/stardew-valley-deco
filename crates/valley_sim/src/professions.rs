@@ -1,5 +1,6 @@
 //! Skill professions (chosen at levels 5 and 10) with their publicly
-//! documented effects. Effects not yet modelled are recorded but inert.
+//! documented effects (sizes approx. where undocumented). Trapper's
+//! cheaper traps and tracker's forage arrows are recorded but inert.
 
 use crate::farmer::Skill;
 

@@ -128,6 +128,7 @@ impl World {
         if self.has_mastery(crate::farmer::Skill::Combat) {
             mult *= 1.1;
         }
+        let desperado = self.farmer.has_profession("desperado");
         let mods = self.held_weapon_mods().cloned().unwrap_or_default();
         let has = |e: &str| mods.enchantment.as_deref() == Some(e) || mods.innate.contains_key(e);
         let (bug_killer, crusader, slime_slayer) = (has("BugKiller"), has("Crusader"), has("SlimeSlayer"));
@@ -143,7 +144,9 @@ impl World {
             dmg = (dmg as f32 * mult).round() as i32;
             let is_crit = rng.chance(crit as f64);
             if is_crit {
-                dmg = (dmg as f32 * hit.crit_mult) as i32;
+                // Desperados' critical strikes hit twice as hard.
+                let mult = if desperado { hit.crit_mult * 2.0 } else { hit.crit_mult };
+                dmg = (dmg as f32 * mult) as i32;
             }
             // Enchantment multipliers (approx.).
             match class {
@@ -255,6 +258,9 @@ impl World {
         self.special = Some(mv);
         self.special_cooldown_ms = special_cooldown(kind);
         if self.held_weapon_has("Artful") {
+            self.special_cooldown_ms /= 2;
+        }
+        if self.farmer.has_profession("acrobat") {
             self.special_cooldown_ms /= 2;
         }
         self.sound(cue);

@@ -437,7 +437,8 @@ impl World {
                             let level = self.rod_fishing_level();
                             let gear = self.current_gear();
                             self.consume_gear();
-                            let treasure = rng.chance(crate::fishing_gear::TREASURE_CHANCE + self.daily_luck).then(|| rng.range(800, 4000) as u32);
+                            let pirate = if self.farmer.has_profession("pirate") { 2.0 } else { 1.0 };
+                            let treasure = rng.chance(crate::fishing_gear::TREASURE_CHANCE * pirate + self.daily_luck).then(|| rng.range(800, 4000) as u32);
                             self.sound("FishHit");
                             let mut game = Minigame::with_gear(f, level, gear, treasure);
                             if self.has_mastery(Skill::Fishing) {

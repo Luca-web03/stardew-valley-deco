@@ -110,7 +110,8 @@ pub enum TerrainFeature {
 impl TerrainFeature {
     pub fn passable(&self) -> bool {
         match self {
-            TerrainFeature::HoeDirt(_) | TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) => true,
+            TerrainFeature::HoeDirt(d) => !d.crop.as_ref().is_some_and(|c| c.raised && !c.dead),
+            TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) => true,
             TerrainFeature::Tree(t) => t.stage < 1 && !t.stump,
             TerrainFeature::FruitTree(f) => f.days_until_mature > FRUIT_TREE_DAYS - 7,
             TerrainFeature::Bush(_) => false,

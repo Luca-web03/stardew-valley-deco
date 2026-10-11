@@ -452,6 +452,7 @@ pub const ICON_TEA_SAPLING: i32 = 94;
 pub const ICON_TEA_LEAVES: i32 = 95;
 pub const ICON_NOZZLE: i32 = 96;
 pub const ICON_ENRICHER: i32 = 97;
+pub const ICON_GEM_NODE: i32 = 98;
 pub const GEM_COLORS: [(u8, u8, u8); 6] = [(60, 190, 100), (90, 200, 220), (220, 50, 70), (160, 90, 210), (240, 180, 50), (100, 170, 110)];
 
 fn seed_packet(c: &mut Cell, col: Color) {
@@ -631,6 +632,17 @@ pub fn objects() -> Image {
             }
             c.auto_outline(OUTLINE);
         }
+    }
+    {
+        // Gem node: a rock studded with bright crystals.
+        let mut c = Cell::at(&mut img, ICON_GEM_NODE, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 10.0, 7.0, 5.5, Color::rgb(120, 112, 108));
+        for (i, (x, y)) in [(4, 7), (9, 9), (6, 12), (11, 6)].into_iter().enumerate() {
+            let (r, g, b) = GEM_COLORS[i * 2 % GEM_COLORS.len()];
+            c.rect(x, y, 2, 2, Color::rgb(r, g, b));
+            c.px(x, y, Color::rgb(255, 255, 255));
+        }
+        c.auto_outline(OUTLINE);
     }
     {
         let mut c = Cell::at(&mut img, ICON_COAL, OBJ_COLS, 16, 16);

@@ -992,12 +992,23 @@ impl World {
         for loc in self.locations.values_mut() {
             let outdoors = loc.outdoors;
             let mut remove = Vec::new();
+            // Tilled tiles within three tiles of water (for paddy crops).
+            let water_near: std::collections::HashSet<TilePos> = loc
+                .state
+                .terrain
+                .iter()
+                .filter(|(_, t)| matches!(t, TerrainFeature::HoeDirt(d) if d.crop.as_ref().is_some_and(|c| crops.get(&c.seed_id).is_some_and(|cd| cd.is_paddy_crop))))
+                .map(|(p, _)| *p)
+                .filter(|p| (-3..=3).any(|dy: i32| (-3..=3).any(|dx: i32| dx.abs() + dy.abs() <= 3 && loc.is_water(TilePos::new(p.x + dx, p.y + dy)))))
+                .collect();
             for (p, t) in loc.state.terrain.iter_mut() {
                 match t {
                     TerrainFeature::HoeDirt(d) => {
                         if let Some(c) = &mut d.crop {
                             if let Some(data) = crops.get(&c.seed_id) {
-                                c.new_day(data, d.watered, season, outdoors);
+                                // Paddy crops near water need no watering.
+                                let paddy = data.is_paddy_crop && water_near.contains(p);
+                                c.new_day(data, d.watered || paddy, season, outdoors);
                             }
                         } else if outdoors && d.fertilizer.is_none() && (rng.chance(0.1) || (new_season && season == crate::time::Season::Winter)) {
                             remove.push(*p);
@@ -2283,6 +2294,21 @@ impl World {
         self.sound(if info.data.is_drink { "gulp" } else { "eat" });
     }
 
+    /// Growth speed bonus for a crop planted at `t` here, before
+    /// fertilizer: agriculturist (+10%) and paddy crops near water (+25%,
+    /// approx.).
+    pub fn crop_speed_bonus(&self, t: TilePos, data: &valley_content::data::CropData) -> f32 {
+        let mut b = 0.0;
+        if self.farmer.has_profession("agriculturist") {
+            b += 0.1;
+        }
+        let near_water = (-3..=3).any(|dy: i32| (-3..=3).any(|dx: i32| dx.abs() + dy.abs() <= 3 && self.location().is_water(TilePos::new(t.x + dx, t.y + dy))));
+        if data.is_paddy_crop && near_water {
+            b += 0.25;
+        }
+        b
+    }
+
     /// Can crops be planted in the current location (`CanPlantHere`;
     /// default: the farm and greenhouses)?
     pub fn can_plant_here(&self) -> bool {
@@ -2301,6 +2327,7 @@ impl World {
         let season = self.clock.season;
         let items = self.items.clone();
         let mut rng = self.rng.clone();
+        let base_bonus = self.crop_speed_bonus(t, &data);
         let ok = {
             let loc = self.location_mut();
             match loc.state.terrain.get_mut(&t) {
@@ -2309,10 +2336,10 @@ impl World {
                         None
                     } else {
                         let mut c = Crop::new(seed_id, &mut rng);
-                        if let Some((_, speed, _)) = d.fertilizer.as_ref().and_then(|f| crate::machines::fertilizer_effect(&items, f)) {
-                            if speed > 0.0 {
-                                c.apply_speed_bonus(&data, speed);
-                            }
+                        c.raised = data.is_raised;
+                        let fert = d.fertilizer.as_ref().and_then(|f| crate::machines::fertilizer_effect(&items, f)).map(|(_, s, _)| s).unwrap_or(0.0);
+                        if base_bonus + fert > 0.0 {
+                            c.apply_speed_bonus(&data, base_bonus + fert);
                         }
                         d.crop = Some(c);
                         Some(true)
@@ -2557,8 +2584,15 @@ impl World {
     /// Unit sell value including quality and profession bonuses.
     pub fn sell_value(&self, item: &Item) -> i32 {
         let base = self.items.sell_price(item);
-        let cat = item.object_id().and_then(|id| self.items.object(id)).map(|o| o.data.category).unwrap_or(0);
-        (base as f32 * crate::professions::price_multiplier(&self.farmer.professions, cat)).floor() as i32
+        let info = item.object_id().and_then(|id| self.items.object(id));
+        let cat = info.map(|o| o.data.category).unwrap_or(0);
+        let mut m = crate::professions::price_multiplier(&self.farmer.professions, cat);
+        // Blacksmiths get 50% more for metal bars.
+        let bar = info.is_some_and(|o| cat == -15 && (matches!(item.object_id(), Some("334" | "335" | "336" | "337" | "910")) || o.data.name.ends_with(" Bar")));
+        if bar && self.farmer.has_profession("blacksmith") {
+            m *= 1.5;
+        }
+        (base as f32 * m).floor() as i32
     }
 
     /// Choose a profession offered for a pending level-up.

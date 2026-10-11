@@ -266,6 +266,7 @@ impl World {
             }
         }
         let center = t.world_center();
+        let lumberjack = self.farmer.has_profession("lumberjack");
         let mut drops: Vec<(Item, i32)> = Vec::new();
         let mut remove = false;
         let mut xp = 0;
@@ -306,6 +307,10 @@ impl World {
                             tree.health = STUMP_HEALTH;
                             tree.falling = 1;
                             drops.push((Item::object("388", rng.range(12, 17)), 1));
+                            // Lumberjacks sometimes get hardwood (approx. chance).
+                            if lumberjack && rng.chance(0.25) {
+                                drops.push((Item::object("709", 1), 1));
+                            }
                             if rng.chance(0.5) {
                                 drops.push((Item::object("92", rng.range(1, 3)), 1));
                             }

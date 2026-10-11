@@ -28,6 +28,9 @@ pub struct Crop {
     /// Per-crop phase lengths when modified (speed fertilizer); None = data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phase_days: Option<Vec<i32>>,
+    /// Grows on a trellis (`IsRaised`): can't be walked through.
+    #[serde(default)]
+    pub raised: bool,
 }
 
 impl Crop {
@@ -42,6 +45,7 @@ impl Crop {
             flip: rng.chance(0.5),
             variant: rng.range(0, 2) as u8,
             phase_days: None,
+            raised: false,
         }
     }
 
