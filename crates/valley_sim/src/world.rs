@@ -232,6 +232,8 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// `Data/Achievements` (empty: the engine's own list).
+    pub achievement_data: Vec<crate::achievements::AchievementInfo>,
     /// `Characters/Dialogue/rainy`: rainy-day lines by NPC.
     pub rainy_dialogue: HashMap<String, String>,
     /// Movie snacks and who likes what.
@@ -421,6 +423,7 @@ impl World {
             concessions: Vec::new(),
             concession_tastes: Vec::new(),
             rainy_dialogue: HashMap::new(),
+            achievement_data: Vec::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -524,6 +527,7 @@ impl World {
         }
         (w.concessions, w.concession_tastes) = crate::movies::load_concessions(cm);
         w.rainy_dialogue = cm.load_string_dict("Characters/Dialogue/rainy");
+        w.achievement_data = crate::achievements::parse(&cm.load_string_dict("Data/Achievements").into_iter().collect());
         w.place_farm_clumps();
         w.populate_new_farm();
         w.farm_type_start();

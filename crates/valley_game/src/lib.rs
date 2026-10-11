@@ -2074,14 +2074,15 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                     ui.text(&format!("Perfection: {:.1}%", w.perfection()), Vec2::new(f.x + f.w - 300.0, f.y + 300.0), 2.0, ui::TEXT);
                     // Achievements: three columns, earned ones in gold.
-                    let earned = w.farmer.achievements.len();
-                    ui.text(&format!("Achievements ({earned}/{})", valley_sim::pets::ACHIEVEMENTS.len()), Vec2::new(f.x + 40.0, f.y + 300.0), 2.0, ui::TEXT);
-                    for (i, a) in valley_sim::pets::ACHIEVEMENTS.iter().enumerate() {
+                    let list = w.achievement_list();
+                    let earned = list.iter().filter(|a| a.3).count();
+                    ui.text(&format!("Achievements ({earned}/{})", list.len()), Vec2::new(f.x + 40.0, f.y + 300.0), 2.0, ui::TEXT);
+                    for (i, (_, name, _, got)) in list.iter().enumerate().take(18) {
+                        let got = *got;
                         let x = f.x + 40.0 + (i % 3) as f32 * 290.0;
                         let y = f.y + 326.0 + (i / 3) as f32 * 32.0;
-                        let got = w.farmer.achievements.iter().any(|g| g == a.id);
                         ui.fill(FRect::new(x, y, 22.0, 22.0), if got { Color::rgb(240, 180, 40) } else { Color::rgb(190, 165, 130) });
-                        let label = if got { a.name.to_string() } else { "???".to_string() };
+                        let label = if got { name.clone() } else { "???".to_string() };
                         ui.text(&label, Vec2::new(x + 30.0, y + 4.0), 2.0, if got { ui::TEXT } else { Color::rgb(150, 120, 90) });
                     }
                     let shipped: i32 = w.farmer.shipped.values().sum();

@@ -113,6 +113,7 @@ impl World {
             self.hud(format!("Quest complete! +{}g", q.reward_money));
         }
         self.sound("questcomplete");
+        self.farmer.quests_completed += 1;
         self.emit(WorldEvent::QuestCompleted(q.title.clone()));
         if let Some(next) = q.next {
             self.add_quest(&next);

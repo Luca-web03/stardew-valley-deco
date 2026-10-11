@@ -70,7 +70,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Grandpa's evaluation (year 3, candles, diamond re-evaluation),
       Joja membership and community development projects
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,
-      collections, achievements (engine-defined milestones), secret notes,
+      collections, achievements (original ids/names from Data/Achievements,
+      or engine-defined milestones), secret notes,
       perfection score (engine-defined)
 - [x] Casino with original games (reels, high-low), Qi coins, prize shop
 - [x] Arcade cabinets with two original minigames (Dust Ranger arena

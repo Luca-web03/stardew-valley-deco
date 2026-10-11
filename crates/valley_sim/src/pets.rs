@@ -226,36 +226,4 @@ impl World {
         }
         true
     }
-
-    /// Night: award achievements whose conditions are met.
-    pub(crate) fn check_achievements(&mut self) {
-        let f = &self.farmer;
-        let shipped: i32 = f.shipped.values().sum();
-        let fish: i32 = f.fish_caught.values().map(|v| v.0).sum();
-        let cooked: i32 = f.cooking_recipes.values().sum();
-        let crafted: i32 = f.crafting_recipes.values().sum();
-        let best_hearts = f.friendships.values().map(|x| x.hearts()).max().unwrap_or(0);
-        let won = |g: &str| f.counters.get(&format!("Arcade.{g}.Wins")).copied().unwrap_or(0) > 0;
-        let checks: [(&str, bool); 12] = [
-            ("earn_15k", f.total_earned >= 15_000),
-            ("earn_100k", f.total_earned >= 100_000),
-            ("ship_100", shipped >= 100),
-            ("fish_10", fish >= 10),
-            ("cook_10", cooked >= 10),
-            ("craft_15", crafted >= 15),
-            ("mine_40", f.deepest_mine_level >= 40),
-            ("slay_100", self.monsters_killed >= 100),
-            ("friend_5", best_hearts >= 5),
-            ("married", f.spouse.is_some()),
-            ("arcade_ranger", won("ranger")),
-            ("arcade_rails", won("rails")),
-        ];
-        for (id, ok) in checks {
-            if ok && !self.farmer.achievements.iter().any(|a| a == id) {
-                self.farmer.achievements.push(id.to_string());
-                let name = ACHIEVEMENTS.iter().find(|a| a.id == id).map(|a| a.name).unwrap_or(id);
-                self.emit(WorldEvent::Hud(format!("Achievement: {name}")));
-            }
-        }
-    }
 }

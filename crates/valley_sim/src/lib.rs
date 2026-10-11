@@ -49,6 +49,7 @@ pub mod objects;
 pub mod orchard;
 pub mod pathfind;
 pub mod pets;
+pub mod achievements;
 pub mod arsenal;
 pub mod cart;
 pub mod special_orders;
