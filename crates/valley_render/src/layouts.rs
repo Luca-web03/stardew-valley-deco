@@ -70,6 +70,43 @@ impl Default for TreeLayout {
 pub struct FarmerLayout {
     /// Use this sheet (laid out like `character`) instead of the generated farmer.
     pub texture: Option<String>,
+    /// Compose the farmer from these layers, bottom first (e.g. body, pants,
+    /// shirt, hair from the game's own sheets). Takes precedence over
+    /// `texture` when non-empty.
+    pub layers: Vec<FarmerLayer>,
+}
+
+/// One layer of a composed farmer. The output is the standard 4x4 sheet of
+/// 16x32 frames (rows down/right/up/left, columns = walk frames); for each
+/// output frame the layer copies its own source cell at
+/// (`origin` + col * frame_w, `origin` + row * frame_h) for the matching
+/// facing row and walk column, places it at `offset` inside the frame, and
+/// multiplies it by `tint`.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct FarmerLayer {
+    pub texture: String,
+    pub frame_w: i32,
+    pub frame_h: i32,
+    /// Source row for facing down, right, up, left.
+    pub rows: [i32; 4],
+    /// Source column for walk frames 0..3.
+    pub cols: [i32; 4],
+    /// Top-left of this layer's block in the source sheet (pixels).
+    pub origin: [i32; 2],
+    /// Where the cell goes inside the 16x32 output frame (pixels).
+    pub offset: [i32; 2],
+    /// Multiply by an appearance colour: "skin", "hair", "shirt", "pants",
+    /// or none.
+    pub tint: Option<String>,
+    /// Mirror the cell (e.g. reuse right-facing art for left).
+    pub flip_left: bool,
+}
+
+impl Default for FarmerLayer {
+    fn default() -> Self {
+        Self { texture: String::new(), frame_w: 16, frame_h: 32, rows: [0, 1, 2, 3], cols: [0, 1, 2, 3], origin: [0, 0], offset: [0, 0], tint: None, flip_left: false }
+    }
 }
 
 /// Worn hats: each hat is one column of four cells (one per facing) in a

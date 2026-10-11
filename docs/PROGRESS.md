@@ -80,8 +80,10 @@ were not available; such values are isolated constants that can be tuned.
       enchantments, desert festival); generic counterparts exist:
       collectibles + unlocks, flag-cleared tiles, a generated volcano with
       lava and a forge
-- [ ] Real-content farmer sprite composition (generated placeholder farmer
-      used; any simple sheet can be configured in `valley_layouts.json`)
+- [ ] Default layer values for the real farmer sheets (the layered
+      compositor exists and is configured in `valley_layouts.json`
+      `farmer.layers`; the right rows/offsets for the original sheets have to
+      be filled in against the real files)
 - [ ] Audio follow-ups: xWMA decoding (convert such tracks to
       `Audio/<cue>.ogg`), sound bank volume/pitch/categories
 - [ ] Multiplayer

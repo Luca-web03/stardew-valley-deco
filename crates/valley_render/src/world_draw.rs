@@ -580,9 +580,13 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
 fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, map_h: f32) {
     let f = &w.farmer;
     let lay = rc.assets.layouts(rc.cm);
-    let tex = match &lay.farmer.texture {
-        Some(t) => rc.assets.tex(rc.cm, rc.textures, t),
-        None => farmer_texture(rc, &w.worn_appearance()),
+    let tex = if !lay.farmer.layers.is_empty() {
+        composed_farmer(rc, &lay.farmer.layers, &w.worn_appearance())
+    } else {
+        match &lay.farmer.texture {
+            Some(t) => rc.assets.tex(rc.cm, rc.textures, t),
+            None => farmer_texture(rc, &w.worn_appearance()),
+        }
     };
     let shadow = rc.assets.shadow(rc.textures);
     let p = cam.to_screen(f.pos);
@@ -972,6 +976,19 @@ pub fn farmer_texture(rc: &mut RenderCtx, a: &valley_sim::farmer::Appearance) ->
     let c = |v: [u8; 3]| Color::rgb(v[0], v[1], v[2]);
     let look = valley_content::dev::art::Look { skin: c(a.skin), hair: c(a.hair), shirt: c(a.shirt), legs: c(a.pants), long_hair: a.long_hair, beard: false };
     rc.assets.generated(rc.textures, &a.texture_name(), || valley_content::dev::art::character(&look))
+}
+
+/// Farmer composed from configured layers (cached per appearance).
+fn composed_farmer(rc: &mut RenderCtx, layers: &[crate::layouts::FarmerLayer], a: &valley_sim::farmer::Appearance) -> engine::TexId {
+    let key = format!("__farmer_layers/{}", a.texture_name());
+    if let Some(t) = rc.textures.id(&key) {
+        return t;
+    }
+    let imgs: Vec<engine::Image> = layers.iter().map(|l| rc.cm.load_image(&l.texture.replace('\\', "/")).unwrap_or_else(|| engine::Image::new(1, 1))).collect();
+    let pairs: Vec<(&engine::Image, &crate::layouts::FarmerLayer)> = imgs.iter().zip(layers.iter()).collect();
+    let tints = crate::farmer_compose::Tints { skin: a.skin, hair: a.hair, shirt: a.shirt, pants: a.pants };
+    let img = crate::farmer_compose::compose(&pairs, &tints);
+    rc.assets.generated(rc.textures, &key, || img)
 }
 
 /// A worn hat over a character sprite whose top-left is at `at`.

@@ -50,6 +50,21 @@ their defaults:
 }
 ```
 
+* `farmer.layers`: compose the farmer from your own sheets, bottom first.
+  Each layer copies, for every output frame (4 walk frames x 4 facings of
+  16x32), the source cell at `origin + (cols[walk] * frame_w, rows[facing] *
+  frame_h)`, places it at `offset` inside the frame, optionally mirrors it
+  for facing left (`flip_left`) and multiplies it by an appearance colour
+  (`tint`: `skin`, `hair`, `shirt`, `pants`). Example shape (values must be
+  adapted to the real sheets):
+
+  ```json
+  "farmer": { "layers": [
+    { "texture": "Characters/Farmer/farmer_base", "frame_w": 16, "frame_h": 32, "rows": [0, 2, 4, 2], "cols": [0, 1, 0, 2], "flip_left": true },
+    { "texture": "Characters/Farmer/shirts", "frame_w": 8, "frame_h": 8, "rows": [0, 1, 3, 2], "cols": [0, 0, 0, 0], "offset": [4, 15], "tint": "shirt" },
+    { "texture": "Characters/Farmer/hairstyles", "frame_w": 16, "frame_h": 32, "rows": [0, 1, 2, 1], "cols": [0, 0, 0, 0], "tint": "hair", "flip_left": true }
+  ] }
+  ```
 * `hats`: each hat is one column of four cells (down, right, up, left in
   `facing_rows` order) and hats fill the sheet left to right; `offset` places
   the cell relative to the farmer sprite (art pixels). The values above are a

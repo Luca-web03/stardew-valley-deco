@@ -10,6 +10,7 @@
 
 pub mod assets;
 pub mod camera;
+pub mod farmer_compose;
 pub mod layouts;
 pub mod ui;
 pub mod world_draw;
