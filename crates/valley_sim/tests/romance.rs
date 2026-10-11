@@ -96,3 +96,52 @@ fn non_romanceable_declines_bouquet() {
     assert_eq!(w.farmer.friendships["Tobin"].status, RelationStatus::Friendly);
     assert_eq!(w.farmer.inventory.count("Dev_Bouquet"), 1);
 }
+
+#[test]
+fn gifts_follow_quality_weekly_limits_and_friends_drift_apart() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    face_mara(&mut w);
+    // Holding something gives it straight away (neutral: +20).
+    hold(&mut w, "Dev_Turnip");
+    w.do_action(None);
+    assert_eq!(w.farmer.friendships["Mara"].points, 20);
+    assert_eq!(w.farmer.inventory.count("Dev_Turnip"), 0);
+    // Once a day: the next click talks instead.
+    hold(&mut w, "Dev_Turnip");
+    w.do_action(None);
+    assert_eq!(w.farmer.inventory.count("Dev_Turnip"), 1);
+    // Iridium quality: x1.5.
+    w.end_day(false);
+    face_mara(&mut w);
+    w.farmer.inventory.slots[11] = Some(Item::object_q("Dev_Turnip", 1, valley_sim::item::Quality::Iridium));
+    let before = w.farmer.friendships["Mara"].points;
+    w.do_action(None);
+    assert_eq!(w.farmer.friendships["Mara"].points, before + 30);
+    // Two a week...
+    w.farmer.friendship("Mara").gifts_this_week = 2;
+    w.farmer.friendship("Mara").gifted_today = false;
+    hold(&mut w, "Dev_Turnip");
+    w.do_action(None);
+    assert_eq!(w.farmer.inventory.count("Dev_Turnip"), 1, "weekly limit");
+    // ...except on a birthday (spring 9), worth eight times as much.
+    w.clock.day = 9;
+    let before = w.farmer.friendships["Mara"].points;
+    w.do_action(None);
+    assert_eq!(w.farmer.friendships["Mara"].points, before + 160);
+    // Friends not talked to lose 2 a day, but not once maxed; partners lose 8.
+    w.farmer.friendship("Mara").points = 1000;
+    w.farmer.friendship("Mara").talked_today = false;
+    let mut days = 0;
+    while days < 1 {
+        w.end_day(false);
+        days += 1;
+    }
+    assert_eq!(w.farmer.friendships["Mara"].points, 998);
+    w.farmer.friendship("Mara").points = 2000;
+    w.end_day(false);
+    assert_eq!(w.farmer.friendships["Mara"].points, 2000, "maxed at 8 hearts");
+    w.farmer.friendship("Mara").status = RelationStatus::Dating;
+    w.end_day(false);
+    assert_eq!(w.farmer.friendships["Mara"].points, 1992);
+}

@@ -960,8 +960,18 @@ impl World {
         self.farmer.health = self.farmer.max_health;
         let new_week = self.clock.weekday() == "Sun";
         for (name, f) in self.farmer.friendships.iter_mut() {
-            if !f.talked_today && f.points > 0 && self.npcs.iter().any(|n| &n.name == name) {
-                f.points = (f.points - 2).max(0);
+            // Not talked to today: friends drift apart a little (not once
+            // maxed), partners more.
+            let npc = self.npcs.iter().find(|n| &n.name == name);
+            if !f.talked_today && f.points > 0 && npc.is_some() {
+                let romanceable = npc.is_some_and(|n| n.can_romance);
+                let loss = match f.status {
+                    crate::farmer::RelationStatus::Married => 20,
+                    crate::farmer::RelationStatus::Dating | crate::farmer::RelationStatus::Engaged { .. } => 8,
+                    _ if f.points >= f.max_points(romanceable) => 0,
+                    _ => 2,
+                };
+                f.points = (f.points - loss).max(0);
             }
             f.talked_today = false;
             f.gifted_today = false;
@@ -2165,14 +2175,14 @@ impl World {
         self.npcs[i].facing = Dir::toward(me.x - nt.x, me.y - nt.y);
         self.npcs[i].pause_ms = 3000;
 
-        // Gift if holding a giftable object and not talked-then-gifted already.
+        // Holding an object gives it (once a day); otherwise talk.
         let held = self.farmer.current_item().cloned();
         let f = self.farmer.friendship(&name).clone();
         if let Some(Item::Object { id, .. }) = &held {
             if self.try_romance_item(i, id) {
                 return;
             }
-            if f.talked_today && !f.gifted_today {
+            if !f.gifted_today {
                 self.give_gift(i, id.clone());
                 return;
             }
@@ -2327,9 +2337,15 @@ impl World {
 
     fn give_gift(&mut self, i: usize, item_id: String) {
         let name = self.npcs[i].name.clone();
+        let birthday = self.npcs[i]
+            .birthday
+            .as_ref()
+            .is_some_and(|(s, d)| crate::time::Season::parse(s) == Some(self.clock.season) && *d == self.clock.day);
+        let spouse = self.farmer.spouse.as_deref() == Some(name.as_str());
         {
+            // Two a week, except on birthdays and for a spouse.
             let f = self.farmer.friendship(&name);
-            if f.gifts_this_week >= 2 {
+            if f.gifts_this_week >= 2 && !birthday && !spouse {
                 self.emit(WorldEvent::Message(format!("You've already given {name} two gifts this week.")));
                 return;
             }
@@ -2342,10 +2358,20 @@ impl World {
             3 => -40,
             _ => 20,
         };
-        let birthday = self.npcs[i]
-            .birthday
-            .as_ref()
-            .is_some_and(|(s, d)| crate::time::Season::parse(s) == Some(self.clock.season) && *d == self.clock.day);
+        // Better quality pleases more (positive gifts only).
+        if points > 0 {
+            let q = match self.farmer.current_item() {
+                Some(Item::Object { quality, .. }) => *quality,
+                _ => crate::item::Quality::Normal,
+            };
+            let mult = match q {
+                crate::item::Quality::Silver => 1.1,
+                crate::item::Quality::Gold => 1.25,
+                crate::item::Quality::Iridium => 1.5,
+                _ => 1.0,
+            };
+            points = (points as f32 * mult) as i32;
+        }
         if birthday {
             points *= 8;
         }
