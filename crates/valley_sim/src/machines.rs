@@ -106,7 +106,7 @@ impl World {
                     || self.fence_data(id).is_some()
                     || self.floor_for_item(id).is_some()
             }
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } | Item::Decor { .. } => false,
         }
     }
 
@@ -149,7 +149,7 @@ impl World {
                     PlacedObject::new(id, false, kind)
                 }
             },
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => return false,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } | Item::Decor { .. } => return false,
         };
         let fence_cue = matches!(obj.kind, ObjKind::Fence { .. }).then(|| self.fence_data(&obj.item_id).and_then(|d| d.placement_sound)).flatten();
         self.location_mut().state.objects.insert(t, obj);

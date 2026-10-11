@@ -22,6 +22,7 @@ pub mod mines;
 pub mod monster_kinds;
 pub mod dialogue;
 pub mod events;
+pub mod decor;
 pub mod farm;
 pub mod farm_cave;
 pub mod farm_events;

@@ -42,6 +42,7 @@ pub fn default_buy_price(db: &ItemDb, item: &Item) -> i32 {
         Item::Boots { id } => db.boots.get(id).map(|b| b.price).unwrap_or(0),
         Item::Clothing { slot, id } => db.clothing(*slot, id).map(|c| c.price).unwrap_or(0),
         Item::Trinket { .. } => 500,
+        Item::Decor { .. } => 100,
         Item::Furniture { id } => db.furniture.get(id).map(|f| f.price).unwrap_or(0),
         Item::Tool(_) | Item::Weapon { .. } => 0,
     }

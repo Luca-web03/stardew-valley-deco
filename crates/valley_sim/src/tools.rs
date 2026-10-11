@@ -70,6 +70,8 @@ impl World {
             Some(Item::Weapon { .. }) => self.begin_weapon_swing(),
             Some(Item::Object { id, .. }) if self.items.is_seed(&id) => self.plant(target, &id),
             Some(item) if self.is_placeable(&item) => self.place_current(target),
+            // Wallpaper and flooring reach any wall or floor in view.
+            Some(Item::Decor { .. }) => self.apply_decor(cursor.unwrap_or(target)),
             _ => false,
         }
     }

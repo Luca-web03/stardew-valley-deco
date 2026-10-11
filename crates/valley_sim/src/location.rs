@@ -45,6 +45,9 @@ pub struct LocationState {
     /// Large stumps, boulders, giant crops...
     #[serde(default)]
     pub clumps: Vec<crate::clumps::ResourceClump>,
+    /// Wallpaper and flooring per room (`decor`).
+    #[serde(default)]
+    pub paint: crate::decor::RoomPaint,
 }
 
 /// A piece of furniture placed in a location (top-left footprint tile).

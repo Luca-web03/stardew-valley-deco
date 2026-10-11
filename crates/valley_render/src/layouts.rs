@@ -110,6 +110,39 @@ impl Default for BushLayout {
     }
 }
 
+/// Wallpaper strips (`wall_w` x `wall_h`, `wall_cols` per row) and floor
+/// squares (`floor_size`, `floor_cols` per row, from `floor_y` on the base
+/// sheet; from 0 on extra sets).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct DecorLayout {
+    pub wall_cols: i32,
+    pub wall_w: i32,
+    pub wall_h: i32,
+    pub floor_cols: i32,
+    pub floor_size: i32,
+    pub floor_y: i32,
+}
+
+impl Default for DecorLayout {
+    fn default() -> Self {
+        Self { wall_cols: 16, wall_w: 16, wall_h: 48, floor_cols: 8, floor_size: 32, floor_y: 336 }
+    }
+}
+
+impl DecorLayout {
+    /// Source rect of a wallpaper strip.
+    pub fn wall_rect(&self, n: i32) -> [i32; 4] {
+        let c = self.wall_cols.max(1);
+        [(n % c) * self.wall_w, (n / c) * self.wall_h, self.wall_w, self.wall_h]
+    }
+    /// Source rect of a floor square (`base` = the base sheet).
+    pub fn floor_rect(&self, n: i32, base: bool) -> [i32; 4] {
+        let c = self.floor_cols.max(1);
+        [(n % c) * self.floor_size, if base { self.floor_y } else { 0 } + (n / c) * self.floor_size, self.floor_size, self.floor_size]
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct TreeLayout {
@@ -217,6 +250,7 @@ pub struct Layouts {
     pub fences: FenceLayout,
     pub flooring: FlooringLayout,
     pub bushes: BushLayout,
+    pub decor: DecorLayout,
     pub trees: TreeLayout,
     pub farmer: FarmerLayout,
 }

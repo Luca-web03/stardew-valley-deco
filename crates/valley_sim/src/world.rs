@@ -1513,6 +1513,9 @@ impl World {
             if self.is_placeable(&item) && self.place_current(target) {
                 return true;
             }
+            if matches!(item, Item::Decor { .. }) && self.apply_decor(cursor.unwrap_or(target)) {
+                return true;
+            }
         }
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
             if self.is_tea_sapling(&id) {

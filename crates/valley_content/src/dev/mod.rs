@@ -30,6 +30,7 @@ pub fn build() -> MemSource {
     m.insert("LooseSprites/Dev_Fence_Stone.png", art::fence(Color::rgb(150, 150, 155)).encode_png());
     m.insert("TerrainFeatures/Dev_Flooring.png", art::flooring().encode_png());
     m.insert("TileSheets/Dev_Bushes.png", art::bushes().encode_png());
+    m.insert("Maps/walls_and_floors.png", art::walls_and_floors().encode_png());
     m.insert("Maps/dev_paths.png", art::paths_sheet().encode_png());
     m.insert("TileSheets/tools.png", art::tools().encode_png());
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
@@ -520,7 +521,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "table", "ItemId": "(F)Dev_Table" },
                 { "Id": "rug", "ItemId": "(F)Dev_Rug" },
                 { "Id": "bookcase", "ItemId": "(F)Dev_Bookcase" },
-                { "Id": "lamp", "ItemId": "(F)Dev_Lamp" }
+                { "Id": "lamp", "ItemId": "(F)Dev_Lamp" },
+                { "Id": "wp0", "ItemId": "(WP)0" }, { "Id": "wp1", "ItemId": "(WP)1" }, { "Id": "wp2", "ItemId": "(WP)2" }, { "Id": "wp3", "ItemId": "(WP)3" },
+                { "Id": "fl0", "ItemId": "(FL)0" }, { "Id": "fl1", "ItemId": "(FL)1" }, { "Id": "fl2", "ItemId": "(FL)2" }, { "Id": "fl3", "ItemId": "(FL)3" }
             ]
         },
         "AnimalShop": {

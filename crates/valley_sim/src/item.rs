@@ -207,6 +207,8 @@ pub enum Item {
     Clothing { slot: ClothingSlot, id: String },
     /// Trinket from Data/Trinkets.
     Trinket { id: String },
+    /// Wallpaper or flooring (`decor`).
+    Decor { id: String, floor: bool },
 }
 
 /// A trinket (`Data/Trinkets`, public format subset). Effects are game code
@@ -312,14 +314,14 @@ impl Item {
     pub fn stack(&self) -> i32 {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => 1,
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } | Item::Decor { .. } => 1,
         }
     }
 
     pub fn set_stack(&mut self, n: i32) {
         match self {
             Item::Object { stack, .. } | Item::Big { stack, .. } => *stack = n,
-            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => {}
+            Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } | Item::Decor { .. } => {}
         }
     }
 
@@ -390,6 +392,7 @@ impl Item {
             Item::Boots { id } => format!("(B){id}"),
             Item::Clothing { slot, id } => format!("({}){id}", slot.prefix()),
             Item::Trinket { id } => format!("(TR){id}"),
+            Item::Decor { id, floor } => format!("({}){id}", if *floor { "FL" } else { "WP" }),
             Item::Furniture { id } => format!("(F){id}"),
         }
     }
@@ -403,7 +406,7 @@ impl Item {
 
     /// Tools, weapons and boots can't be stacked.
     pub fn is_equipment(&self) -> bool {
-        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. })
+        matches!(self, Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } | Item::Decor { .. })
     }
 }
 
@@ -596,6 +599,10 @@ pub struct ItemDb {
     pub trinkets: BTreeMap<String, TrinketData>,
     pub shirts: BTreeMap<String, ClothingInfo>,
     pub pants: BTreeMap<String, ClothingInfo>,
+    /// Extra wallpaper/flooring sets (`Data/AdditionalWallpaperFlooring`).
+    pub decor_sets: Vec<crate::decor::DecorSet>,
+    /// The base wallpaper/flooring sheet exists (`Maps/walls_and_floors`).
+    pub base_decor: bool,
     /// Preloaded string tables used at runtime (lowercased asset name).
     pub strings: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
@@ -632,6 +639,8 @@ impl ItemDb {
                 db.furniture.insert(id, f);
             }
         }
+        db.decor_sets = cm.load_json("Data/AdditionalWallpaperFlooring").unwrap_or_default();
+        db.base_decor = cm.exists("Maps/walls_and_floors");
         for (id, mut t) in cm.load_dict::<TrinketData>("Data/Trinkets") {
             t.display_name = cm.expand(&t.display_name);
             t.description = cm.expand(&t.description);
@@ -732,6 +741,7 @@ impl ItemDb {
             Item::Weapon { .. } => tags.push("category_weapon".into()),
             Item::Boots { .. } => tags.push("category_boots".into()),
             Item::Trinket { .. } => tags.push("category_trinket".into()),
+            Item::Decor { .. } => tags.push("category_wallpaper".into()),
             Item::Clothing { slot, .. } => {
                 tags.push("category_clothing".into());
                 tags.push(match slot {
@@ -771,6 +781,7 @@ impl ItemDb {
             Item::Boots { id } => self.boots.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Trinket { id } => self.trinkets.get(id).map(|t| t.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Decor { floor, .. } => if *floor { "Flooring" } else { "Wallpaper" }.to_string(),
             Item::Furniture { id } => self.furniture.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Tool(t) => {
                 let base = self.tools.get(t.kind.data_key()).map(|d| d.display_name.clone()).unwrap_or_else(|| t.kind.data_key().to_string());
@@ -803,6 +814,7 @@ impl ItemDb {
             Item::Boots { id } => self.boots.get(id).map(|b| format!("{}\nDefense +{}", b.description, b.defense)).unwrap_or_default(),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.description.clone()).unwrap_or_default(),
             Item::Trinket { id } => self.trinkets.get(id).map(|t| t.description.clone()).unwrap_or_default(),
+            Item::Decor { floor, .. } => if *floor { "Decorates the floor of one room." } else { "Decorates the walls of one room." }.to_string(),
             Item::Furniture { id } => self.furniture.get(id).map(|f| format!("Furniture ({}). Can be placed indoors.", f.kind)).unwrap_or_default(),
             Item::Tool(t) => self.tools.get(t.kind.data_key()).map(|d| d.description.clone()).unwrap_or_default(),
         }
@@ -819,6 +831,7 @@ impl ItemDb {
             Item::Boots { id } => self.boots.get(id).map(|b| b.price / 2).unwrap_or(0),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.price / 2).unwrap_or(0),
             Item::Trinket { .. } => 250,
+            Item::Decor { .. } => 0,
             Item::Furniture { id } => self.furniture.get(id).map(|f| f.price / 2).unwrap_or(0),
             Item::Tool(_) | Item::Weapon { .. } => 0,
         }
@@ -847,6 +860,7 @@ impl ItemDb {
             "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
             "F" => self.furniture.contains_key(id).then(|| Item::Furniture { id: id.to_string() }),
             "TR" => self.trinkets.contains_key(id).then(|| Item::Trinket { id: id.to_string() }),
+            "WP" | "FL" => crate::decor::decor_exists(self, id, ty == "FL").then(|| Item::Decor { id: id.to_string(), floor: ty == "FL" }),
             "H" => self.hats.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Hat, id: id.to_string() }),
             "S" => self.shirts.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Shirt, id: id.to_string() }),
             "P" => self.pants.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Pants, id: id.to_string() }),

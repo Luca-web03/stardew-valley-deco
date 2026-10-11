@@ -2628,3 +2628,62 @@ pub fn paths_sheet() -> Image {
     }
     img
 }
+
+/// Wallpapers (16x48 strips, 16 per row) and floors (32x32, 8 per row from
+/// y 336): eight of each are painted.
+pub fn walls_and_floors() -> Image {
+    let mut img = Image::new(256, 400);
+    let walls = [(210, 190, 160), (170, 200, 220), (220, 170, 170), (190, 210, 170), (200, 180, 220), (230, 220, 170), (160, 160, 170), (240, 230, 220)];
+    for (i, (r, g, b)) in walls.iter().enumerate() {
+        let base = Color::rgb(*r, *g, *b);
+        let mut c = Cell { ox: i as i32 * 16, oy: 0, w: 16, h: 48, img: &mut img };
+        c.rect(0, 0, 16, 48, base);
+        match i % 4 {
+            0 => {
+                for x in [3, 11] {
+                    c.rect(x, 0, 2, 40, shade(base, -20));
+                }
+            }
+            1 => {
+                for y in (4..40).step_by(8) {
+                    for x in (2..16).step_by(6) {
+                        c.px(x, y, shade(base, -30));
+                    }
+                }
+            }
+            2 => {
+                for y in (0..40).step_by(6) {
+                    c.rect(0, y, 16, 1, shade(base, -15));
+                }
+            }
+            _ => c.noise(base, 6, i as u32),
+        }
+        // Wainscot along the bottom.
+        c.rect(0, 40, 16, 8, shade(base, -45));
+        c.rect(0, 40, 16, 1, shade(base, 20));
+    }
+    let floors = [(170, 120, 75), (150, 150, 155), (200, 170, 120), (120, 90, 70), (190, 200, 190), (180, 110, 90), (140, 110, 150), (215, 200, 170)];
+    for (i, (r, g, b)) in floors.iter().enumerate() {
+        let base = Color::rgb(*r, *g, *b);
+        let mut c = Cell { ox: (i as i32 % 8) * 32, oy: 336 + (i as i32 / 8) * 32, w: 32, h: 32, img: &mut img };
+        c.noise(base, 6, 50 + i as u32);
+        match i % 3 {
+            0 => {
+                for y in (0..32).step_by(8) {
+                    c.rect(0, y, 32, 1, shade(base, -30));
+                }
+            }
+            1 => {
+                c.rect(0, 15, 32, 2, shade(base, -25));
+                c.rect(15, 0, 2, 32, shade(base, -25));
+            }
+            _ => {
+                for k in 0..4 {
+                    c.rect(k * 8, k * 8, 8, 8, shade(base, -18));
+                    c.rect(24 - k * 8, k * 8, 8, 8, shade(base, 12));
+                }
+            }
+        }
+    }
+    img
+}

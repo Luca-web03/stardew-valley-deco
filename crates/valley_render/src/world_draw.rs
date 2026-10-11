@@ -91,6 +91,34 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     draw_layer(rc, out, cam, loc, "Buildings", DEPTH_BUILDINGS, season, ms);
 
     let lay = rc.assets.layouts(rc.cm);
+    // Wallpaper and flooring.
+    if !loc.state.paint.wallpaper.is_empty() || !loc.state.paint.flooring.is_empty() {
+        let dl = lay.decor.clone();
+        for room in valley_sim::decor::rooms(loc) {
+            if let Some(id) = loc.state.paint.flooring.get(&room.key) {
+                let (tex_name, n) = valley_sim::decor::decor_source(&w.items, id);
+                let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+                let [fx, fy, fs, _] = dl.floor_rect(n, !id.contains(':'));
+                let half = fs / 2;
+                for p in &room.floor {
+                    let src = IRect::new(fx + p.x.rem_euclid(2) * half, fy + p.y.rem_euclid(2) * half, half, half);
+                    let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+                    out.draw(tex, src, pos, ZOOM * 16.0 / half.max(1) as f32, DEPTH_BACK + 0.0005);
+                }
+            }
+            if let Some(id) = loc.state.paint.wallpaper.get(&room.key) {
+                let (tex_name, n) = valley_sim::decor::decor_source(&w.items, id);
+                let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+                let [wx, wy, ww, wh] = dl.wall_rect(n);
+                let tile_h = wh / 3;
+                for (p, row) in &room.walls {
+                    let src = IRect::new(wx, wy + (2 - row) * tile_h, ww, tile_h);
+                    let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+                    out.draw(tex, src, pos, ZOOM * 16.0 / ww.max(1) as f32, DEPTH_BUILDINGS + 0.0005);
+                }
+            }
+        }
+    }
     // Tilled soil.
     let dirt_tex = rc.assets.tex(rc.cm, rc.textures, &lay.hoe_dirt.texture);
     let crops_tex = rc.assets.tex(rc.cm, rc.textures, "TileSheets/crops");
@@ -1109,6 +1137,19 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
             let (tw, _) = rc.textures.size(tex);
             let cols = (tw / 16).max(1) as i32;
             (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
+        }
+        Item::Decor { id, floor } => {
+            let (tex_name, n) = valley_sim::decor::decor_source(&w.items, id);
+            let base = !id.contains(':');
+            let lay = rc.assets.layouts(rc.cm).decor.clone();
+            let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+            let [x, y, sw, sh] = if *floor { lay.floor_rect(n, base) } else { lay.wall_rect(n) };
+            // A swatch: the floor square, or the middle of the strip.
+            if *floor {
+                (tex, IRect::new(x, y, sw, sh))
+            } else {
+                (tex, IRect::new(x, y + sh / 3, sw, sh / 3))
+            }
         }
         Item::Tool(t) => {
             let (tex_name, idx) = match w.items.tools.get(t.kind.data_key()) {
