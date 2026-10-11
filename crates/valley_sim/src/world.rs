@@ -274,6 +274,8 @@ pub struct World {
     pub last_touch: Option<TilePos>,
     /// Spa regeneration timer.
     pub spa_ms: u32,
+    /// `Data/Buffs`.
+    pub buff_defs: BTreeMap<String, crate::buffs::BuffDef>,
     /// `Port/MineChests` overrides (level -> qualified item id).
     pub mine_chest_overrides: BTreeMap<String, String>,
     /// `Data/LocationContexts`.
@@ -455,6 +457,7 @@ impl World {
             trigger_actions: Vec::new(),
             location_contexts: BTreeMap::new(),
             mine_chest_overrides: BTreeMap::new(),
+            buff_defs: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -586,6 +589,7 @@ impl World {
         w.trigger_actions = crate::trigger_actions::load(cm);
         w.location_contexts = crate::location_contexts::load(cm);
         w.mine_chest_overrides = cm.load_dict("Port/MineChests");
+        w.buff_defs = cm.load_dict("Data/Buffs");
         w.place_start_objects();
         w.place_farm_clumps();
         w.populate_new_farm();
@@ -2295,7 +2299,7 @@ impl World {
         }
         self.farmer.health = (self.farmer.health + info.health(quality)).min(self.farmer.max_health);
         if let Some(b) = &info.data.buffs {
-            for buff in crate::buffs::parse_buffs(b, &info.display_name) {
+            for buff in crate::buffs::parse_buffs_with(b, &info.display_name, &self.buff_defs) {
                 // A new food buff replaces any buff with the same id.
                 self.farmer.buffs.retain(|x| x.id != buff.id);
                 self.hud(format!("{}: {}", info.display_name, buff.attrs.describe().join(", ")));

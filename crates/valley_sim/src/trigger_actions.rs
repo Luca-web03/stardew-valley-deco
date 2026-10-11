@@ -229,8 +229,17 @@ impl World {
                 }
             }
             "AddBuff" => {
-                // Buffs defined on objects (by object id).
                 let id = arg(0)?;
+                if let Some(def) = self.buff_defs.get(&id).cloned() {
+                    let mut b = crate::buffs::from_def(&id, &def, &def.display_name);
+                    if let Some(ms) = args.get(1).and_then(|v| v.parse::<i32>().ok()) {
+                        b.minutes_left = if ms < 0 { 24 * 60 } else { (ms / 700).max(1) };
+                    }
+                    self.farmer.buffs.retain(|x| x.id != b.id);
+                    self.farmer.buffs.push(b);
+                    return Ok(());
+                }
+                // Buffs defined on objects (by object id).
                 let (_, raw) = crate::item::split_qualified(&id);
                 let info = self.items.object(raw).cloned().ok_or_else(|| format!("AddBuff: unknown buff {id}"))?;
                 let buffs = info.data.buffs.as_ref().map(|b| crate::buffs::parse_buffs(b, &info.display_name)).unwrap_or_default();
@@ -238,8 +247,8 @@ impl World {
                     return Err(format!("AddBuff: {id} has no buff"));
                 }
                 for mut b in buffs {
-                    if let Some(m) = args.get(1).and_then(|v| v.parse::<i32>().ok()) {
-                        b.minutes_left = m;
+                    if let Some(ms) = args.get(1).and_then(|v| v.parse::<i32>().ok()) {
+                        b.minutes_left = if ms < 0 { 24 * 60 } else { (ms / 700).max(1) };
                     }
                     self.farmer.buffs.retain(|x| x.id != b.id);
                     self.farmer.buffs.push(b);
