@@ -92,6 +92,9 @@ pub struct FarmAnimal {
     pub target: Option<Vec2>,
     #[serde(skip)]
     pub emote_ms: u32,
+    /// Fed a golden animal cracker: double produce.
+    #[serde(default)]
+    pub golden_cracker: bool,
 }
 
 impl FarmAnimal {
@@ -343,12 +346,13 @@ impl World {
             wander_ms: 0,
             target: None,
             emote_ms: 0,
+            golden_cracker: false,
         });
         self.sound("purchase");
         Ok(())
     }
 
-    fn animal_at(&self, t: TilePos) -> Option<usize> {
+    pub(crate) fn animal_at(&self, t: TilePos) -> Option<usize> {
         let here = self.current.clone();
         let me = self.farmer.tile();
         self.animals.iter().position(|a| a.location == here && (a.tile() == t || (a.tile().manhattan(me) <= 1 && a.tile().manhattan(t) <= 1)))
@@ -556,9 +560,12 @@ impl World {
                         let boost = if data.profession_for_quality_boost.as_deref().is_some_and(|p| self.farmer.has_profession_spec(p)) { 300 } else { 0 };
                         let fq = (f + boost) as f64;
                         let q = if rng.chance(fq / 1500.0) { if rng.chance(fq / 2000.0) { Quality::Gold } else { Quality::Silver } } else { Quality::Normal };
-                        let item = Item::object_q(id, 1, q);
+                        let n = if a.golden_cracker { 2 } else { 1 };
+                        let item = Item::object_q(id, n, q);
                         if data.harvest_type.eq_ignore_ascii_case("DropOvernight") {
-                            drops.push((a.home.clone(), item));
+                            for _ in 0..n {
+                                drops.push((a.home.clone(), Item::object_q(id, 1, q)));
+                            }
                         } else {
                             produce = Some(item);
                         }

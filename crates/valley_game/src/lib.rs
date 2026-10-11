@@ -1075,7 +1075,8 @@ impl ValleyGame {
                 }
             }
             Menu::Chest { tile, hovered } => {
-                let (prow, crow) = chest_rects(sw, sh);
+                let cap = self.world.as_ref().and_then(|w| w.container(*tile).map(|c| c.capacity())).unwrap_or(36);
+                let (prow, crow) = chest_rects_for(sw, sh, cap);
                 *hovered = crow.iter().position(|r| r.contains(ctx.input.mouse)).map(|i| (false, i)).or_else(|| prow.iter().position(|r| r.contains(ctx.input.mouse)).map(|i| (true, i)));
                 if ctx.input.mouse_pressed(MouseButton::Left) {
                     if let Some((from_player, i)) = *hovered {
@@ -1956,17 +1957,23 @@ fn recipe_rects(sw: f32, sh: f32) -> Vec<FRect> {
 
 /// (player inventory rects, chest rects)
 fn chest_rects(sw: f32, sh: f32) -> (Vec<FRect>, Vec<FRect>) {
+    chest_rects_for(sw, sh, 36)
+}
+
+/// (player slots, chest slots); bigger chests use a denser grid.
+fn chest_rects_for(sw: f32, sh: f32, chest_slots: usize) -> (Vec<FRect>, Vec<FRect>) {
     let f = menu_frame(sw, sh);
-    let grid = |y0: f32| -> Vec<FRect> {
-        (0..36)
+    let grid = |y0: f32, n: usize, cols: usize, step: f32| -> Vec<FRect> {
+        (0..n)
             .map(|i| {
-                let row = i / 12;
-                let col = i % 12;
-                FRect::new(f.x + 48.0 + col as f32 * 68.0, y0 + row as f32 * 68.0, 64.0, 64.0)
+                let row = i / cols;
+                let col = i % cols;
+                FRect::new(f.x + 48.0 + col as f32 * step, y0 + row as f32 * step, step - 4.0, step - 4.0)
             })
             .collect()
     };
-    (grid(f.y + 320.0), grid(f.y + 48.0))
+    let chest = if chest_slots <= 36 { grid(f.y + 48.0, 36, 12, 68.0) } else { grid(f.y + 48.0, chest_slots, 14, 43.0) };
+    (grid(f.y + 320.0, 36, 12, 68.0), chest)
 }
 
 fn inventory_slot_rects(sw: f32, sh: f32) -> Vec<FRect> {
@@ -2303,7 +2310,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             let f = menu_frame(sw, sh);
             ui.panel(f);
             let chest = w.container(*tile).cloned();
-            let (prow, crow) = chest_rects(sw, sh);
+            let (prow, crow) = chest_rects_for(sw, sh, chest.as_ref().map_or(36, |c| c.capacity()));
             for (i, r) in crow.iter().enumerate() {
                 ui.slot(*r, *hovered == Some((false, i)));
                 if let Some(item) = chest.as_ref().and_then(|c| c.get(i)) {

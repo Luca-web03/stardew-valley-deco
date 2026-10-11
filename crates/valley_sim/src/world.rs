@@ -1569,6 +1569,10 @@ impl World {
             return true;
         }
 
+        // Items used on something (animal crackers, fairy dust) come first.
+        if self.use_targeted_special(target) {
+            return true;
+        }
         // Farm animals, the pet, the traveling cart and buildings.
         if self.pet_animal(target) || self.pet_the_pet(target) || self.try_mount(target) || self.interact_child(target) || self.cart_action(target) {
             return true;
@@ -1653,7 +1657,7 @@ impl World {
         let slot = self.farmer.current_slot;
         // Warp items and note scraps act before placement.
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
-            if self.use_warp_totem(slot, &id) || self.use_weather_totem(slot, &id) || self.read_note_scrap(slot, &id) || self.read_book(slot, &id) {
+            if self.use_warp_totem(slot, &id) || self.use_weather_totem(slot, &id) || self.read_note_scrap(slot, &id) || self.read_book(slot, &id) || self.use_special_item(target) {
                 return true;
             }
         }
@@ -2443,6 +2447,10 @@ impl World {
             return;
         }
         self.farmer.inventory.reduce(slot, 1);
+        if self.special_item(&id) == Some(crate::special_items::Special::Stardrop) {
+            self.stardrop_eaten();
+            return;
+        }
         let e = info.energy(quality) as f32;
         self.farmer.stamina = (self.farmer.stamina + e).min(self.farmer.max_stamina as f32);
         if self.farmer.stamina > 0.0 {

@@ -258,9 +258,20 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         objects[id]["CustomFields"] = json!({ "Port.AmmoDamage": dmg });
     }
     objects["Dev_Juice"]["CustomFields"] = json!({ "Port.AgingRate": "2.0" });
+    // Special-use items (see valley_sim::special_items).
+    let special = |name: &str, desc: &str, cat: i32, price: i32, sprite: i32, edibility: i32| {
+        json!({ "Name": name, "DisplayName": name, "Description": desc, "Type": "Basic", "Category": cat, "Price": price, "SpriteIndex": sprite, "Edibility": edibility })
+    };
+    objects["Dev_Stardrop"] = special("Stardrop", "A mysterious fruit that leaves you more energetic for good.", 0, 7000, ICON_GEMS + 4, 20);
+    objects["Dev_HorseFlute"] = special("Horse Flute", "Calls your horse to you, wherever you are outdoors.", 0, 1000, ICON_NOZZLE, -300);
+    objects["Dev_AnimalCracker"] = special("Golden Animal Cracker", "A farm animal that eats this gives twice the produce.", 0, 1000, ICON_GEMS + 2, -300);
+    objects["Dev_TreasureTotem"] = special("Treasure Totem", "Raises buried treasure from the ground around you.", -8, 200, ICON_ENRICHER, -300);
+    objects["Dev_FairyDust"] = special("Fairy Dust", "Sprinkle on a busy machine to finish its work at once.", 0, 500, ICON_DUST, -300);
     let bigs = json!({
         "Dev_Box": { "Name": "Storage Box", "DisplayName": "Storage Box", "Description": "Holds 36 items.",
                      "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
+        "Dev_BigChest": { "Name": "Big Storage Box", "DisplayName": "Big Storage Box", "Description": "Holds 70 items.",
+                          "Price": 1, "SpriteIndex": 0, "ContextTags": ["storage_item"] },
         "Dev_Juicer": { "Name": "Juicer", "DisplayName": "Juicer", "Description": "Turns produce into juice.",
                         "Price": 50, "SpriteIndex": 1 },
         "Dev_Furnace": { "Name": "Furnace", "DisplayName": "Furnace", "Description": "Smelts ore into bars. Needs coal.",

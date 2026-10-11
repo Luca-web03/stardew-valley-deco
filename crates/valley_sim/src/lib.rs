@@ -66,6 +66,7 @@ pub mod achievements;
 pub mod arsenal;
 pub mod cart;
 pub mod social;
+pub mod special_items;
 pub mod special_orders;
 pub mod children;
 pub mod fish_ponds;

@@ -15,6 +15,11 @@ const TAPPERS: &[&str] = &["105", "264", "Dev_Tapper"];
 /// Artifact spot object ids.
 const ARTIFACT_SPOT: &[&str] = &["590", "Dev_ArtifactSpot"];
 
+/// The artifact spot object id the content has.
+pub fn artifact_spot_id(items: &crate::item::ItemDb) -> Option<String> {
+    ARTIFACT_SPOT.iter().find(|id| items.objects.contains_key(**id)).map(|s| s.to_string())
+}
+
 impl World {
     pub fn is_tapper(&self, item: &Item) -> bool {
         item.big_id().is_some_and(|id| TAPPERS.contains(&id))

@@ -171,7 +171,7 @@ impl World {
                 } else if self.items.machines.contains_key(&qid) {
                     ObjKind::Machine { output: None, minutes_left: 0, ready: false }
                 } else if self.is_auto_grabber(id) || self.items.big(id).is_some_and(|b| b.data.name.contains("Chest") || b.data.context_tags.iter().flatten().any(|t| t == "chest_item" || t == "storage_item")) {
-                    ObjKind::Chest(Inventory::new(36))
+                    ObjKind::Chest(Inventory::new(self.chest_capacity(id)))
                 } else {
                     ObjKind::Placed
                 };

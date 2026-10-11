@@ -55,6 +55,8 @@ were not available; such values are isolated constants that can be tuned.
       seed maker, flavored artisan goods, bee houses with flower honey),
       furniture, casks, tailoring at the sewing machine
 - [x] Cooking, food buffs
+- [x] Special items: Stardrop, Horse Flute, Golden Animal Crackers, Treasure
+      Totem, Fairy Dust, big chests
 - [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots, bait and
       tackle, treasure chests
 - [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,

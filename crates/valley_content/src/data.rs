@@ -820,6 +820,7 @@ pub struct FarmAnimalData {
     /// Profession ids (names or original numbers).
     pub profession_for_faster_produce: Option<String>,
     pub profession_for_quality_boost: Option<String>,
+    pub can_eat_golden_crackers: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -856,6 +857,7 @@ impl Default for FarmAnimalData {
             deluxe_produce_luck_multiplier: 0.0,
             profession_for_faster_produce: None,
             profession_for_quality_boost: None,
+            can_eat_golden_crackers: true,
         }
     }
 }
