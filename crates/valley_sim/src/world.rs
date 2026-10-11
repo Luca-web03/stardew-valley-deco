@@ -2020,17 +2020,63 @@ impl World {
         }
         let mut item = entry.item.clone();
         item.set_stack(count);
-        if !self.farmer.inventory.can_fit(&item) {
+        if !entry.is_recipe && !self.farmer.inventory.can_fit(&item) {
             self.hud("Inventory full");
             return false;
+        }
+        if entry.is_recipe {
+            // Recipes are learned, not carried.
+            let name = item.object_id().and_then(|id| self.items.object(id)).map(|o| o.data.name.clone()).unwrap_or_else(|| self.items.display_name(&item));
+            if self.cooking.contains_key(&name) {
+                if self.farmer.cooking_recipes.contains_key(&name) {
+                    self.hud("You already know that recipe.");
+                    return false;
+                }
+                self.farmer.cooking_recipes.insert(name.clone(), 0);
+            } else if self.recipes.contains_key(&name) {
+                if self.farmer.crafting_recipes.contains_key(&name) {
+                    self.hud("You already know that recipe.");
+                    return false;
+                }
+                self.farmer.crafting_recipes.insert(name.clone(), 0);
+            } else {
+                return false;
+            }
+            self.hud(format!("Learned: {name}"));
         }
         if let Some((id, n)) = &entry.trade {
             self.farmer.inventory.remove_object(id, n * count);
         }
         *self.currency_mut(entry.currency) -= cost;
-        self.farmer.inventory.add(item);
+        if !entry.is_recipe {
+            self.farmer.inventory.add(item);
+        }
+        for a in &entry.actions {
+            if let Err(e) = self.run_game_action(a) {
+                eprintln!("shop purchase action: {e}");
+            }
+        }
         self.sound("purchase");
         true
+    }
+
+    /// Does this shop buy this item (`SalableItemTags`)?
+    pub fn shop_buys(&self, shop_id: &str, item: &Item) -> bool {
+        match self.shops.get(shop_id) {
+            Some(d) if !d.salable_item_tags.is_empty() => d.salable_item_tags.iter().any(|t| self.items.matches_tags(item, std::slice::from_ref(t))),
+            Some(_) => false,
+            None => true,
+        }
+    }
+
+    /// Sell the stack in `slot` to a shop, if it buys such things.
+    pub fn sell_slot_to(&mut self, shop_id: &str, slot: usize) -> bool {
+        let Some(item) = self.farmer.inventory.get(slot).cloned() else { return false };
+        if !self.shop_buys(shop_id, &item) {
+            self.hud("They won't buy that here.");
+            return false;
+        }
+        self.sell_slot(slot)
     }
 
     /// Sell the stack in `slot` to a shop (at its base sell price).

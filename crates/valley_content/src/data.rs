@@ -260,6 +260,15 @@ pub struct ShopItemData {
     pub min_stack: i32,
     pub max_stack: i32,
     pub is_recipe: bool,
+    pub quality: Option<i32>,
+    pub price_modifiers: Option<Vec<QuantityModifier>>,
+    pub ignore_shop_price_modifiers: bool,
+    /// Run when bought (trigger action strings).
+    pub actions_on_purchase: Option<Vec<String>>,
+    /// Skip items already listed by earlier entries.
+    pub avoid_repeat: bool,
+    /// Checked per item an item query produces (`Target` = the item).
+    pub per_item_condition: Option<String>,
 }
 
 impl Default for ShopItemData {
@@ -277,6 +286,12 @@ impl Default for ShopItemData {
             min_stack: -1,
             max_stack: -1,
             is_recipe: false,
+            quality: None,
+            price_modifiers: None,
+            ignore_shop_price_modifiers: false,
+            actions_on_purchase: None,
+            avoid_repeat: false,
+            per_item_condition: None,
         }
     }
 }
@@ -297,8 +312,10 @@ pub struct ShopData {
     pub currency: i32,
     pub owners: Vec<ShopOwnerData>,
     pub items: Vec<ShopItemData>,
-    pub sale_price_modifiers: Option<serde_json::Value>,
-    pub price_modifiers: Option<serde_json::Value>,
+    pub sale_price_modifiers: Option<Vec<QuantityModifier>>,
+    pub price_modifiers: Option<Vec<QuantityModifier>>,
+    /// Items this shop buys from the player (context tags, any match).
+    pub salable_item_tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]

@@ -15,6 +15,10 @@ pub struct ShopEntry {
     pub currency: i32,
     /// Items paid per purchase: (unqualified object id, amount).
     pub trade: Option<(String, i32)>,
+    /// Trigger actions run when bought.
+    pub actions: Vec<String>,
+    /// Buying teaches the recipe for the item instead of giving it.
+    pub is_recipe: bool,
 }
 
 /// Display name of a shop currency.
@@ -48,8 +52,27 @@ pub fn default_buy_price(db: &ItemDb, item: &Item) -> i32 {
     }
 }
 
+/// Apply quantity modifiers whose conditions pass (item as `Target`).
+fn modify(value: f32, mods: &[valley_content::data::QuantityModifier], ctx: &mut QueryCtx, item: &Item) -> f32 {
+    let mut v = value;
+    for m in mods {
+        if !gsq::check_with(m.condition.as_deref(), ctx, gsq::QueryWorld { world: None, target: Some(item), input: None }) {
+            continue;
+        }
+        match m.modification.as_str() {
+            "Add" => v += m.amount,
+            "Subtract" => v -= m.amount,
+            "Multiply" => v *= m.amount,
+            "Divide" if m.amount != 0.0 => v /= m.amount,
+            "Set" => v = m.amount,
+            _ => {}
+        }
+    }
+    v
+}
+
 pub fn build_stock(id: &str, data: &ShopData, db: &ItemDb, ctx: &mut QueryCtx) -> ShopStock {
-    let mut entries = Vec::new();
+    let mut entries: Vec<ShopEntry> = Vec::new();
     for e in &data.items {
         if !gsq::check(e.condition.as_deref(), ctx) {
             continue;
@@ -60,8 +83,22 @@ pub fn build_stock(id: &str, data: &ShopData, db: &ItemDb, ctx: &mut QueryCtx) -
         };
         let (ids, random_sale) = expand_item_query(&item_id, db, ctx);
         let limit = e.max_items.filter(|n| *n >= 0).map(|n| n as usize).unwrap_or(usize::MAX);
-        for qid in ids.into_iter().take(limit) {
-            let Some(item) = db.create(&qid, 1) else { continue };
+        let mut added = 0;
+        for qid in ids.into_iter() {
+            if added >= limit {
+                break;
+            }
+            let Some(mut item) = db.create(&qid, 1) else { continue };
+            if e.avoid_repeat && entries.iter().any(|x| x.item.qualified_id() == item.qualified_id()) {
+                continue;
+            }
+            if e.per_item_condition.is_some() && !gsq::check_with(e.per_item_condition.as_deref(), ctx, gsq::QueryWorld { world: None, target: Some(&item), input: None }) {
+                continue;
+            }
+            if let (Some(q), Item::Object { quality, .. }) = (e.quality, &mut item) {
+                *quality = crate::item::Quality::from_level(q);
+            }
+            added += 1;
             let price = if e.price >= 0 {
                 e.price
             } else if random_sale {
@@ -71,8 +108,15 @@ pub fn build_stock(id: &str, data: &ShopData, db: &ItemDb, ctx: &mut QueryCtx) -
             };
             let trade = e.trade_item_id.as_deref().map(|t| (crate::item::split_qualified(t).1.to_string(), e.trade_item_amount.unwrap_or(1).max(1)));
             // Trade-only entries cost nothing unless a price is given.
-            let price = if trade.is_some() && e.price < 0 { 0 } else { price };
-            entries.push(ShopEntry { item, price, stock: e.available_stock, limit: e.available_stock, currency: data.currency, trade });
+            let mut price = if trade.is_some() && e.price < 0 { 0 } else { price };
+            if let Some(m) = &e.price_modifiers {
+                price = modify(price as f32, m, ctx, &item).round() as i32;
+            }
+            if let (false, Some(m)) = (e.ignore_shop_price_modifiers, &data.price_modifiers) {
+                price = modify(price as f32, m, ctx, &item).round() as i32;
+            }
+            let actions = e.actions_on_purchase.clone().unwrap_or_default();
+            entries.push(ShopEntry { item, price: price.max(0), stock: e.available_stock, limit: e.available_stock, currency: data.currency, trade, actions, is_recipe: e.is_recipe });
         }
     }
     let owner = data.owners.first().map(|o| o.name.clone()).filter(|n| !n.is_empty() && n != "AnyOrNone" && n != "Any" && n != "None");

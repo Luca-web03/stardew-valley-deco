@@ -910,9 +910,10 @@ impl ValleyGame {
                         // Selling from the inventory strip.
                         let slots = shop_inventory_rects(sw, sh);
                         if let Some(i) = slots.iter().position(|r| r.contains(ctx.input.mouse)) {
+                            let shop_id = stock.id.clone();
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
                                 if let Some(w) = g.world.as_mut() {
-                                    w.sell_slot(i);
+                                    w.sell_slot_to(&shop_id, i);
                                 }
                             }));
                         }

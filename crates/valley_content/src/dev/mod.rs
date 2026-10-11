@@ -456,6 +456,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         },
         "AdventureShop": {
             "Owners": [{ "Name": "AnyOrNone" }],
+            "SalableItemTags": ["category_monster_loot", "category_weapon", "category_minerals", "category_gem", "category_metal_resources"],
             "Items": [
                 { "Id": "sword", "ItemId": "(W)Dev_Sword", "Price": 250 },
                 { "Id": "dagger", "ItemId": "(W)Dev_Dagger", "Price": 350 },
@@ -544,6 +545,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         },
         "SeedShop": {
             "Owners": [{ "Name": "Tobin" }],
+            "SalableItemTags": ["category_vegetable", "category_fruits", "category_flowers", "category_greens", "category_egg", "category_milk", "category_artisan_goods", "category_syrup", "category_cooking", "category_fish", "category_sell_at_pierres", "category_forage"],
             "Items": [
                 { "Id": "turnip", "ItemId": "(O)Dev_TurnipSeeds", "Condition": "SEASON Spring" },
                 { "Id": "bean", "ItemId": "(O)Dev_BeanSeeds", "Condition": "SEASON Spring Summer" },

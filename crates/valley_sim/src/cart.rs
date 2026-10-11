@@ -84,7 +84,7 @@ impl World {
                     .filter_map(|id| self.items.create(&id, 1))
                     .map(|item| {
                         let price = shop::random_sale_price(&self.items, &item, &mut ctx);
-                        ShopEntry { item, price, stock: 1, limit: 1, currency: 0, trade: None }
+                        ShopEntry { item, price, stock: 1, limit: 1, currency: 0, trade: None, actions: Vec::new(), is_recipe: false }
                     })
                     .collect();
                 ShopStock { id: "Traveler".into(), owner: None, entries }
