@@ -213,6 +213,10 @@ pub struct DialogueCtx<'a> {
     pub answered: &'a dyn Fn(&str) -> bool,
     /// `$1`: first time this id is shown? (marks it seen)
     pub once: &'a mut dyn FnMut(&str) -> bool,
+    /// `$query`: does a game state query pass?
+    pub query: &'a dyn Fn(&str) -> bool,
+    /// `$action`: an action to run once the dialogue is shown.
+    pub action: &'a mut dyn FnMut(&str),
 }
 
 /// Resolve `$c`, `$d`, `$p`, `$1` and `$k` before pages are split, and pull
@@ -266,6 +270,16 @@ pub fn resolve_commands(raw: &str, ctx: &mut DialogueCtx) -> (String, Vec<String
                 }
             }
             i += 2;
+            continue;
+        }
+        if let Some(q) = s.strip_prefix("$query ") {
+            out.push(pick(segs.get(i + 1), (ctx.query)(q.trim())));
+            i += 2;
+            continue;
+        }
+        if let Some(a) = s.strip_prefix("$action ") {
+            (ctx.action)(a.trim());
+            i += 1;
             continue;
         }
         if s == "$k" {
@@ -364,12 +378,16 @@ mod tests {
     fn conditional_commands_resolve() {
         let mut yes = |_: f64| true;
         let mut first = |_: &str| true;
-        let mut ctx = DialogueCtx { chance: &mut yes, state: &|s| s == "joja", answered: &|id| id == "77", once: &mut first };
-        let (t, _) = resolve_commands("Hi!#$c 0.5#Heads.#Tails.#$d joja#Joja again|The center is open.#$p 77#You said yes.|You said no.", &mut ctx);
-        assert_eq!(t, "Hi!#Heads.#Joja again#You said yes.");
+        let mut acts = Vec::new();
+        let mut act = |a: &str| acts.push(a.to_string());
+        let mut ctx = DialogueCtx { chance: &mut yes, state: &|s| s == "joja", answered: &|id| id == "77", once: &mut first, query: &|q| q == "SEASON Spring", action: &mut act };
+        let (t, _) = resolve_commands("Hi!#$c 0.5#Heads.#Tails.#$d joja#Joja again|The center is open.#$p 77#You said yes.|You said no.#$query SEASON Spring#Spring!|Not spring.#$action AddMoney 5", &mut ctx);
+        assert_eq!(t, "Hi!#Heads.#Joja again#You said yes.#Spring!");
+        assert_eq!(acts, vec!["AddMoney 5"]);
         let mut no = |_: f64| false;
         let mut seen = |_: &str| false;
-        let mut ctx = DialogueCtx { chance: &mut no, state: &|_| false, answered: &|_| false, once: &mut seen };
+        let mut none = |_: &str| {};
+        let mut ctx = DialogueCtx { chance: &mut no, state: &|_| false, answered: &|_| false, once: &mut seen, query: &|_| false, action: &mut none };
         let (t, gift) = resolve_commands("Take this! [88 90]#$c 0.5#Heads.#Tails.#$1 M1#Only once.#$k#Never shown.", &mut ctx);
         assert_eq!(t, "Take this! #Tails.");
         assert_eq!(gift, vec!["88", "90"]);

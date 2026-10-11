@@ -222,6 +222,12 @@ pub struct Farmer {
     /// Riding the horse of this stable (building id).
     #[serde(default)]
     pub mounted: Option<u32>,
+    /// `Data/TriggerActions` entries already applied.
+    #[serde(default)]
+    pub trigger_actions_run: Vec<String>,
+    /// Letters arriving tomorrow morning.
+    #[serde(default)]
+    pub mail_tomorrow: Vec<String>,
     /// Wearing the swimsuit / in the water (`swimming`).
     #[serde(default)]
     pub swimsuit: bool,
@@ -377,6 +383,8 @@ impl Farmer {
             fridge: fridge_inventory(),
             notes_read: Vec::new(),
             mounted: None,
+            trigger_actions_run: Vec::new(),
+            mail_tomorrow: Vec::new(),
             swimsuit: false,
             swimming: false,
             star_tokens: 0,

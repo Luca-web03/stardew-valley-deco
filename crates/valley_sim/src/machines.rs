@@ -264,12 +264,14 @@ impl World {
                     && tr.required_item_id.as_ref().map_or(true, |r| r == &input_qid || crate::item::split_qualified(r).1 == input.object_id().unwrap_or(""))
                     && tr.required_tags.as_ref().map_or(true, |tags| self.items.matches_tags(&input, tags))
                     && input.stack() >= tr.required_count
+                    && self.check_query(tr.condition.as_deref(), None, Some(&input), &mut rng.clone())
             });
             let Some(trig) = trig.cloned() else { continue };
             let mail = self.farmer.mail_received.clone();
             let seen = self.farmer.events_seen.clone();
-            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
-            let out_def: Option<MachineOutputItem> = rule.output_item.iter().find(|o| gsq::check(o.condition.as_deref(), &mut ctx)).cloned();
+            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
+            let qw = gsq::QueryWorld { world: None, target: None, input: Some(&input) };
+            let out_def: Option<MachineOutputItem> = rule.output_item.iter().find(|o| gsq::check_with(o.condition.as_deref(), &mut ctx, qw)).cloned();
             let Some(out_def) = out_def else { continue };
             let Some(output) = self.make_machine_output(&out_def, &input) else { continue };
             // Consume input + extras.
@@ -451,14 +453,14 @@ impl World {
                     ("OutputCollected", None) => false,
                     _ => tr.required_item_id.is_none() && tr.required_tags.is_none(),
                 };
-                let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng };
-                named && item_ok && gsq::check(tr.condition.as_deref(), &mut ctx)
+                let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng, world: Some(self) };
+                named && item_ok && gsq::check_with(tr.condition.as_deref(), &mut ctx, gsq::QueryWorld { world: None, target: None, input: last })
             });
             if !fires {
                 continue;
             }
-            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng };
-            let Some(def) = rule.output_item.iter().find(|d| gsq::check(d.condition.as_deref(), &mut ctx)).cloned() else { continue };
+            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng, world: Some(self) };
+            let Some(def) = rule.output_item.iter().find(|d| gsq::check_with(d.condition.as_deref(), &mut ctx, gsq::QueryWorld { world: None, target: None, input: last })).cloned() else { continue };
             let input = last.cloned().unwrap_or_else(|| Item::big(&o.item_id, 1));
             let Some(output) = self.make_machine_output(&def, &input) else { continue };
             let minutes = if rule.days_until_ready > 0 {

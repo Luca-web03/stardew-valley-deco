@@ -114,6 +114,8 @@ were not available; such values are isolated constants that can be tuned.
       Corners, Beach, Meadowlands, plus Data/AdditionalFarms) with their maps,
       `Farm_<type>` location data and approx. perks (quarry rocks, night
       monsters, starter coop)
+- [x] Game state queries (date, world, player, random, item queries) and
+      trigger actions (Data/TriggerActions, event/mail/dialogue actions)
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] World map (M): `Data/WorldMap` regions, area overlays, tooltips and
       player markers

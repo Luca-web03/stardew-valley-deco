@@ -286,7 +286,7 @@ impl World {
                     let q = args.join(" ");
                     let mail = self.farmer.mail_received.clone();
                     let seen = self.farmer.events_seen.clone();
-                    let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
+                    let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
                     gsq::check(Some(&q), &mut ctx)
                 }
                 _ => false,
@@ -902,6 +902,14 @@ impl World {
             }
             "stopMusic" => {
                 self.events.push(WorldEvent::Music("none".into()));
+                false
+            }
+            "action" => {
+                // The rest of the command, quotes kept for the action's own arguments.
+                let a = cmd.trim_start().strip_prefix("action").unwrap_or("").trim().to_string();
+                if let Err(e) = self.run_game_action(&a) {
+                    eprintln!("event action: {e}");
+                }
                 false
             }
             "addMailReceived" | "mail" => {

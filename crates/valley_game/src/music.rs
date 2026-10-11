@@ -41,7 +41,7 @@ fn location_music(d: &LocationData, w: &World) -> Option<String> {
     let silence = |t: &str| if t.eq_ignore_ascii_case("none") || t.eq_ignore_ascii_case("silence") { String::new() } else { t.to_string() };
     if let Some(entries) = d.music.as_ref().and_then(|v| v.as_array()) {
         let mut rng = Rng::new(Rng::seed_from(&[w.seed as i64, w.clock.days_played() as i64]));
-        let mut q = QueryCtx { clock: &w.clock, weather: w.weather, mail: &w.farmer.mail_received, events_seen: &w.farmer.events_seen, location: &w.current, rng: &mut rng };
+        let mut q = QueryCtx { clock: &w.clock, weather: w.weather, mail: &w.farmer.mail_received, events_seen: &w.farmer.events_seen, location: &w.current, rng: &mut rng, world: Some(w) };
         for e in entries {
             let Some(track) = e.get("Track").and_then(|t| t.as_str()) else { continue };
             if gsq::check(e.get("Condition").and_then(|c| c.as_str()), &mut q) {

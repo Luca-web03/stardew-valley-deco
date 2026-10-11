@@ -14,6 +14,11 @@ pub struct Profession {
     pub description: &'static str,
 }
 
+/// Profession by its original numeric id (the list follows that order).
+pub fn name_for_original_id(i: i32) -> Option<&'static str> {
+    PROFESSIONS.get(usize::try_from(i).ok()?).map(|p| p.id)
+}
+
 pub const PROFESSIONS: &[Profession] = &[
     Profession { id: "rancher", name: "Rancher", skill: Skill::Farming, level: 5, parent: None, description: "Animal products worth 20% more." },
     Profession { id: "tiller", name: "Tiller", skill: Skill::Farming, level: 5, parent: None, description: "Crops worth 10% more." },

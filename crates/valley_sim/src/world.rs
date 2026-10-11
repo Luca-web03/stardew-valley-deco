@@ -274,6 +274,8 @@ pub struct World {
     pub last_touch: Option<TilePos>,
     /// Spa regeneration timer.
     pub spa_ms: u32,
+    /// `Data/TriggerActions`.
+    pub trigger_actions: Vec<crate::trigger_actions::TriggerActionData>,
     /// Telephone numbers (`phone`).
     pub phone_contacts: BTreeMap<String, crate::phone::PhoneContact>,
     pub floors: BTreeMap<String, crate::fences::FloorPathData>,
@@ -446,6 +448,7 @@ impl World {
             last_touch: None,
             spa_ms: 0,
             phone_contacts: BTreeMap::new(),
+            trigger_actions: Vec::new(),
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -574,6 +577,7 @@ impl World {
             let c: BTreeMap<String, crate::phone::PhoneContact> = cm.load_dict("Port/PhoneContacts");
             if c.is_empty() { crate::phone::default_contacts() } else { c }
         };
+        w.trigger_actions = crate::trigger_actions::load(cm);
         w.place_start_objects();
         w.place_farm_clumps();
         w.populate_new_farm();
@@ -866,7 +870,9 @@ impl World {
                 None => vec![],
             };
         }
+        self.trigger_actions_morning();
         self.update_npc_schedules();
+        self.raise_trigger("DayStarted");
         self.spouse_morning();
         self.children_morning();
         self.pet_morning();
@@ -912,6 +918,7 @@ impl World {
 
     /// End the day (sleep or pass out) and start the next one.
     pub fn end_day(&mut self, passed_out: bool) {
+        self.raise_trigger("DayEnding");
         // Shipping.
         let mut shipped = Vec::new();
         let mut earned = 0;
@@ -1418,6 +1425,8 @@ impl World {
         self.quest_visit(target);
         self.horse_follow(&from, from_pos);
         self.emit(WorldEvent::Warped { from, to: target.to_string() });
+        self.farmer.counters.insert(format!("Port.Visited.{target}"), 1);
+        self.raise_trigger("LocationChanged");
         if !self.check_festival() {
             self.check_location_events();
         }
@@ -1862,10 +1871,15 @@ impl World {
         let mut rng = self.day_rng(3);
         let mail = self.farmer.mail_received.clone();
         let seen = self.farmer.events_seen.clone();
-        let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
+        let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
         let mut stock = shop::build_stock(id, &data, &self.items, &mut ctx);
         self.apply_shop_sold(&mut stock);
         self.emit(WorldEvent::OpenShop(stock));
+    }
+
+    /// Open the next letter in the mailbox (as the mailbox action does).
+    pub fn read_next_mail(&mut self) {
+        self.open_mailbox();
     }
 
     fn open_mailbox(&mut self) {
@@ -1903,6 +1917,11 @@ impl World {
         }
         if let Some((t, days)) = &letter.topic {
             self.farmer.conversation_topics.insert(t.clone(), *days);
+        }
+        for a in &letter.actions {
+            if let Err(e) = self.run_game_action(a) {
+                eprintln!("mail {id}: {e}");
+            }
         }
         self.farmer.mail_received.push(id.clone());
         self.farmer.letters_read.push(id.clone());
@@ -2082,9 +2101,18 @@ impl World {
             }
         };
         let mut chance = |p: f64| rng.chance(p);
-        let mut ctx = dialogue::DialogueCtx { chance: &mut chance, state: &state, answered: &answered, once: &mut once };
+        let query_rng = self.day_rng(158);
+        let query = |q: &str| self.check_query(Some(q), None, None, &mut query_rng.clone());
+        let mut actions: Vec<String> = Vec::new();
+        let mut action = |a: &str| actions.push(a.to_string());
+        let mut ctx = dialogue::DialogueCtx { chance: &mut chance, state: &state, answered: &answered, once: &mut once, query: &query, action: &mut action };
         let (text, gifts) = dialogue::resolve_commands(&text, &mut ctx);
         self.farmer.mail_received.extend(newly_seen);
+        for a in actions {
+            if let Err(e) = self.run_game_action(&a) {
+                eprintln!("dialogue action: {e}");
+            }
+        }
         let gift = rng2.pick(&gifts).cloned();
         (text, gift)
     }

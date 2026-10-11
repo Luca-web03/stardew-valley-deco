@@ -70,6 +70,7 @@ pub mod minecarts;
 pub mod casks;
 pub mod swimming;
 pub mod tailoring;
+pub mod trigger_actions;
 pub mod professions;
 pub mod progress;
 pub mod quests;

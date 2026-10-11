@@ -143,7 +143,7 @@ impl World {
         let mut rng = self.day_rng(23);
         let mail = self.farmer.mail_received.clone();
         let seen = self.farmer.events_seen.clone();
-        let mut ctx = crate::gsq::QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
+        let mut ctx = crate::gsq::QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
         self.order_tags_ok(&d.required_tags) && crate::gsq::check(d.condition.as_deref(), &mut ctx)
     }
 

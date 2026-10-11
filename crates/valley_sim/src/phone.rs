@@ -58,7 +58,7 @@ impl World {
             let mut rng = self.day_rng(3);
             let mail = self.farmer.mail_received.clone();
             let seen = self.farmer.events_seen.clone();
-            let mut ctx = crate::gsq::QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
+            let mut ctx = crate::gsq::QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
             let stock = crate::shop::build_stock(id, &d, &self.items, &mut ctx);
             return stock.entries.last().map(|e| self.items.display_name(&e.item));
         }

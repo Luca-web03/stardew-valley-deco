@@ -73,7 +73,7 @@ impl World {
         let mut rng = self.day_rng(17);
         let mail = self.farmer.mail_received.clone();
         let seen = self.farmer.events_seen.clone();
-        let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
+        let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
         let mut stock = match self.shops.get("Traveler") {
             Some(data) => shop::build_stock("Traveler", data, &self.items, &mut ctx),
             None => {

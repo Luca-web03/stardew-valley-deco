@@ -257,7 +257,7 @@ impl World {
                 }
             }
             let mut rng2 = rng.clone();
-            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &[], location: &self.current, rng: &mut rng2 };
+            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &[], location: &self.current, rng: &mut rng2, world: Some(self) };
             if !gsq::check(e.condition.as_deref(), &mut ctx) {
                 continue;
             }

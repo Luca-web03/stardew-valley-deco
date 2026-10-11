@@ -34,6 +34,14 @@ pub const FARM_TYPES: &[(&str, &str, &str, &str, &str)] = &[
     ("Meadowlands", "Meadowlands", "Maps/Farm_Ranching", "Farm_Ranching", "Starts with a coop and two hens."),
 ];
 
+/// The farm type id for a numeric or map-style name ("1", "Fishing").
+pub fn farm_type_alias(name: &str) -> Option<&'static str> {
+    if let Ok(i) = name.parse::<usize>() {
+        return FARM_TYPES.get(i).map(|t| t.0);
+    }
+    FARM_TYPES.iter().find(|t| t.3.trim_start_matches("Farm_").eq_ignore_ascii_case(name) || t.0.eq_ignore_ascii_case(name)).map(|t| t.0)
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct AdditionalFarm {

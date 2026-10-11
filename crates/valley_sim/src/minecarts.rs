@@ -51,10 +51,7 @@ impl World {
 
     pub(crate) fn gsq_ok(&self, condition: Option<&str>) -> bool {
         let mut rng = self.day_rng(57);
-        let mail = self.farmer.mail_received.clone();
-        let seen = self.farmer.events_seen.clone();
-        let mut ctx = crate::gsq::QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng };
-        crate::gsq::check(condition, &mut ctx)
+        self.check_query(condition, None, None, &mut rng)
     }
 
     /// `MinecartTransport [network] [exclude destination]`.

@@ -64,6 +64,13 @@ fn host_of(f: &FestivalInfo) -> Option<String> {
 }
 
 impl World {
+    /// Is there a festival on the day with this `days_played` value?
+    pub fn festival_on(&self, days_played: i32) -> bool {
+        let d = (days_played - 1).rem_euclid(112);
+        let season = ["spring", "summer", "fall", "winter"][(d / 28) as usize];
+        self.festivals.contains_key(&format!("{season}{}", d % 28 + 1))
+    }
+
     pub fn festival_today(&self) -> Option<&FestivalInfo> {
         let key = format!("{}{}", self.clock.season.key(), self.clock.day);
         self.festivals.get(&key)

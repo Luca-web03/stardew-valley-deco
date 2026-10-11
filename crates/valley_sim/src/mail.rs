@@ -14,6 +14,8 @@ pub struct Letter {
     pub quest: Option<String>,
     /// `%item conversationTopic <id> <days>`.
     pub topic: Option<(String, i32)>,
+    /// `%action <action> %%`: trigger actions run when read.
+    pub actions: Vec<String>,
 }
 
 pub fn parse(raw: &str, db: &ItemDb, farmer_name: &str) -> Letter {
@@ -25,8 +27,23 @@ pub fn parse(raw: &str, db: &ItemDb, farmer_name: &str) -> Letter {
     l.title = title;
     let mut text = String::new();
     let mut rest = body.as_str();
-    while let Some(start) = rest.find("%item") {
+    loop {
+        let item_at = rest.find("%item");
+        let action_at = rest.find("%action");
+        let (start, is_action) = match (item_at, action_at) {
+            (Some(i), Some(a)) if a < i => (a, true),
+            (Some(i), _) => (i, false),
+            (None, Some(a)) => (a, true),
+            (None, None) => break,
+        };
         text.push_str(&rest[..start]);
+        if is_action {
+            let after = &rest[start + 7..];
+            let end = after.find("%%").unwrap_or(after.len());
+            l.actions.push(after[..end].trim().to_string());
+            rest = if end + 2 <= after.len() { &after[end + 2..] } else { "" };
+            continue;
+        }
         let after = &rest[start + 5..];
         let end = after.find("%%").unwrap_or(after.len());
         let spec: Vec<&str> = after[..end].split_whitespace().collect();
