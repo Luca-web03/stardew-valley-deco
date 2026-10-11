@@ -175,7 +175,7 @@ pub struct World {
     /// Bed tile in the farmhouse used for waking up.
     pub bed_tile: TilePos,
     /// Ticks since the farmer last left a bed tile (avoids re-prompting).
-    in_bed: bool,
+    pub(crate) in_bed: bool,
     pub last_report: Option<DayReport>,
     /// Raw schedule tables per NPC name.
     pub schedule_data: HashMap<String, HashMap<String, String>>,
@@ -228,6 +228,10 @@ pub struct World {
     pub mine_entrance: (String, TilePos),
     /// Where the volcano's top ladder leads.
     pub volcano_entrance: (String, TilePos),
+    /// Other players (co-op farmhands).
+    pub farmhands: Vec<crate::multiplayer::PlayerState>,
+    /// Set while a farmhand's state is swapped in.
+    pub active_farmhand: Option<usize>,
     pub cooking: BTreeMap<String, crate::crafting::Recipe>,
     pub mail_data: HashMap<String, String>,
     pub quest_data: HashMap<String, String>,
@@ -378,6 +382,8 @@ impl World {
             mine_ladder_spawned: false,
             mine_entrance: ("Mine".into(), TilePos::new(5, 5)),
             volcano_entrance: ("Farm".into(), TilePos::new(10, 10)),
+            farmhands: Vec::new(),
+            active_farmhand: None,
             cooking: crate::crafting::parse_all_cooking(&cm.load_string_dict("Data/CookingRecipes")),
             mail_data: cm.load_string_dict("Data/mail"),
             quest_data: cm.load_string_dict("Data/Quests"),
@@ -736,6 +742,34 @@ impl World {
         self.apply_cleared_tiles();
     }
 
+    /// The active player's overnight rest: energy, health and friendship
+    /// upkeep.
+    pub(crate) fn farmer_night_reset(&mut self, passed_out: bool) {
+        let max = self.farmer.max_stamina as f32;
+        let bedtime = self.clock.time;
+        self.farmer.stamina = if passed_out || self.farmer.exhausted {
+            max * 0.5
+        } else if bedtime > 2400 {
+            let late = crate::time::Clock::minutes_between(2400, bedtime) as f32;
+            max * (1.0 - (late / 120.0) * 0.5).clamp(0.5, 1.0)
+        } else {
+            max
+        };
+        self.farmer.exhausted = false;
+        self.farmer.health = self.farmer.max_health;
+        let new_week = self.clock.weekday() == "Sun";
+        for (name, f) in self.farmer.friendships.iter_mut() {
+            if !f.talked_today && f.points > 0 && self.npcs.iter().any(|n| &n.name == name) {
+                f.points = (f.points - 2).max(0);
+            }
+            f.talked_today = false;
+            f.gifted_today = false;
+            if new_week {
+                f.gifts_this_week = 0;
+            }
+        }
+    }
+
     /// End the day (sleep or pass out) and start the next one.
     pub fn end_day(&mut self, passed_out: bool) {
         // Shipping.
@@ -762,31 +796,7 @@ impl World {
 
         // Energy for tomorrow (approximation of the documented behaviour:
         // full after a normal night, reduced after late nights/exhaustion).
-        let max = self.farmer.max_stamina as f32;
-        let bedtime = self.clock.time;
-        self.farmer.stamina = if passed_out || self.farmer.exhausted {
-            max * 0.5
-        } else if bedtime > 2400 {
-            let late = crate::time::Clock::minutes_between(2400, bedtime) as f32;
-            max * (1.0 - (late / 120.0) * 0.5).clamp(0.5, 1.0)
-        } else {
-            max
-        };
-        self.farmer.exhausted = false;
-        self.farmer.health = self.farmer.max_health;
-
-        // Friendship upkeep.
-        let new_week = self.clock.weekday() == "Sun";
-        for (name, f) in self.farmer.friendships.iter_mut() {
-            if !f.talked_today && f.points > 0 && self.npcs.iter().any(|n| &n.name == name) {
-                f.points = (f.points - 2).max(0);
-            }
-            f.talked_today = false;
-            f.gifted_today = false;
-            if new_week {
-                f.gifts_this_week = 0;
-            }
-        }
+        self.farmer_night_reset(passed_out);
 
         // Machines keep working through the night until 6am.
         let overnight = Clock::minutes_between(self.clock.time, 2600) + 240;
@@ -876,6 +886,7 @@ impl World {
         self.fishing = crate::fishing::FishingState::Idle;
         self.in_bed = true;
         self.paused = false;
+        self.farmhands_overnight(passed_out);
         self.start_day();
         let report = DayReport { shipped, earned, passed_out, money_lost };
         self.last_report = Some(report.clone());
@@ -911,6 +922,15 @@ impl World {
 
     pub fn update(&mut self, input: &PlayerInput) {
         self.update_ms(input, TICK_MS);
+    }
+
+    /// The active player's own actions for one tick (used for farmhands;
+    /// the shared world advances in `update_ms`).
+    pub(crate) fn update_player(&mut self, input: &PlayerInput, dt: u32) {
+        if self.paused || self.event.is_some() {
+            return;
+        }
+        self.update_farmer(input, dt);
     }
 
     pub fn update_ms(&mut self, input: &PlayerInput, dt: u32) {

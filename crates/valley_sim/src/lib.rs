@@ -30,6 +30,7 @@ pub mod perfection;
 pub mod mastery;
 pub mod island;
 pub mod volcano;
+pub mod multiplayer;
 pub mod gsq;
 pub mod house;
 pub mod input;

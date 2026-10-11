@@ -520,6 +520,13 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         draw_farmer(rc, out, w, cam, map_h);
     }
 
+    // Other players.
+    if event_here.is_none() {
+        for p in w.farmhands.iter().filter(|p| p.current == loc_name) {
+            draw_other_farmer(rc, out, w, &p.farmer, cam, map_h);
+        }
+    }
+
     // Floating damage numbers.
     if let Some(ft) = rc.textures.id("__engine/font8x8") {
         for f in w.floaters.iter().filter(|f| f.location == loc_name) {
@@ -976,6 +983,30 @@ pub fn farmer_texture(rc: &mut RenderCtx, a: &valley_sim::farmer::Appearance) ->
     let c = |v: [u8; 3]| Color::rgb(v[0], v[1], v[2]);
     let look = valley_content::dev::art::Look { skin: c(a.skin), hair: c(a.hair), shirt: c(a.shirt), legs: c(a.pants), long_hair: a.long_hair, beard: false };
     rc.assets.generated(rc.textures, &a.texture_name(), || valley_content::dev::art::character(&look))
+}
+
+/// Another player: their own look, hat and a name tag.
+fn draw_other_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, f: &valley_sim::farmer::Farmer, cam: &Camera, map_h: f32) {
+    let tex = farmer_texture(rc, &f.appearance);
+    let shadow = rc.assets.shadow(rc.textures);
+    let p = cam.to_screen(f.pos);
+    let depth = sort_depth(f.pos.y + TILE_F, map_h);
+    let frame = walk_frame(f.moving, f.walk_ms, 120);
+    out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
+    out.draw(tex, character_src(f.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
+    if let Some(valley_sim::item::Item::Clothing { id, .. }) = &f.hat {
+        draw_hat(rc, out, w, id, f.facing, Vec2::new(p.x, p.y - TILE_F), frame, depth + 0.0001);
+    }
+    if let Some(ft) = rc.textures.id("__engine/font8x8") {
+        let name: Vec<char> = f.name.chars().take(12).collect();
+        let x0 = p.x + TILE_F / 2.0 - name.len() as f32 * 8.0;
+        for (i, ch) in name.iter().enumerate() {
+            let c = *ch as i32;
+            if c < 256 {
+                out.draw_tinted(ft, IRect::new((c % 16) * 8, (c / 16) * 8, 8, 8), Vec2::new(x0 + i as f32 * 16.0, p.y - TILE_F - 24.0), 2.0, Color::WHITE, DEPTH_OVERLAY + 0.005);
+            }
+        }
+    }
 }
 
 /// Farmer composed from configured layers (cached per appearance).

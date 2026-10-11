@@ -26,6 +26,9 @@ pub struct SaveData {
     pub farmer: Farmer,
     pub locations: BTreeMap<String, LocationState>,
     pub shipping_bin: Vec<Item>,
+    /// Co-op farmhands.
+    #[serde(default)]
+    pub farmhands: Vec<crate::multiplayer::FarmhandSave>,
     #[serde(default)]
     pub buildings: Vec<crate::farm::Building>,
     #[serde(default)]
@@ -47,6 +50,7 @@ impl SaveData {
             farmer: w.farmer.clone(),
             locations: w.locations.iter().map(|(k, v)| (k.clone(), v.state.clone())).collect(),
             shipping_bin: w.shipping_bin.clone(),
+            farmhands: w.farmhand_saves(),
             buildings: w.buildings.clone(),
             animals: w.animals.clone(),
             pet: w.pet.clone(),
@@ -91,6 +95,7 @@ impl SaveData {
             }
         }
         w.shipping_bin = self.shipping_bin;
+        w.restore_farmhands(self.farmhands);
         w.current = "FarmHouse".into();
         w.start_day();
         w.drain_events();
