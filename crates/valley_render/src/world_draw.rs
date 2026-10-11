@@ -156,6 +156,31 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         out.draw(tex, src, pos, ZOOM * 16.0 / fl.tile.max(1) as f32, DEPTH_GROUND - 0.0005);
     }
 
+    // Bushes, berries showing when ripe.
+    for (p, t) in &loc.state.terrain {
+        let TerrainFeature::Bush(b) = t else { continue };
+        let bl = &lay.bushes;
+        let tea_grown = w.clock.days_played() as i32 - b.planted >= valley_sim::bushes::TEA_GROW_DAYS;
+        let [mut x, mut y, sw, sh] = match b.size {
+            valley_sim::bushes::SMALL => bl.small,
+            valley_sim::bushes::MEDIUM => bl.medium,
+            valley_sim::bushes::LARGE => bl.large,
+            _ if tea_grown => bl.tea,
+            _ => bl.tea_young,
+        };
+        if b.ready {
+            x += bl.ready_offset[0];
+            y += bl.ready_offset[1];
+        }
+        let tex = rc.assets.tex(rc.cm, rc.textures, &bl.texture);
+        let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        let (dw, dh) = (sw as f32 * ZOOM, sh as f32 * ZOOM);
+        let shake = if b.shake > 0 { ((b.shake as f32) * 1.3).sin() * 3.0 } else { 0.0 };
+        let mut s = Sprite::new(tex, IRect::new(x, y, sw, sh), FRect::new(pos.x + shake, pos.y + TILE_F - dh, dw, dh), sort_depth((p.y * TILE + TILE - 6) as f32, map_h));
+        s.flip_x = b.flip;
+        out.sprite(s);
+    }
+
     // Placed objects (debris, forage).
     let shake_off = |shake: i32| if shake > 0 { ((shake as f32) * 1.3).sin() * 3.0 } else { 0.0 };
     for (p, o) in &loc.state.objects {

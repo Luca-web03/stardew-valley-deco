@@ -29,6 +29,8 @@ pub fn build() -> MemSource {
     m.insert("LooseSprites/Dev_Fence_Wood.png", art::fence(Color::rgb(160, 110, 60)).encode_png());
     m.insert("LooseSprites/Dev_Fence_Stone.png", art::fence(Color::rgb(150, 150, 155)).encode_png());
     m.insert("TerrainFeatures/Dev_Flooring.png", art::flooring().encode_png());
+    m.insert("TileSheets/Dev_Bushes.png", art::bushes().encode_png());
+    m.insert("Maps/dev_paths.png", art::paths_sheet().encode_png());
     m.insert("TileSheets/tools.png", art::tools().encode_png());
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
     m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
@@ -166,6 +168,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                                 "Type": "Minerals", "Category": -2, "Price": 2000, "SpriteIndex": ICON_PRISMATIC, "CustomFields": { "Port.Forge": "Prismatic" } },
         "Dev_DragonTooth": { "Name": "Dragon Tooth", "DisplayName": "Dragon Tooth", "Description": "Huge and sharp. The forge can awaken a weapon's hidden strength with it.",
                              "Type": "Basic", "Category": -2, "Price": 500, "SpriteIndex": ICON_DRAGON_TOOTH, "CustomFields": { "Port.Forge": "DragonTooth" } },
+        "Dev_TeaSapling": obj("Tea Sapling", "Basic", -74, 500, ICON_TEA_SAPLING, -300),
+        "Dev_TeaLeaves": obj("Tea Leaves", "Basic", -75, 50, ICON_TEA_LEAVES, -300),
         "Dev_WoodFence": obj("Wood Fence", "Crafting", -8, 1, ICON_WOOD_FENCE, -300),
         "Dev_StoneFence": obj("Stone Fence", "Crafting", -8, 2, ICON_STONE_FENCE, -300),
         "Dev_Gate": obj("Gate", "Crafting", -8, 4, ICON_GATE, -300),
@@ -341,6 +345,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Bean_Name": "Bean", "Bean_Description": "A handful of green beans.",
         "PumpkinSeeds_Name": "Pumpkin Seeds", "PumpkinSeeds_Description": "Plant in fall. Takes a while.",
         "Pumpkin_Name": "Pumpkin", "Pumpkin_Description": "Big, round and orange.",
+        "TeaSapling_Name": "Tea Sapling", "TeaSapling_Description": "Plant it on the farm. Grows into a tea bush in 20 days.",
+        "TeaLeaves_Name": "Tea Leaves", "TeaLeaves_Description": "Fresh leaves from a tea bush.",
         "WoodFence_Name": "Wood Fence", "WoodFence_Description": "Keeps animals in and wanders out. Lasts about a month.",
         "StoneFence_Name": "Stone Fence", "StoneFence_Description": "A sturdier fence. Lasts about two months.",
         "Gate_Name": "Gate", "Gate_Description": "Opens and closes. Never wears out.",
@@ -930,6 +936,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Workshop/0": "Builder's Bundle/BO Dev_Juicer 1/388 50 0 390 50 0 771 20 0/2/3/Builder's Bundle",
             "Workshop/1": "Smith's Bundle/O Dev_IronBar 3/Dev_CopperBar 2 0 Dev_Quartz 1 0 Dev_Coal 5 0/3/3/Smith's Bundle",
             "Workshop/2": "Repair Fund/O Dev_GoldBar 1/-1 1000 1000/4/1/Repair Fund"
+        })),
+        ("Port/PathsLayer", json!({
+            "paths": { "9": "Tree 1", "10": "Tree 2", "11": "Tree 3" },
+            "dev_paths": { "0": "Bush 0", "1": "Bush 1", "2": "Bush 2", "3": "Tree 1" }
         })),
         ("Data/Fences", json!({
             "Dev_WoodFence": { "Health": 28, "RepairHealthAdjustmentMinimum": 0, "RepairHealthAdjustmentMaximum": 4, "Texture": "LooseSprites\\Dev_Fence_Wood",

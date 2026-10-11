@@ -36,6 +36,7 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
+- [x] Bushes (berry seasons, tea bushes, cutting), `Paths` layer spawns
 - [x] Fences (wear, falling over, removal tools), gates, floors and paths
       (joined sprites, speed bonus on the farm)
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines,

@@ -554,6 +554,8 @@ impl World {
         w.world_map = crate::world_map::load(cm);
         w.pets_data = crate::pets::load_pets(cm);
         w.achievement_data = crate::achievements::parse(&cm.load_string_dict("Data/Achievements").into_iter().collect());
+        let paths: crate::bushes::PathsTable = cm.load_json("Port/PathsLayer").unwrap_or_else(crate::bushes::default_paths_table);
+        w.spawn_paths_layers(&paths);
         w.place_farm_clumps();
         w.populate_new_farm();
         w.farm_type_start();
@@ -793,6 +795,7 @@ impl World {
         self.unlock_recipes();
         self.machines_day_update();
         self.run_sprinklers();
+        self.bushes_overnight();
         self.spawn_forage();
         self.deliver_dated_mail();
         self.roll_daily_quest();
@@ -958,7 +961,7 @@ impl World {
                             tree.stage += 1;
                         }
                     }
-                    TerrainFeature::FruitTree(_) | TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) => {}
+                    TerrainFeature::FruitTree(_) | TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) | TerrainFeature::Bush(_) => {}
                 }
             }
             for p in remove {
@@ -1113,6 +1116,9 @@ impl World {
     fn animate(&mut self, _dt: u32) {
         for loc in self.locations.values_mut() {
             for t in loc.state.terrain.values_mut() {
+                if let TerrainFeature::Bush(b) = t {
+                    b.shake = (b.shake - 1).max(0);
+                }
                 if let TerrainFeature::Tree(tree) = t {
                     tree.shake = (tree.shake - 1).max(0);
                     if tree.falling > 0 {
@@ -1414,7 +1420,7 @@ impl World {
             return true;
         }
         // Trees: tappers and fruit.
-        if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) {
+        if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) || self.shake_bush(target) {
             return true;
         }
         if self.crab_pot_action(target) || self.place_bomb(target) || self.place_furniture(target) || self.pickup_furniture(target) {
@@ -1500,6 +1506,9 @@ impl World {
             }
         }
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
+            if self.is_tea_sapling(&id) {
+                return self.plant_tea(target);
+            }
             if self.fruit_trees.contains_key(&id) || self.wild_trees.values().any(|d| d.seed_item_id.as_deref().map(|s| crate::item::split_qualified(s).1) == Some(id.as_str())) {
                 return self.plant_tree(target);
             }

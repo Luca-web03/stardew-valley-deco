@@ -103,6 +103,8 @@ pub enum TerrainFeature {
     FruitTree(FruitTree),
     /// Floor or path (`Data/FloorsAndPaths` key; see `fences`).
     Flooring(String),
+    /// Bush (see `bushes`).
+    Bush(crate::bushes::Bush),
 }
 
 impl TerrainFeature {
@@ -111,6 +113,7 @@ impl TerrainFeature {
             TerrainFeature::HoeDirt(_) | TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) => true,
             TerrainFeature::Tree(t) => t.stage < 1 && !t.stump,
             TerrainFeature::FruitTree(f) => f.days_until_mature > FRUIT_TREE_DAYS - 7,
+            TerrainFeature::Bush(_) => false,
         }
     }
     pub fn hoe_dirt(&self) -> Option<&HoeDirt> {

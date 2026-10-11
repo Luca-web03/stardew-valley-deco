@@ -89,6 +89,14 @@ impl B {
             }
         }
     }
+    /// A `Paths` layer marker (spawns a bush or tree; see `paths_sheet`).
+    fn path_marker(&mut self, x: i32, y: i32, idx: i32) {
+        if !self.map.sheets.iter().any(|s| s.id == "paths") {
+            self.map.sheets.push(TileSheet { id: "paths".into(), image: "dev_paths".into(), sheet_w: 4, sheet_h: 1, tile_w: 16, tile_h: 16, ..Default::default() });
+        }
+        let sheet = self.map.sheets.iter().position(|s| s.id == "paths").unwrap() as u16;
+        self.map.layer_mut("Paths").unwrap().set(x, y, Some(Tile::new(sheet, idx)));
+    }
     fn prop(&mut self, k: &str, v: &str) {
         self.map.props.insert(k.into(), s(v));
     }
@@ -167,6 +175,10 @@ fn farm_builder(id: &str) -> B {
     }
     for (x, y) in [(4, 6), (8, 4), (14, 3), (30, 4), (36, 6), (42, 3), (3, 20), (4, 30), (44, 32)] {
         b.map_tree(x, y);
+    }
+    // Berry bushes along the west edge, a big bush by the cave.
+    for (x, y, size) in [(2, 12, 1), (2, 16, 1), (5, 25, 0), (15, 2, 2)] {
+        b.path_marker(x, y, size);
     }
     // Farmhouse.
     b.house(18, 4, 6, "Warp 5 8 FarmHouse");
@@ -300,6 +312,9 @@ pub fn town() -> Map {
     b.set_props("Buildings", 4, 11, LAMP, &[("Action", "Port.Mastery")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
+    }
+    for (x, y, size) in [(2, 18, 1), (11, 19, 1), (29, 19, 2), (16, 9, 0)] {
+        b.path_marker(x, y, size);
     }
     // Cave mouth to the mines in the north-west corner.
     b.fill("Back", 2, 1, 3, 3, PATH);

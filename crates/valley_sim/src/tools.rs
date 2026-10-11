@@ -239,6 +239,10 @@ impl World {
         if self.hit_fence(t, ToolKind::Axe) || self.pickup_object(t) || self.hit_floor(t) {
             return;
         }
+        if self.bush_at(t).is_some() {
+            self.cut_bush(t, self.tool_level(slot));
+            return;
+        }
         let powerful = self.tool_has(slot, "Powerful") as i32;
         if self.hit_clump(t, ToolKind::Axe, self.tool_level(slot) + powerful) {
             return;

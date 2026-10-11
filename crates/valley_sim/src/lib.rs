@@ -7,6 +7,7 @@
 
 pub mod buffs;
 pub mod bundle_remix;
+pub mod bushes;
 pub mod bundles;
 pub mod clumps;
 pub mod collision;

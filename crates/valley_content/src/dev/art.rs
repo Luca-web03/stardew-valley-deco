@@ -448,6 +448,8 @@ pub const ICON_GATE: i32 = 90;
 pub const ICON_WOOD_FLOOR: i32 = 91;
 pub const ICON_STONE_PATH: i32 = 92;
 pub const ICON_GRAVEL_PATH: i32 = 93;
+pub const ICON_TEA_SAPLING: i32 = 94;
+pub const ICON_TEA_LEAVES: i32 = 95;
 pub const GEM_COLORS: [(u8, u8, u8); 6] = [(60, 190, 100), (90, 200, 220), (220, 50, 70), (160, 90, 210), (240, 180, 50), (100, 170, 110)];
 
 fn seed_packet(c: &mut Cell, col: Color) {
@@ -1038,6 +1040,21 @@ pub fn objects() -> Image {
         c.rect(2, 4, 12, 2, shade(base, 25));
         c.px(5, 8, shade(base, -35));
         c.px(10, 10, shade(base, -35));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_TEA_SAPLING, OBJ_COLS, 16, 16);
+        c.rect(7, 8, 2, 7, Color::rgb(110, 80, 50));
+        c.ellipse(8.0, 6.0, 4.0, 3.0, Color::rgb(70, 140, 70));
+        c.ellipse(5.0, 9.0, 2.0, 1.5, Color::rgb(90, 160, 80));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_TEA_LEAVES, OBJ_COLS, 16, 16);
+        for (x, y) in [(5.0, 6.0), (10.0, 7.0), (7.0, 11.0)] {
+            c.ellipse(x, y, 3.0, 2.0, Color::rgb(80, 160, 90));
+        }
+        c.px(5, 6, Color::rgb(140, 210, 140));
         c.auto_outline(OUTLINE);
     }
     {
@@ -2487,6 +2504,72 @@ pub fn flooring() -> Image {
                 c.rect(0, 0, 1, 16, edge);
             }
         }
+    }
+    img
+}
+
+/// Bushes: small (0,0,16,32), medium (16,0,32,32), large (48,0,48,32), young
+/// and grown tea (96 / 112); the row below shows berries or fresh leaves.
+pub fn bushes() -> Image {
+    let mut img = Image::new(128, 64);
+    let leaf = Color::rgb(60, 130, 60);
+    for ready in [false, true] {
+        let oy = if ready { 32 } else { 0 };
+        {
+            let mut c = bush_blob(&mut img, 0, oy, 16, 14, 1, leaf);
+            c.auto_outline(OUTLINE);
+        }
+        {
+            let mut c = bush_blob(&mut img, 16, oy, 32, 20, 2, leaf);
+            if ready {
+                for (x, y) in [(7, 18), (14, 22), (22, 17), (26, 24), (11, 27), (19, 26)] {
+                    c.rect(x, y, 2, 2, Color::rgb(200, 50, 90));
+                }
+            }
+            c.auto_outline(OUTLINE);
+        }
+        {
+            let mut c = bush_blob(&mut img, 48, oy, 48, 26, 3, leaf);
+            c.auto_outline(OUTLINE);
+        }
+        {
+            let mut c = Cell { ox: 96, oy, w: 16, h: 32, img: &mut img };
+            c.rect(7, 26, 2, 6, Color::rgb(110, 80, 50));
+            c.ellipse(8.0, 23.0, 4.0, 4.0, Color::rgb(80, 150, 80));
+            c.auto_outline(OUTLINE);
+        }
+        {
+            let mut c = Cell { ox: 112, oy, w: 16, h: 32, img: &mut img };
+            c.ellipse(8.0, 22.0, 7.0, 9.0, Color::rgb(70, 140, 70));
+            if ready {
+                for (x, y) in [(4, 16), (10, 19), (6, 24), (11, 26)] {
+                    c.rect(x, y, 2, 2, Color::rgb(150, 220, 140));
+                }
+            }
+            c.auto_outline(OUTLINE);
+        }
+    }
+    img
+}
+
+fn bush_blob(img: &mut Image, ox: i32, oy: i32, w: i32, h: i32, salt: u32, leaf: Color) -> Cell<'_> {
+    let mut c = Cell { ox, oy, w, h: 32, img };
+    let rx = w as f32 / 2.0 - 1.0;
+    c.ellipse(w as f32 / 2.0, 32.0 - h as f32 / 2.0, rx, h as f32 / 2.0 - 1.0, leaf);
+    for i in 0..(w / 3) {
+        let px = 2 + (super::paint::hash(i, salt as i32, 5) % (w as u32 - 4)) as i32;
+        let py = 32 - h + 3 + (super::paint::hash(i, salt as i32, 6) % (h as u32 - 6)) as i32;
+        c.px(px, py, shade(leaf, 30));
+    }
+    c
+}
+
+/// Marker tiles for the `Paths` map layer (not drawn in game).
+pub fn paths_sheet() -> Image {
+    let mut img = Image::new(64, 16);
+    for i in 0..4 {
+        let mut c = Cell::at(&mut img, i, 4, 16, 16);
+        c.rect(2, 2, 12, 12, [Color::rgb(80, 160, 80), Color::rgb(60, 130, 60), Color::rgb(40, 100, 40), Color::rgb(140, 100, 60)][i as usize]);
     }
     img
 }

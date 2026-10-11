@@ -44,6 +44,14 @@ pub fn tile_passable(loc: &GameLocation, p: TilePos) -> bool {
             return false;
         }
     }
+    // Wide bushes also cover the tiles to the right of where they stand.
+    for dx in 1..3 {
+        if let Some(crate::terrain::TerrainFeature::Bush(b)) = loc.terrain(TilePos::new(p.x - dx, p.y)) {
+            if dx < b.width() {
+                return false;
+            }
+        }
+    }
     true
 }
 

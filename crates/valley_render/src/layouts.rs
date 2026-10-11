@@ -82,6 +82,34 @@ impl Default for FlooringLayout {
     }
 }
 
+/// Bush sheet: source rects (x, y, w, h) per size, drawn bottom-left on
+/// the bush's tile; `ready_offset` moves to the frame with berries/leaves.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct BushLayout {
+    pub texture: String,
+    pub small: [i32; 4],
+    pub medium: [i32; 4],
+    pub large: [i32; 4],
+    pub tea_young: [i32; 4],
+    pub tea: [i32; 4],
+    pub ready_offset: [i32; 2],
+}
+
+impl Default for BushLayout {
+    fn default() -> Self {
+        Self {
+            texture: "TileSheets/Dev_Bushes".into(),
+            small: [0, 0, 16, 32],
+            medium: [16, 0, 32, 32],
+            large: [48, 0, 48, 32],
+            tea_young: [96, 0, 16, 32],
+            tea: [112, 0, 16, 32],
+            ready_offset: [0, 32],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct TreeLayout {
@@ -188,6 +216,7 @@ pub struct Layouts {
     pub hoe_dirt: HoeDirtLayout,
     pub fences: FenceLayout,
     pub flooring: FlooringLayout,
+    pub bushes: BushLayout,
     pub trees: TreeLayout,
     pub farmer: FarmerLayout,
 }
