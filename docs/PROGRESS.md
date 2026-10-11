@@ -72,6 +72,9 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts,
       slime hutches (troughs, slime balls, incubators), cabins for farmhands
+- [x] Building upgrades in place (`BuildingToUpgrade`), hay capacity from
+      data, building chests with overnight item conversions (mill), action
+      tiles, indoor items and collision maps
 - [x] NPCs: schedules (documented key fallbacks, `rain2`, `NOT friendship`,
       arrival times), routing across locations, dialogue with questions,
       chance/world-state/answer/once-only commands, `%` tokens, item gifts,

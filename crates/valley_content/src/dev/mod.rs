@@ -66,6 +66,7 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/Dev_Clothes.png", art::clothes().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_SlimeHutch.png", art::shed(5, 3, Color::rgb(150, 170, 150), Color::rgb(90, 140, 80)).encode_png());
+    m.insert("Buildings/Dev_Mill.png", art::shed(4, 2, Color::rgb(190, 170, 130), Color::rgb(140, 80, 60)).encode_png());
     m.insert("Buildings/Dev_Cabin.png", art::shed(3, 3, Color::rgb(180, 140, 100), Color::rgb(120, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
@@ -898,6 +899,24 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
                 "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"]
             },
+            "Dev_BigCoop": {
+                "Name": "Big Henhouse", "Description": "Room for eight hens, and an incubator.", "Texture": "Buildings\\Dev_Coop",
+                "Size": { "X": 4, "Y": 3 }, "BuildCost": 4000, "BuildDays": 2, "BuildingToUpgrade": "Coop",
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 150 }, { "ItemId": "(O)390", "Amount": 100 }],
+                "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
+                "IndoorMap": "Dev_BigCoop", "MaxOccupants": 8, "ValidOccupantTypes": ["Coop"],
+                "IndoorItems": [{ "Id": "incubator", "ItemId": "(BC)Dev_Incubator", "Tile": { "X": 11, "Y": 2 } }]
+            },
+            "Dev_Mill": {
+                "Name": "Mill", "Description": "Put turnips in the hopper; it grinds them overnight.", "Texture": "Buildings\\Dev_Mill",
+                "Size": { "X": 4, "Y": 2 }, "BuildCost": 2500, "BuildDays": 1,
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 100 }, { "ItemId": "(O)390", "Amount": 50 }],
+                "CollisionMap": "XXXX\nXOXX",
+                "Chests": [{ "Id": "Input", "Type": "Load", "InvalidItemMessage": "Only turnips go in the hopper." }, { "Id": "Output", "Type": "Collect" }],
+                "ActionTiles": [{ "Id": "in", "Tile": { "X": 0, "Y": 1 }, "Action": "BuildingChest Input" }, { "Id": "out", "Tile": { "X": 3, "Y": 1 }, "Action": "BuildingChest Output" }],
+                "ItemConversions": [{ "Id": "flour", "RequiredTags": ["id_o_dev_turnip"], "RequiredCount": 1, "SourceChest": "Input", "DestinationChest": "Output",
+                                      "ProducedItems": [{ "ItemId": "(O)Dev_Bread", "MinStack": 1, "MaxStack": 1 }] }]
+            },
             "Dev_SlimeHutch": {
                 "Name": "Blob Hutch", "Description": "Raise blobs. Fill the troughs and they leave goo balls overnight.", "Texture": "Buildings\\Dev_SlimeHutch",
                 "Size": { "X": 5, "Y": 3 }, "BuildCost": 8000, "BuildDays": 2,
@@ -914,7 +933,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             },
             "Silo": {
                 "Name": "Silo", "Description": "Stores hay cut from grass with the scythe.", "Texture": "Buildings\\Dev_Silo",
-                "Size": { "X": 2, "Y": 2 }, "BuildCost": 100, "BuildDays": 1,
+                "Size": { "X": 2, "Y": 2 }, "BuildCost": 100, "BuildDays": 1, "HayCapacity": 240,
                 "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 100 }, { "ItemId": "(O)Dev_CopperBar", "Amount": 5 }]
             },
             "Barn": {

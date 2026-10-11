@@ -638,6 +638,79 @@ pub struct BuildingData {
     /// (e.g. "ObeliskWarp Beach 20 4 true").
     pub default_action: Option<String>,
     pub custom_fields: Option<BTreeMap<String, String>>,
+    /// Building this one upgrades (e.g. a bigger coop).
+    pub building_to_upgrade: Option<String>,
+    /// Hay this building stores (silos).
+    pub hay_capacity: i32,
+    /// Overnight conversions between the building's chests (e.g. a mill).
+    pub item_conversions: Vec<BuildingItemConversion>,
+    /// Item stores of the building.
+    pub chests: Vec<BuildingChest>,
+    /// Actions on tiles of the building (relative to its top-left).
+    pub action_tiles: Vec<BuildingActionTile>,
+    /// Items placed inside when built.
+    pub indoor_items: Vec<IndoorItemAdd>,
+    /// Rows of 'X' (blocked) and 'O' (open) over the footprint.
+    pub collision_map: Option<String>,
+    /// Built at once, without a builder's days.
+    pub magical_construction: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingItemConversion {
+    pub id: String,
+    pub required_tags: Vec<String>,
+    #[serde(default = "one")]
+    pub required_count: i32,
+    #[serde(default = "neg1")]
+    pub max_daily_conversions: i32,
+    pub source_chest: String,
+    pub destination_chest: String,
+    pub produced_items: Vec<GenericItem>,
+}
+
+/// A generic spawned item (subset of the original's spawn item fields).
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct GenericItem {
+    pub id: Option<String>,
+    pub item_id: Option<String>,
+    pub random_item_id: Option<Vec<String>>,
+    pub condition: Option<String>,
+    pub min_stack: i32,
+    pub max_stack: i32,
+    pub quality: Option<i32>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingChest {
+    pub id: String,
+    /// "Chest", "Collect" or "Load".
+    #[serde(rename = "Type")]
+    pub kind: String,
+    pub sound: Option<String>,
+    pub invalid_item_message: Option<String>,
+    pub invalid_count_message: Option<String>,
+    pub chest_full_message: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingActionTile {
+    pub id: Option<String>,
+    pub tile: Point,
+    pub action: String,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct IndoorItemAdd {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub tile: Point,
+    pub indestructible: bool,
 }
 
 impl Default for BuildingData {
@@ -660,6 +733,14 @@ impl Default for BuildingData {
             build_condition: None,
             default_action: None,
             custom_fields: None,
+            building_to_upgrade: None,
+            hay_capacity: 0,
+            item_conversions: Vec::new(),
+            chests: Vec::new(),
+            action_tiles: Vec::new(),
+            indoor_items: Vec::new(),
+            collision_map: None,
+            magical_construction: false,
         }
     }
 }

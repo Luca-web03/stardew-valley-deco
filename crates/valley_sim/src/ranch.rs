@@ -15,7 +15,7 @@ const BATTERY: &[&str] = &["787", "Dev_Battery"];
 
 impl World {
     pub fn silo_capacity(&self) -> i32 {
-        self.buildings.iter().filter(|b| b.days_left == 0 && b.kind.eq_ignore_ascii_case("Silo")).count() as i32 * SILO_CAPACITY
+        self.hay_capacity()
     }
 
     /// Cutting grass with the scythe may store hay.

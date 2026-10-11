@@ -1131,6 +1131,17 @@ impl ValleyGame {
                                 None => {}
                             }
                         }));
+                    } else if let Some(i) = (*hovered).filter(|&i| self.world.as_ref().is_some_and(|w| w.buildings_data.get(&list[i]).is_some_and(|d| d.building_to_upgrade.is_some()))) {
+                        // Upgrades rebuild an existing building in place.
+                        let kind = list[i].clone();
+                        close = true;
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            match g.world.as_mut().map(|w| w.upgrade_building(&kind, None)) {
+                                Some(Ok(_)) => g.toast("The upgrade has started."),
+                                Some(Err(e)) => g.toast(&e),
+                                None => {}
+                            }
+                        }));
                     } else if let Some(i) = *hovered {
                         let kind = list[i].clone();
                         close = true;

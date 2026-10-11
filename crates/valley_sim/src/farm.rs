@@ -43,6 +43,12 @@ pub struct Building {
     /// Cabin: the farmhand who lives here.
     #[serde(default)]
     pub owner: Option<String>,
+    /// Kind this building is being upgraded to.
+    #[serde(default)]
+    pub upgrade_to: Option<String>,
+    /// Building chests (`Data/Buildings` `Chests`).
+    #[serde(default)]
+    pub chests: std::collections::BTreeMap<String, crate::inventory::Inventory>,
 }
 
 impl Building {
@@ -147,7 +153,8 @@ impl World {
             self.farmer.inventory.remove_object(id, m.amount);
         }
         self.next_building_id += 1;
-        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: data.build_days.max(0), animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None };
+        let days = if data.magical_construction { 0 } else { data.build_days.max(0) };
+        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: days, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default() };
         let done = b.days_left == 0;
         self.buildings.push(b);
         self.rebuild_location_edges();
@@ -165,7 +172,7 @@ impl World {
         let size = (data.size.x.max(1), data.size.y.max(1));
         self.next_building_id += 1;
         let id = self.next_building_id;
-        self.buildings.push(Building { id, kind: kind.to_string(), tile, size, interior: None, days_left: 0, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None });
+        self.buildings.push(Building { id, kind: kind.to_string(), tile, size, interior: None, days_left: 0, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default() });
         self.finish_building(id);
         self.rebuild_location_edges();
         Ok(id)
@@ -178,8 +185,13 @@ impl World {
         let Some(data) = self.buildings_data.get(&b.kind).cloned() else { return };
         let Some(map_name) = data.indoor_map.clone() else { return };
         let Some(map) = self.building_maps.get(&map_name).cloned() else { return };
-        let name = format!("{}{}", b.kind.replace(' ', ""), b.id);
+        // An upgraded building keeps its interior's name and contents.
+        let name = b.interior.clone().unwrap_or_else(|| format!("{}{}", b.kind.replace(' ', ""), b.id));
+        let old_state = self.locations.get(&name).map(|l| l.state.clone());
         let mut loc = GameLocation::new(&name, map);
+        if let Some(st) = old_state {
+            loc.state = st;
+        }
         loc.outdoors = false;
         loc.display_name = data.name.clone();
         let door = self.door_tile(&b, &data);
@@ -196,9 +208,13 @@ impl World {
             warps.push(Warp { from: TilePos::new(loc.width() / 2, loc.height() - 1), target: "Farm".into(), to: exit });
         }
         loc.warps = warps;
+        let fresh = self.buildings[bi].interior.is_none();
         self.locations.insert(name.clone(), loc);
         self.buildings[bi].interior = Some(name);
         self.buildings[bi].days_left = 0;
+        if fresh {
+            self.place_indoor_items(id);
+        }
         self.rebuild_location_edges();
     }
 
@@ -213,6 +229,9 @@ impl World {
     /// Action on a building tile: enter through the door.
     pub(crate) fn interact_building(&mut self, t: TilePos) -> bool {
         let Some(b) = self.building_at(&self.current, t).cloned() else { return false };
+        if self.run_building_action(t) {
+            return true;
+        }
         if b.days_left > 0 {
             self.emit(WorldEvent::Message(format!("Under construction: {} day(s) left.", b.days_left)));
             return true;
@@ -475,9 +494,14 @@ impl World {
             }
         }
         for id in finished {
-            self.finish_building(id);
+            if self.buildings.iter().any(|b| b.id == id && b.upgrade_to.is_some()) {
+                self.apply_upgrade(id);
+            } else {
+                self.finish_building(id);
+            }
             self.hud("Construction finished!");
         }
+        self.building_conversions_overnight();
         let hay = self.hay_id.clone();
         let winter = self.clock.season == crate::time::Season::Winter;
         let mut drops: Vec<(String, Item)> = Vec::new();

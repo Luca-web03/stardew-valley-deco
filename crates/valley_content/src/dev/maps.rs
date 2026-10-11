@@ -626,7 +626,7 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    let mut v = vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle(), spa()];
+    let mut v = vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Dev_BigCoop", 14, 9), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle(), spa()];
     v.extend(farm_variants());
     v
 }

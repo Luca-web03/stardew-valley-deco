@@ -709,7 +709,7 @@ impl World {
 
     /// Recompute the warp graph and runtime blocked tiles (after buildings change).
     pub(crate) fn rebuild_location_edges(&mut self) {
-        let tiles: std::collections::HashSet<TilePos> = self.buildings.iter().flat_map(|b| b.footprint().collect::<Vec<_>>()).collect();
+        let tiles = self.building_blocked_tiles();
         if let Some(farm) = self.locations.get_mut("Farm") {
             farm.blocked = tiles;
         }
@@ -1803,7 +1803,13 @@ impl World {
                     .filter(|(_, d)| d.builder.as_deref().is_some_and(|b| b.eq_ignore_ascii_case(&builder)))
                     .map(|(k, d)| (k.clone(), d.build_condition.clone()))
                     .collect();
-                let mut list: Vec<String> = candidates.into_iter().filter(|(_, c)| self.gsq_ok(c.as_deref())).map(|(k, _)| k).collect();
+                // Upgrades only show when there's something to upgrade.
+                let mut list: Vec<String> = candidates
+                    .into_iter()
+                    .filter(|(_, c)| self.gsq_ok(c.as_deref()))
+                    .map(|(k, _)| k)
+                    .filter(|k| self.buildings_data.get(k).and_then(|d| d.building_to_upgrade.as_ref()).is_none() || !self.upgradable(k).is_empty())
+                    .collect();
                 if builder == "Robin" && self.house_upgrade_cost().is_some() {
                     list.insert(0, crate::world::HOUSE_UPGRADE_ENTRY.to_string());
                 }

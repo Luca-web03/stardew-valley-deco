@@ -7,6 +7,7 @@
 
 pub mod buffs;
 pub mod automation;
+pub mod building_features;
 pub mod bundle_remix;
 pub mod bushes;
 pub mod bundles;
