@@ -38,7 +38,8 @@ were not available; such values are isolated constants that can be tuned.
       Qi coins / Qi gems), traveling cart
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines,
       including day-update / put-down / output-collected triggers and the
-      seed maker), furniture, casks, tailoring at the sewing machine
+      seed maker, flavored artisan goods, bee houses with flower honey),
+      furniture, casks, tailoring at the sewing machine
 - [x] Cooking, food buffs
 - [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots, bait and
       tackle, treasure chests

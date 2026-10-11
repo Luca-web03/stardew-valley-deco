@@ -138,6 +138,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Goo": obj("Mud Goo", "Basic", -28, 5, ICON_GOO, -300),
         "Dev_Egg": obj("Egg", "Basic", -5, 50, ICON_EGG, 10),
         "Dev_Bouquet": obj("Bouquet", "Basic", 0, 100, ICON_BOUQUET, -300),
+        "Dev_SunbloomSeeds": obj("Sunbloom Seeds", "Seeds", -74, 20, ICON_SUNBLOOM_SEEDS, -300),
+        "Dev_Sunbloom": obj("Sunbloom", "Basic", -80, 60, ICON_SUNBLOOM, -300),
+        "340": obj("Honey", "Basic", -26, 100, ICON_HONEY, -300),
         "Dev_GuardRing": { "Name": "Guard Ring", "DisplayName": "Guard Ring", "Description": "Defense +2.", "Type": "Ring", "Category": -96, "Price": 400,
                            "SpriteIndex": ICON_GUARD_RING, "CustomFields": { "Port.Defense": "2" } },
         "Dev_MagnetRing": { "Name": "Magnet Ring", "DisplayName": "Magnet Ring", "Description": "Pulls items from further away.", "Type": "Ring", "Category": -96, "Price": 400,
@@ -245,6 +248,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "Price": 50, "SpriteIndex": 8, "CustomFields": { "Port.SlimeIncubator": "true" } },
         "Dev_SlimeBall": { "Name": "Goo Ball", "DisplayName": "Goo Ball", "Description": "Squish it for goo.",
                            "Price": 0, "SpriteIndex": 9, "CustomFields": { "Port.SlimeBallDrop": "Dev_Goo" } },
+        "Dev_BeeHouse": { "Name": "Bee House", "DisplayName": "Bee House", "Description": "Bees make honey, flavored by flowers growing nearby.",
+                          "Price": 50, "SpriteIndex": 12 },
         "Dev_Scarecrow": { "Name": "Straw Scarecrow", "DisplayName": "Straw Scarecrow", "Description": "Keeps crows off the crops within 8 tiles.",
                            "Price": 50, "SpriteIndex": 7, "ContextTags": ["crow_scare", "crow_scare_radius_9"] },
     });
@@ -265,6 +270,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "(BC)Dev_MushroomBox": {
             "OutputRules": [{ "Id": "daily", "Triggers": [{ "Trigger": "DayUpdate" }, { "Trigger": "MachinePutDown" }],
                               "OutputItem": [{ "ItemId": "(O)Dev_Mushroom" }], "DaysUntilReady": 1 }]
+        },
+        "(BC)Dev_BeeHouse": {
+            "OutputRules": [{ "Id": "honey", "Triggers": [{ "Trigger": "DayUpdate" }, { "Trigger": "MachinePutDown" }, { "Trigger": "OutputCollected" }],
+                              "OutputItem": [{ "ItemId": "FLAVORED_ITEM Honey -1", "Condition": "!SEASON Winter" }], "DaysUntilReady": 4 }]
         },
         "(BC)Dev_SeedMaker": {
             "OutputRules": [{ "Id": "seeds", "Triggers": [{ "Trigger": "ItemPlacedInMachine", "RequiredTags": ["category_vegetable,category_fruits"] }],
@@ -298,6 +307,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Blob Incubator": "Dev_IronBar 2 Dev_Goo 20/Home/Dev_Incubator/true/default/",
         "Seed Maker": "388 25 Dev_Coal 10 Dev_GoldBar 1/Home/Dev_SeedMaker/true/default/",
         "Rain Totem": "388 1 92 5 Dev_Berry 1/Home/Dev_RainTotem/false/default/",
+        "Bee House": "388 40 Dev_Coal 8 Dev_IronBar 1 92 10/Home/Dev_BeeHouse/true/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -306,6 +316,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Bean_Name": "Bean", "Bean_Description": "A handful of green beans.",
         "PumpkinSeeds_Name": "Pumpkin Seeds", "PumpkinSeeds_Description": "Plant in fall. Takes a while.",
         "Pumpkin_Name": "Pumpkin", "Pumpkin_Description": "Big, round and orange.",
+        "SunbloomSeeds_Name": "Sunbloom Seeds", "SunbloomSeeds_Description": "Plant in spring or summer. Bees love it.",
+        "Sunbloom_Name": "Sunbloom", "Sunbloom_Description": "A cheerful yellow flower.",
+        "Honey_Name": "Honey", "Honey_Description": "Sweet and golden.",
         "Wood_Name": "Wood", "Wood_Description": "Useful building material.",
         "Stone_Name": "Stone", "Stone_Description": "A common building material.",
         "Fiber_Name": "Fiber", "Fiber_Description": "Plant fibers.",
@@ -354,6 +367,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_TurnipSeeds": crop(&["Spring"], &[1, 1, 1, 1], -1, "Dev_Turnip", 0),
         "Dev_BeanSeeds": crop(&["Spring", "Summer"], &[1, 2, 2, 2], 3, "Dev_Bean", 1),
         "Dev_PumpkinSeeds": crop(&["Fall"], &[2, 3, 3, 3], -1, "Dev_Pumpkin", 2),
+        "Dev_SunbloomSeeds": crop(&["Spring", "Summer"], &[1, 2, 2, 2], -1, "Dev_Sunbloom", 3),
     });
     let tool = |class: &str, name: &str, sprite: i32, price: i32| {
         json!({ "ClassName": class, "Name": name, "DisplayName": name, "Texture": "TileSheets\\tools",
@@ -473,6 +487,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "turnip", "ItemId": "(O)Dev_TurnipSeeds", "Condition": "SEASON Spring" },
                 { "Id": "bean", "ItemId": "(O)Dev_BeanSeeds", "Condition": "SEASON Spring Summer" },
                 { "Id": "pumpkin", "ItemId": "(O)Dev_PumpkinSeeds", "Condition": "SEASON Fall" },
+                { "Id": "sunbloom", "ItemId": "(O)Dev_SunbloomSeeds", "Condition": "SEASON Spring Summer" },
                 { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 },
                 { "Id": "dish", "ItemId": "DISH_OF_THE_DAY", "AvailableStock": 3 },
                 { "Id": "fert", "ItemId": "(O)Dev_Fertilizer", "Price": 10 },

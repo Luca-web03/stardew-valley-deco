@@ -434,6 +434,9 @@ pub const ICON_IRIDIUM_ORE: i32 = 73;
 pub const ICON_DIAMOND: i32 = 74;
 pub const ICON_SLIME_EGG: i32 = 75;
 pub const ICON_MUSHROOM: i32 = 76;
+pub const ICON_SUNBLOOM_SEEDS: i32 = 77;
+pub const ICON_SUNBLOOM: i32 = 78;
+pub const ICON_HONEY: i32 = 79;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -946,6 +949,27 @@ pub fn objects() -> Image {
         c.rect(6, 9, 4, 5, Color::rgb(235, 225, 200));
         c.auto_outline(OUTLINE);
     }
+    seed_packet(&mut Cell::at(&mut img, ICON_SUNBLOOM_SEEDS, OBJ_COLS, 16, 16), Color::rgb(240, 200, 60));
+    {
+        // Sunbloom: a round yellow flower on a stem.
+        let mut c = Cell::at(&mut img, ICON_SUNBLOOM, OBJ_COLS, 16, 16);
+        c.rect(7, 8, 2, 7, Color::rgb(70, 150, 60));
+        c.ellipse(5.0, 12.0, 2.5, 1.2, Color::rgb(80, 170, 70));
+        for (dx, dy) in [(0.0, -3.0), (3.0, 0.0), (0.0, 3.0), (-3.0, 0.0)] {
+            c.ellipse(8.0 + dx, 6.0 + dy, 2.2, 2.2, Color::rgb(245, 205, 60));
+        }
+        c.ellipse(8.0, 6.0, 1.8, 1.8, Color::rgb(150, 90, 40));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Honey: a squat jar with an amber fill.
+        let mut c = Cell::at(&mut img, ICON_HONEY, OBJ_COLS, 16, 16);
+        c.rect(4, 5, 8, 10, Color::rgb(230, 160, 40));
+        c.rect(4, 5, 8, 2, Color::rgb(250, 200, 90));
+        c.rect(5, 2, 6, 3, Color::rgb(170, 120, 70));
+        c.px(6, 9, Color::rgb(255, 230, 150));
+        c.auto_outline(OUTLINE);
+    }
     {
         // Rain totem: a carved post with a cloud.
         let mut c = Cell::at(&mut img, ICON_RAIN_TOTEM, OBJ_COLS, 16, 16);
@@ -1051,6 +1075,19 @@ pub fn craftables() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        // Bee house: a stacked box on legs with a dark entrance.
+        let mut c = Cell::at(&mut img, 12, 8, 16, 32);
+        c.rect(3, 26, 2, 5, Color::rgb(100, 70, 40));
+        c.rect(11, 26, 2, 5, Color::rgb(100, 70, 40));
+        c.rect(2, 12, 12, 14, Color::rgb(220, 200, 150));
+        c.rect(2, 18, 12, 1, Color::rgb(170, 150, 110));
+        c.rect(1, 9, 14, 3, Color::rgb(140, 100, 60));
+        c.rect(6, 22, 4, 2, Color::rgb(50, 40, 30));
+        c.px(4, 15, Color::rgb(240, 200, 60));
+        c.px(11, 14, Color::rgb(240, 200, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Seed maker: a hopper on a box with a little chute.
         let mut c = Cell::at(&mut img, 11, 8, 16, 32);
         c.rect(2, 16, 12, 14, Color::rgb(110, 140, 90));
@@ -1092,10 +1129,11 @@ pub fn craftables() -> Image {
 /// Crop growth strips: each crop uses 8 frames of 16x32, two crops per 256px row.
 pub fn crops() -> Image {
     let mut img = Image::new(256, 32 * 2);
-    let crops: [(Color, Color); 3] = [
+    let crops: [(Color, Color); 4] = [
         (Color::rgb(80, 170, 70), Color::rgb(240, 230, 230)),
         (Color::rgb(60, 150, 60), Color::rgb(80, 170, 70)),
         (Color::rgb(70, 140, 50), Color::rgb(235, 130, 40)),
+        (Color::rgb(70, 150, 60), Color::rgb(245, 205, 60)),
     ];
     for (ci, (leaf, fruit)) in crops.iter().enumerate() {
         let base_x = (ci as i32 % 2) * 128;

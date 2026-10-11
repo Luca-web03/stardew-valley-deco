@@ -124,3 +124,45 @@ fn the_farm_cave_offers_mushrooms_or_bats() {
         }
     }
 }
+
+#[test]
+fn bee_houses_make_honey_flavored_by_nearby_flowers() {
+    use valley_sim::crop::Crop;
+    use valley_sim::terrain::{HoeDirt, TerrainFeature};
+    let mut w = world();
+    let t = TilePos::new(20, 20);
+    place(&mut w, "Dev_BeeHouse", t);
+    for _ in 0..4 {
+        w.end_day(false);
+    }
+    let (out, ready) = output(&w, "Farm", t).expect("honey");
+    assert!(ready);
+    w.warp_farmer("Farm", TilePos::new(20, 19), Some(Dir::Down));
+    assert!(w.do_action(Some(t)));
+    let wild = w.farmer.inventory.slots.iter().flatten().find(|i| i.object_id() == Some("340")).cloned().expect("collected");
+    assert_eq!(w.items.display_name(&wild), "Wild Honey");
+    assert_eq!(out.object_id(), Some("340"));
+    assert!(output(&w, "Farm", t).is_some(), "restarts on collection");
+
+    // A grown flower three tiles away flavors the next batch.
+    let data = w.items.crops["Dev_SunbloomSeeds"].clone();
+    let mut rng = engine::Rng::new(1);
+    let mut crop = Crop::new("Dev_SunbloomSeeds", &mut rng);
+    crop.grow_fully(&data);
+    let mut dirt = HoeDirt::new();
+    dirt.crop = Some(crop);
+    w.locations.get_mut("Farm").unwrap().state.terrain.insert(TilePos::new(22, 21), TerrainFeature::HoeDirt(dirt));
+    for _ in 0..4 {
+        w.end_day(false);
+    }
+    w.warp_farmer("Farm", TilePos::new(20, 19), Some(Dir::Down));
+    w.farmer.inventory.slots.iter_mut().for_each(|s| {
+        if s.as_ref().and_then(|i| i.object_id()) == Some("340") {
+            *s = None;
+        }
+    });
+    assert!(w.do_action(Some(t)));
+    let honey = w.farmer.inventory.slots.iter().flatten().find(|i| i.object_id() == Some("340")).cloned().unwrap();
+    assert_eq!(w.items.display_name(&honey), "Sunbloom Honey");
+    assert_eq!(w.items.sell_price(&honey), 100 + 60 * 2);
+}

@@ -77,7 +77,8 @@ fn apply_modifiers(value: f32, mods: &[QuantityModifier]) -> f32 {
     v
 }
 
-/// Well-known flavored item ids and their documented price formulas.
+/// Well-known flavored item ids and their price formulas (documented
+/// ones; the newer kinds are approximations).
 fn flavored(kind: &str) -> Option<(&'static str, fn(i32) -> i32)> {
     Some(match kind.to_ascii_lowercase().as_str() {
         "wine" => ("348", |p| p * 3),
@@ -85,6 +86,12 @@ fn flavored(kind: &str) -> Option<(&'static str, fn(i32) -> i32)> {
         "jelly" => ("344", |p| p * 2 + 50),
         "pickle" => ("342", |p| p * 2 + 50),
         "honey" => ("340", |p| 100 + p * 2),
+        "roe" => ("812", |p| 30 + p / 2),
+        "agedroe" => ("447", |p| (30 + p / 2) * 2),
+        "smokedfish" => ("SmokedFish", |p| p * 2),
+        "driedfruit" => ("DriedFruit", |p| (p as f32 * 7.5) as i32 + 25),
+        "driedmushroom" | "driedmushrooms" => ("DriedMushrooms", |p| (p as f32 * 7.5) as i32 + 25),
+        "bait" | "specificbait" => ("SpecificBait", |_| 5),
         _ => return None,
     })
 }
@@ -201,6 +208,8 @@ impl World {
                     self.hud("Inventory full");
                     return true;
                 }
+                let here = self.current.clone();
+                let out = self.flavor_honey(&here, t, out);
                 self.farmer.inventory.add(out.clone());
                 if let Some(ObjKind::Machine { output, ready, minutes_left }) = self.location_mut().state.objects.get_mut(&t).map(|o| &mut o.kind) {
                     *output = None;
@@ -209,7 +218,6 @@ impl World {
                 }
                 self.sound("coin");
                 self.emit(WorldEvent::Pickup(out.clone()));
-                let here = self.current.clone();
                 self.machine_auto_trigger(&here, t, "OutputCollected", Some(&out));
                 true
             }
@@ -301,6 +309,15 @@ impl World {
                 let base = self.items.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| kind.to_string());
                 let src_name = self.items.object(&src_id).map(|o| o.display_name.clone()).unwrap_or_default();
                 let src_price = self.items.object(&src_id).map(|o| o.data.price).unwrap_or(0);
+                // "-1" (or an unknown source) makes the plain item, e.g. wild honey.
+                if src_name.is_empty() {
+                    let mut plain = self.items.create(id, 1).unwrap_or_else(|| Item::object(id, 1));
+                    if let Item::Object { extra, .. } = &mut plain {
+                        let wild = kind.eq_ignore_ascii_case("honey").then(|| format!("Wild {base}"));
+                        *extra = Some(Box::new(ItemExtra { preserved_from: None, display_name: wild, price: Some(price_fn(0).max(self.items.object(id).map(|o| o.data.price).unwrap_or(0))) }));
+                    }
+                    return Some(plain);
+                }
                 Item::Object {
                     id: id.to_string(),
                     stack: 1,
@@ -339,6 +356,43 @@ impl World {
             }
         }
         Some(item)
+    }
+
+    /// Honey takes the flavor of the closest fully grown flower crop within
+    /// five tiles of the hive when it is collected; else it is wild honey.
+    pub fn flavor_honey(&self, loc_name: &str, hive: TilePos, item: Item) -> Item {
+        let honey_id = flavored("honey").map(|f| f.0).unwrap_or("340");
+        let plain = match &item {
+            Item::Object { id, extra, .. } => id == honey_id && extra.as_ref().map_or(true, |e| e.preserved_from.is_none()),
+            _ => false,
+        };
+        let Some(loc) = self.locations.get(loc_name).filter(|_| plain) else { return item };
+        let mut best: Option<(i32, String)> = None;
+        for (p, tf) in &loc.state.terrain {
+            let d = (p.x - hive.x).abs() + (p.y - hive.y).abs();
+            if d > 5 || best.as_ref().is_some_and(|b| b.0 <= d) {
+                continue;
+            }
+            let crate::terrain::TerrainFeature::HoeDirt(dirt) = tf else { continue };
+            let Some(crop) = dirt.crop.as_ref().filter(|c| !c.dead) else { continue };
+            let Some(data) = self.items.crops.get(&crop.seed_id) else { continue };
+            if !crop.is_ready(data) {
+                continue;
+            }
+            let flower = crate::item::split_qualified(&data.harvest_item_id).1.to_string();
+            if self.items.object(&flower).is_some_and(|o| o.data.category == -80) {
+                best = Some((d, flower));
+            }
+        }
+        let Some((_, flower)) = best else { return item };
+        let name = self.items.object(&flower).map(|o| o.display_name.clone()).unwrap_or_default();
+        let price = self.items.object(&flower).map(|o| o.data.price).unwrap_or(0);
+        let base = self.items.object(honey_id).map(|o| o.display_name.clone()).unwrap_or_else(|| "Honey".into());
+        let mut item = item;
+        if let Item::Object { extra, .. } = &mut item {
+            *extra = Some(Box::new(ItemExtra { preserved_from: Some(flower), display_name: Some(format!("{name} {base}")), price: Some(100 + price * 2) }));
+        }
+        item
     }
 
     /// Code-defined outputs (`OutputMethod`) this engine knows: the seed
