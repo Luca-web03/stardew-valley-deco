@@ -230,6 +230,8 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// `Characters/Dialogue/rainy`: rainy-day lines by NPC.
+    pub rainy_dialogue: HashMap<String, String>,
     /// Movie snacks and who likes what.
     pub concessions: Vec<crate::movies::ConcessionData>,
     pub concession_tastes: Vec<crate::movies::ConcessionTaste>,
@@ -413,6 +415,7 @@ impl World {
             joja_projects: crate::evaluation::load_joja_projects(cm),
             concessions: Vec::new(),
             concession_tastes: Vec::new(),
+            rainy_dialogue: HashMap::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -513,6 +516,7 @@ impl World {
             }
         }
         (w.concessions, w.concession_tastes) = crate::movies::load_concessions(cm);
+        w.rainy_dialogue = cm.load_string_dict("Characters/Dialogue/rainy");
         w.place_farm_clumps();
         w.populate_new_farm();
         w.adopt_pet("Biscuit");
@@ -771,7 +775,12 @@ impl World {
             npc.route.clear();
             npc.next_entry = 0;
             npc.schedule = match schedules.get(&name) {
-                Some(s) => schedule::pick_key(s, &clock, hearts, raining).map(|k| schedule::parse(&s[&k], s, 0)).unwrap_or_default(),
+                Some(s) => {
+                    let friends = &self.farmer.friendships;
+                    let hearts_of = |n: &str| friends.get(n).map(|f| f.hearts()).unwrap_or(0);
+                    let roll = Rng::new(Rng::seed_from(&[self.seed as i64, clock.days_played() as i64, i as i64, 151])).chance(0.5);
+                    schedule::pick_key_with(s, &clock, hearts, raining, roll).map(|k| schedule::parse_with(&s[&k], s, 0, &hearts_of)).unwrap_or_default()
+                }
                 None => vec![],
             };
         }
@@ -1866,10 +1875,13 @@ impl World {
         let key = if npc.dialogue.contains_key("__next") {
             Some("__next".to_string())
         } else if npc.dialogue.contains_key("__spouse_today") { Some("__spouse_today".to_string()) } else { dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining) };
-        let raw = key.as_ref().and_then(|k| npc.dialogue.get(k).cloned()).unwrap_or_else(|| "...".to_string());
+        let dated = key.as_deref().is_some_and(|k| k.starts_with("__") || k == "Introduction" || k.starts_with(self.clock.season.key()) && k.split('_').nth(1).is_some_and(|d| d.parse::<i32>().is_ok()));
+        let rainy = (raining && !dated).then(|| self.rainy_dialogue.get(&name).cloned()).flatten();
+        let raw = rainy.or_else(|| key.as_ref().and_then(|k| npc.dialogue.get(k).cloned())).unwrap_or_else(|| "...".to_string());
         if key.as_deref() == Some("__next") {
             self.npcs[i].dialogue.remove("__next");
         }
+        let (raw, gift) = self.prepare_dialogue(&raw);
         let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
         let parsed = dialogue::parse_full(&raw, &subs);
         let pages = parsed.pages;
@@ -1882,10 +1894,93 @@ impl World {
         if !pages.is_empty() {
             self.emit(WorldEvent::Dialogue { npc: Some(name.clone()), pages });
         }
+        if let Some(item) = gift.and_then(|id| self.items.create(&id, 1)) {
+            self.give_item(item);
+        }
         if let Some(q) = question {
             self.emit(WorldEvent::DialogueQuestion { npc: name.clone(), prompt: q.prompt.clone(), choices: q.choices.iter().map(|c| c.text.clone()).collect() });
             self.pending_question = Some((name, q));
         }
+    }
+
+    /// Fill `%` tokens and resolve conditional commands (`$c`, `$d`, `$p`,
+    /// `$1`, `$k`) in raw dialogue; returns the text and an item the
+    /// speaker hands over (`[ids]`, one picked at random).
+    pub fn prepare_dialogue(&mut self, raw: &str) -> (String, Option<String>) {
+        let text = self.dialogue_tokens(raw);
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, self.game_ms as i64, 157]));
+        let mut rng2 = rng.clone();
+        let mail = self.farmer.mail_received.clone();
+        let answers = self.farmer.dialogue_answers.clone();
+        let year = self.clock.year;
+        let state = |s: &str| match s {
+            "joja" => mail.iter().any(|m| m == "JojaMember"),
+            "cc" => mail.iter().any(|m| m == "ccIsComplete"),
+            "bus" => mail.iter().any(|m| m == "ccVault" || m == "jojaVault"),
+            "kent" => year > 1,
+            other => mail.iter().any(|m| m == other),
+        };
+        let answered = |id: &str| answers.iter().any(|a| a == id);
+        let mut newly_seen: Vec<String> = Vec::new();
+        let seen = self.farmer.mail_received.clone();
+        let mut once = |id: &str| {
+            let key = format!("Port_Dialogue_{id}");
+            if seen.contains(&key) || newly_seen.contains(&key) {
+                false
+            } else {
+                newly_seen.push(key);
+                true
+            }
+        };
+        let mut chance = |p: f64| rng.chance(p);
+        let mut ctx = dialogue::DialogueCtx { chance: &mut chance, state: &state, answered: &answered, once: &mut once };
+        let (text, gifts) = dialogue::resolve_commands(&text, &mut ctx);
+        self.farmer.mail_received.extend(newly_seen);
+        let gift = rng2.pick(&gifts).cloned();
+        (text, gift)
+    }
+
+    /// `%` tokens in dialogue (names, dates, small random word lists).
+    pub fn dialogue_tokens(&self, raw: &str) -> String {
+        if !raw.contains('%') {
+            return raw.to_string();
+        }
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, raw.len() as i64, 163]));
+        let mut pick = |list: &[&str]| list[rng.range(0, list.len() as i32) as usize].to_string();
+        let spouse = self.farmer.spouse.clone().map(|s| self.npcs.iter().find(|n| n.name == s).map(|n| n.display_name.clone()).unwrap_or(s)).unwrap_or_default();
+        let kid = |i: usize| self.farmer.children.get(i).map(|c| c.name.clone()).unwrap_or_default();
+        let mut s = raw.to_string();
+        let pairs: Vec<(&str, String)> = vec![
+            ("%spouse", spouse),
+            ("%pet", self.pet.as_ref().map(|p| p.name.clone()).unwrap_or_default()),
+            ("%kid1", kid(0)),
+            ("%kid2", kid(1)),
+            ("%year", self.clock.year.to_string()),
+            ("%season", self.clock.season.name().to_string()),
+            ("%time", Clock::time_string(self.clock.time)),
+            ("%favorite", self.farmer.favorite_thing.clone()),
+            ("%firstnameletter", self.farmer.name.chars().next().map(|c| c.to_string()).unwrap_or_default()),
+        ];
+        for (k, v) in pairs {
+            s = s.replace(k, &v);
+        }
+        while s.contains("%adj") {
+            let w = pick(&["fuzzy", "shiny", "sleepy", "crunchy", "gentle", "mighty", "tiny", "rusty"]);
+            s = s.replacen("%adj", &w, 1);
+        }
+        while s.contains("%noun") {
+            let w = pick(&["turnip", "lantern", "boot", "kettle", "pebble", "feather", "fiddle", "bucket"]);
+            s = s.replacen("%noun", &w, 1);
+        }
+        while s.contains("%place") {
+            let w = pick(&["the old pier", "the hilltop", "the hollow", "the riverbank", "the meadow"]);
+            s = s.replacen("%place", &w, 1);
+        }
+        while s.contains("%name") {
+            let w = pick(&["Bramble", "Juniper", "Wren", "Moss", "Tansy", "Rook", "Clover"]);
+            s = s.replacen("%name", &w, 1);
+        }
+        s
     }
 
     /// Gift taste: 0 love, 1 like, 2 dislike, 3 hate, 4 neutral.
@@ -2179,7 +2274,15 @@ impl World {
             loop {
                 let npc = &self.npcs[i];
                 let Some(entry) = npc.schedule.get(npc.next_entry).cloned() else { break };
-                if entry.time > time {
+                // "a<time>" entries name the arrival time: leave early by
+                // the estimated walk (about 0.8 game minutes per tile).
+                let start = if entry.arrive {
+                    let tiles = if npc.location == entry.location { npc.tile().manhattan(entry.tile) } else { 40 };
+                    Clock::add_minutes(entry.time, -((tiles as f32 * 0.8) as i32 / 10 * 10))
+                } else {
+                    entry.time
+                };
+                if start > time {
                     break;
                 }
                 self.npcs[i].next_entry += 1;

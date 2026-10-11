@@ -203,6 +203,83 @@ pub fn substitute(s: &str, subs: &Substitutions) -> String {
     s.replace('@', subs.farmer_name).replace("%farm", subs.farm_name)
 }
 
+/// Callbacks for the conditional dialogue commands.
+pub struct DialogueCtx<'a> {
+    /// Roll a chance (0..=1).
+    pub chance: &'a mut dyn FnMut(f64) -> bool,
+    /// `$d` world states ("joja", "cc", "bus", "kent", ...).
+    pub state: &'a dyn Fn(&str) -> bool,
+    /// `$p`: has the player given this answer id before?
+    pub answered: &'a dyn Fn(&str) -> bool,
+    /// `$1`: first time this id is shown? (marks it seen)
+    pub once: &'a mut dyn FnMut(&str) -> bool,
+}
+
+/// Resolve `$c`, `$d`, `$p`, `$1` and `$k` before pages are split, and pull
+/// out a `[item ids]` gift list. Returns the text and the gift choices.
+pub fn resolve_commands(raw: &str, ctx: &mut DialogueCtx) -> (String, Vec<String>) {
+    let mut gift = Vec::new();
+    let mut text = raw.to_string();
+    if let (Some(a), Some(b)) = (text.find('['), text.find(']')) {
+        if a < b {
+            let inside = text[a + 1..b].to_string();
+            if inside.split_whitespace().all(|t| !t.is_empty() && !t.contains('[')) && !inside.starts_with("LocalizedText") {
+                gift = inside.split_whitespace().map(String::from).collect();
+                text.replace_range(a..=b, "");
+            }
+        }
+    }
+    let segs: Vec<&str> = text.split('#').collect();
+    let mut out: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < segs.len() {
+        let s = segs[i].trim();
+        let pick = |seg: Option<&&str>, first: bool| -> String {
+            let seg = seg.copied().unwrap_or("");
+            let mut alts = seg.split('|');
+            let a = alts.next().unwrap_or("").to_string();
+            let b = alts.next().unwrap_or("").to_string();
+            if first { a } else { b }
+        };
+        if let Some(p) = s.strip_prefix("$c ") {
+            let prob: f64 = p.trim().parse().unwrap_or(0.5);
+            let yes = (ctx.chance)(prob);
+            out.push(segs.get(if yes { i + 1 } else { i + 2 }).copied().unwrap_or("").to_string());
+            i += 3;
+            continue;
+        }
+        if let Some(st) = s.strip_prefix("$d ") {
+            out.push(pick(segs.get(i + 1), (ctx.state)(st.trim())));
+            i += 2;
+            continue;
+        }
+        if let Some(ids) = s.strip_prefix("$p ") {
+            let yes = ids.split('|').any(|id| (ctx.answered)(id.trim()));
+            out.push(pick(segs.get(i + 1), yes));
+            i += 2;
+            continue;
+        }
+        if let Some(id) = s.strip_prefix("$1 ") {
+            if (ctx.once)(id.trim()) {
+                if let Some(next) = segs.get(i + 1) {
+                    out.push(next.to_string());
+                }
+            }
+            i += 2;
+            continue;
+        }
+        if s == "$k" {
+            break;
+        }
+        out.push(segs[i].to_string());
+        i += 1;
+    }
+    let joined = out.join("#");
+    // Drop "%revealtaste..." markers.
+    let cleaned: Vec<&str> = joined.split(' ').filter(|w| !w.starts_with("%revealtaste")).collect();
+    (cleaned.join(" "), gift)
+}
+
 /// Choose today's dialogue key for an NPC, most specific first.
 pub fn pick_key(dialogue: &HashMap<String, String>, clock: &Clock, hearts: i32, first_meeting: bool, raining: bool) -> Option<String> {
     if first_meeting && dialogue.contains_key("Introduction") {
@@ -210,10 +287,11 @@ pub fn pick_key(dialogue: &HashMap<String, String>, clock: &Clock, hearts: i32, 
     }
     let season = clock.season.key();
     let dow = clock.weekday();
-    let mut keys = vec![format!("{season}_{}", clock.day)];
+    let mut keys = Vec::new();
     if clock.year > 1 {
         keys.push(format!("{}_{}_{}", season, clock.day, clock.year));
     }
+    keys.push(format!("{season}_{}", clock.day));
     if raining {
         keys.push("rain".into());
     }
@@ -280,5 +358,20 @@ mod tests {
         assert_eq!(pick_key(&d, &c, 0, false, false).as_deref(), Some("spring_Mon"));
         d.remove("spring_Mon");
         assert_eq!(pick_key(&d, &c, 0, false, false).as_deref(), Some("Mon"));
+    }
+
+    #[test]
+    fn conditional_commands_resolve() {
+        let mut yes = |_: f64| true;
+        let mut first = |_: &str| true;
+        let mut ctx = DialogueCtx { chance: &mut yes, state: &|s| s == "joja", answered: &|id| id == "77", once: &mut first };
+        let (t, _) = resolve_commands("Hi!#$c 0.5#Heads.#Tails.#$d joja#Joja again|The center is open.#$p 77#You said yes.|You said no.", &mut ctx);
+        assert_eq!(t, "Hi!#Heads.#Joja again#You said yes.");
+        let mut no = |_: f64| false;
+        let mut seen = |_: &str| false;
+        let mut ctx = DialogueCtx { chance: &mut no, state: &|_| false, answered: &|_| false, once: &mut seen };
+        let (t, gift) = resolve_commands("Take this! [88 90]#$c 0.5#Heads.#Tails.#$1 M1#Only once.#$k#Never shown.", &mut ctx);
+        assert_eq!(t, "Take this! #Tails.");
+        assert_eq!(gift, vec!["88", "90"]);
     }
 }

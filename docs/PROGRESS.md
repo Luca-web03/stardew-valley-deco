@@ -55,9 +55,11 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts,
       slime hutches (troughs, slime balls, incubators), cabins for farmhands
-- [x] NPCs: schedules, routing across locations, dialogue with questions,
-      gifts, friendship, dating, marriage, spouse, children (approx. timings),
-      divorce, jealousy
+- [x] NPCs: schedules (documented key fallbacks, `rain2`, `NOT friendship`,
+      arrival times), routing across locations, dialogue with questions,
+      chance/world-state/answer/once-only commands, `%` tokens, item gifts,
+      rainy-day lines, gifts, friendship, dating, marriage, spouse, children
+      (approx. timings), divorce, jealousy
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
 - [x] Grandpa's evaluation (year 3, candles, diamond re-evaluation),

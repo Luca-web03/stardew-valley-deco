@@ -791,7 +791,8 @@ impl World {
             }
             "speak" => {
                 let who = arg(1);
-                let pages = dialogue::parse(&arg(2), &self.subs());
+                let (text, _) = self.prepare_dialogue(&arg(2));
+                let pages = dialogue::parse(&text, &self.subs());
                 self.emit(WorldEvent::Dialogue { npc: Some(who), pages });
                 e.waiting_ui = true;
                 true

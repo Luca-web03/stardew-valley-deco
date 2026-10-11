@@ -159,3 +159,38 @@ fn end_variants_place_the_farmer() {
     play(&mut w, 0, |_| {});
     assert_eq!(w.farmer.tile(), TilePos::new(10, 12), "plain end returns the farmer where they were");
 }
+
+#[test]
+fn villagers_use_rainy_lines_tokens_and_conditionals() {
+    let mut w = world();
+    w.weather = valley_sim::time::Weather::Rain;
+    let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
+    let talk = |w: &mut World| -> String {
+        let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
+        let t = w.npcs[i].tile();
+        let loc = w.npcs[i].location.clone();
+        w.warp_farmer(&loc, TilePos::new(t.x, t.y + 1), Some(Dir::Up));
+        w.npcs[i].set_tile(t);
+        w.drain_events();
+        w.do_action(Some(t));
+        w.drain_events().into_iter().find_map(|e| match e {
+            WorldEvent::Dialogue { pages, .. } => Some(pages.iter().map(|p| p.text.clone()).collect::<Vec<_>>().join(" | ")),
+            _ => None,
+        }).unwrap_or_default()
+    };
+    w.farmer.friendship("Mara").met = true;
+    let said = talk(&mut w);
+    assert!(said.contains("roof"), "{said}");
+    // Tokens, a once-only line and a gift.
+    w.weather = valley_sim::time::Weather::Sun;
+    w.farmer.friendship("Mara").talked_today = false;
+    w.npcs[i].dialogue.insert("__next".into(), "It's year %year already!#$1 Dev_Once#Have this. [Dev_Berry]".into());
+    let said = talk(&mut w);
+    assert!(said.contains("year 1 already"), "{said}");
+    assert!(said.contains("Have this."), "{said}");
+    assert_eq!(w.farmer.inventory.count("Dev_Berry"), 1);
+    w.farmer.friendship("Mara").talked_today = false;
+    w.npcs[i].dialogue.insert("__next".into(), "Hello.#$1 Dev_Once#Have this.".into());
+    let said = talk(&mut w);
+    assert!(!said.contains("Have this"), "only once: {said}");
+}

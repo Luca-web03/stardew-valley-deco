@@ -560,6 +560,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Objects", objects),
         ("Data/BigCraftables", bigs),
         ("Data/Machines", machines),
+        ("Characters/Dialogue/rainy", json!({
+            "Mara": "Rain again... the roof of my shed leaks every time.$s",
+            "Tobin": "Rainy days are slow days. Perfect for restocking."
+        })),
         ("Data/Concessions", json!([
             { "Id": "Dev_KettleCorn", "Name": "Kettle Corn", "DisplayName": "Kettle Corn", "Price": 40, "ItemTags": ["Salty", "Sweet", "Popcorn"] },
             { "Id": "Dev_FizzyPop", "Name": "Fizzy Pop", "DisplayName": "Fizzy Pop", "Price": 30, "ItemTags": ["Drink", "Sweet"] },
