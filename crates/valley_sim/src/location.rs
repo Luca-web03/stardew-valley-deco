@@ -48,6 +48,9 @@ pub struct LocationState {
     /// Wallpaper and flooring per room (`decor`).
     #[serde(default)]
     pub paint: crate::decor::RoomPaint,
+    /// The track a jukebox here was set to ("random" or a cue).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jukebox: Option<String>,
 }
 
 /// A piece of furniture placed in a location (top-left footprint tile).
@@ -66,6 +69,9 @@ pub struct PlacedFurniture {
     /// A fireplace that's lit.
     #[serde(default)]
     pub on: bool,
+    /// Fish swimming in a fish tank.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contents: Vec<crate::item::Item>,
 }
 
 impl PlacedFurniture {
@@ -156,6 +162,12 @@ impl GameLocation {
     /// Action string on the Buildings layer (e.g. "Warp 5 8 FarmHouse").
     pub fn action_at(&self, p: TilePos) -> Option<String> {
         self.tile_prop("Buildings", p, "Action")
+    }
+
+    /// Does any `Buildings` tile have an action starting with `name`?
+    pub fn has_action(&self, name: &str) -> bool {
+        let Some(layer) = self.map.layer("Buildings") else { return false };
+        (0..layer.height).any(|y| (0..layer.width).any(|x| self.action_at(TilePos::new(x, y)).is_some_and(|a| a.split_whitespace().next() == Some(name))))
     }
 
     pub fn touch_action_at(&self, p: TilePos) -> Option<String> {

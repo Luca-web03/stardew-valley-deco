@@ -76,6 +76,9 @@ impl World {
         let Some(name) = due else { return };
         self.farmer.friendship(&name).status = RelationStatus::Married;
         self.farmer.spouse = Some(name.clone());
+        if self.play_wedding(&name) {
+            return;
+        }
         let display = self.npcs.iter().find(|n| n.name == name).map(|n| n.display_name.clone()).unwrap_or(name.clone());
         self.emit(WorldEvent::Message(format!("Friends gather in town as you and {display} exchange vows. {display} moves into your farmhouse.")));
     }

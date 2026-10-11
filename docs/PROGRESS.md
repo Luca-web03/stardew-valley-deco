@@ -40,6 +40,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Wallpaper and flooring for the rooms of your home
 - [x] Furniture rotations, outdoor furniture, items on tables, fireplaces and
       lamps; sitting on chairs, couches and map benches (Data/ChairTiles)
+- [x] Fish tanks, mannequins, jukeboxes (Data/JukeboxTracks), incoming phone
+      calls (Data/IncomingPhoneCalls), the wedding ceremony (Data/Weddings)
 - [x] Swimming (swimsuit, pool entrances) and the spa; telephone calls
 - [x] Bushes (berry seasons, tea bushes, cutting), `Paths` layer spawns
 - [x] Automation: auto-grabber, auto-petter, mini shipping bin, workbench

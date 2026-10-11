@@ -1,7 +1,8 @@
 //! Placing and picking up furniture: rotations (the held piece turns with
 //! the action button; side views swap the footprint), placement
 //! restrictions (indoors / outdoors / both), items set on tables, lit
-//! fireplaces and lamps glowing at night.
+//! fireplaces, lamps glowing at night and fish tanks (fish swim in them,
+//! drawn from `Data/AquariumFish`).
 
 use crate::item::Item;
 use crate::location::PlacedFurniture;
@@ -50,6 +51,34 @@ impl World {
             }
             return false;
         }
+        if info.is_mannequin() {
+            return self.dress_mannequin(idx);
+        }
+        if info.is_fish_tank() {
+            let slot = self.farmer.current_slot;
+            let held = self.farmer.current_item().cloned();
+            let is_fish = held.as_ref().is_some_and(|i| matches!(i, Item::Object { .. }) && self.items.object(i.object_id().unwrap_or("")).is_some_and(|o| o.data.category == -4));
+            if is_fish {
+                if f.contents.len() >= info.tank_capacity() {
+                    self.hud("The tank is full.");
+                    return true;
+                }
+                let mut one = held.unwrap();
+                one.set_stack(1);
+                self.location_mut().state.furniture[idx].contents.push(one);
+                self.farmer.inventory.reduce(slot, 1);
+                self.sound("waterSlosh");
+                return true;
+            }
+            if held.is_none() {
+                if let Some(fish) = self.location_mut().state.furniture[idx].contents.pop() {
+                    self.give_item(fish);
+                    self.sound("fishSlap");
+                    return true;
+                }
+            }
+            return false;
+        }
         if info.is_fireplace() {
             let on = !f.on;
             self.location_mut().state.furniture[idx].on = on;
@@ -91,7 +120,7 @@ impl World {
                 }
             }
         }
-        self.location_mut().state.furniture.push(PlacedFurniture { id, tile: t, footprint, walkable: info.walkable(), rotation, held: None, on: false });
+        self.location_mut().state.furniture.push(PlacedFurniture { id, tile: t, footprint, walkable: info.walkable(), rotation, held: None, on: false, contents: Vec::new() });
         self.farmer.inventory.reduce(slot, 1);
         self.farmer.furniture_rotation = 0;
         self.sound("woodyStep");
@@ -106,6 +135,19 @@ impl World {
         }
         let Some(idx) = self.location().state.furniture.iter().position(|f| f.covers(t)) else { return false };
         let f = self.location().state.furniture[idx].clone();
+        if !f.contents.is_empty() {
+            if self.items.furniture.get(&f.id).is_some_and(|i| i.is_mannequin()) {
+                // Undress it first.
+                let clothes = std::mem::take(&mut self.location_mut().state.furniture[idx].contents);
+                for c in clothes {
+                    self.give_item(c);
+                }
+                self.sound("dwop");
+                return true;
+            }
+            self.hud("Take the fish out first.");
+            return true;
+        }
         if let Some(on_top) = f.held.clone() {
             self.location_mut().state.furniture[idx].held = None;
             self.give_item(on_top);
@@ -133,5 +175,54 @@ impl World {
             .filter(|f| self.items.furniture.get(&f.id).is_some_and(|i| (i.is_lamp() && night) || (i.is_fireplace() && f.on)))
             .map(|f| TilePos::new(f.tile.x + f.footprint.0 / 2, f.tile.y))
             .collect()
+    }
+
+    /// Mannequins: clothing held goes on (swapping what was in that slot);
+    /// empty hands swap outfits with the farmer.
+    fn dress_mannequin(&mut self, idx: usize) -> bool {
+        let slot_of = |i: &Item| -> Option<u8> {
+            match i {
+                Item::Clothing { slot, .. } => Some(match slot {
+                    crate::item::ClothingSlot::Hat => 0,
+                    crate::item::ClothingSlot::Shirt => 1,
+                    crate::item::ClothingSlot::Pants => 2,
+                }),
+                Item::Boots { .. } => Some(3),
+                _ => None,
+            }
+        };
+        let held = self.farmer.current_item().cloned();
+        match held {
+            Some(item) => {
+                let Some(k) = slot_of(&item) else { return false };
+                let hand = self.farmer.current_slot;
+                self.farmer.inventory.take(hand);
+                let worn = &mut self.location_mut().state.furniture[idx].contents;
+                let old = worn.iter().position(|w| slot_of(w) == Some(k)).map(|i| worn.remove(i));
+                worn.push(item);
+                if let Some(o) = old {
+                    self.give_item(o);
+                }
+                self.sound("dwop");
+                true
+            }
+            None => {
+                let worn = std::mem::take(&mut self.location_mut().state.furniture[idx].contents);
+                let f = &mut self.farmer;
+                let mut mine: Vec<Item> = [f.hat.take(), f.shirt_item.take(), f.pants_item.take(), f.boots.take()].into_iter().flatten().collect();
+                for w in worn {
+                    match slot_of(&w) {
+                        Some(0) => self.farmer.hat = Some(w),
+                        Some(1) => self.farmer.shirt_item = Some(w),
+                        Some(2) => self.farmer.pants_item = Some(w),
+                        Some(3) => self.farmer.boots = Some(w),
+                        _ => mine.push(w),
+                    }
+                }
+                self.location_mut().state.furniture[idx].contents = mine;
+                self.sound("dwop");
+                true
+            }
+        }
     }
 }

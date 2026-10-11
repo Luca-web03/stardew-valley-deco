@@ -393,7 +393,10 @@ impl Item {
             Item::Clothing { slot, id } => format!("({}){id}", slot.prefix()),
             Item::Trinket { id } => format!("(TR){id}"),
             Item::Decor { id, floor } => format!("({}){id}", if *floor { "FL" } else { "WP" }),
-            Item::Furniture { id } => format!("(F){id}"),
+            Item::Furniture { id } => match id.strip_prefix("M:") {
+                Some(m) => format!("(M){m}"),
+                None => format!("(F){id}"),
+            },
         }
     }
 
@@ -536,6 +539,19 @@ impl FurnitureInfo {
         self.kind == "fireplace"
     }
 
+    pub fn is_mannequin(&self) -> bool {
+        self.kind == "mannequin"
+    }
+
+    pub fn is_fish_tank(&self) -> bool {
+        self.kind == "fishtank"
+    }
+
+    /// Fish a tank holds (approx.: one more than its width in tiles).
+    pub fn tank_capacity(&self) -> usize {
+        (self.footprint.0 + 1).max(1) as usize
+    }
+
     pub fn allowed_outdoors(&self) -> bool {
         matches!(self.placement, 1 | 2)
     }
@@ -581,6 +597,19 @@ impl FurnitureInfo {
             self.footprint
         }
     }
+}
+
+/// `Data/Mannequins` (public format subset).
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct MannequinData {
+    pub display_name: String,
+    pub description: String,
+    pub texture: Option<String>,
+    pub farmer_texture: Option<String>,
+    pub sheet_index: i32,
+    pub display_male: bool,
+    pub cursed: bool,
 }
 
 fn parse_size(s: &str, default: (i32, i32)) -> (i32, i32) {
@@ -710,6 +739,25 @@ impl ItemDb {
                 f.display_name = cm.expand(&f.display_name);
                 db.furniture.insert(id, f);
             }
+        }
+        // Mannequins (`Data/Mannequins`) live with the furniture as "M:<id>".
+        for (id, m) in cm.load_dict::<MannequinData>("Data/Mannequins") {
+            let display_name = cm.expand(&m.display_name);
+            db.furniture.insert(
+                format!("M:{id}"),
+                FurnitureInfo {
+                    name: id.clone(),
+                    kind: "mannequin".into(),
+                    sheet_size: (1, 2),
+                    footprint: (1, 1),
+                    price: 0,
+                    display_name: if display_name.is_empty() { id.clone() } else { display_name },
+                    sprite_index: m.sheet_index,
+                    texture: m.texture.clone(),
+                    rotations: 1,
+                    placement: 2,
+                },
+            );
         }
         db.decor_sets = cm.load_json("Data/AdditionalWallpaperFlooring").unwrap_or_default();
         db.base_decor = cm.exists("Maps/walls_and_floors");
@@ -931,6 +979,7 @@ impl ItemDb {
             "W" => self.weapons.contains_key(id).then(|| Item::weapon(id)),
             "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
             "F" => self.furniture.contains_key(id).then(|| Item::Furniture { id: id.to_string() }),
+            "M" => self.furniture.contains_key(&format!("M:{id}")).then(|| Item::Furniture { id: format!("M:{id}") }),
             "TR" => self.trinkets.contains_key(id).then(|| Item::Trinket { id: id.to_string() }),
             "WP" | "FL" => crate::decor::decor_exists(self, id, ty == "FL").then(|| Item::Decor { id: id.to_string(), floor: ty == "FL" }),
             "H" => self.hats.contains_key(id).then(|| Item::Clothing { slot: ClothingSlot::Hat, id: id.to_string() }),

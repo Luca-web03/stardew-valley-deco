@@ -43,6 +43,9 @@ impl World {
         if !self.is_telephone(&o.item_id) {
             return false;
         }
+        if self.answer_call() {
+            return true;
+        }
         let options: Vec<(String, String)> = self.phone_contacts.iter().map(|(id, c)| (format!("phone:{id}"), c.name.clone())).chain([("phone:".to_string(), "Hang up".to_string())]).collect();
         self.sound("telephone_buttonPush");
         self.emit(WorldEvent::Choice { text: "Who do you want to call?".into(), options });

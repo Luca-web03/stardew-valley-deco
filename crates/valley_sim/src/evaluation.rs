@@ -225,6 +225,8 @@ impl World {
             self.choose_festival(f);
         } else if let Some(c) = id.strip_prefix("phone:") {
             self.call(c);
+        } else if let Some(t) = id.strip_prefix("jukebox:") {
+            self.choose_jukebox(t);
         }
     }
 

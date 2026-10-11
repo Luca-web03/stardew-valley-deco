@@ -226,6 +226,9 @@ impl ValleyGame {
             ctx.audio.stop_music();
         } else {
             ctx.audio.cmds.push(engine::SoundCmd::Music { track: track.clone(), volume: self.options.music_volume });
+            if let Some(w) = self.world.as_mut() {
+                w.note_song_heard(&track);
+            }
         }
         self.music = Some(track);
     }
@@ -592,7 +595,12 @@ impl ValleyGame {
                 WorldEvent::Exhausted => self.toast("You're exhausted..."),
                 WorldEvent::OpenChest(tile) => self.menus.push(Menu::Chest { tile, hovered: None }),
                 WorldEvent::OpenCooking => self.menus.push(Menu::Cooking { hovered: None }),
-                WorldEvent::Music(track) => ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume }),
+                WorldEvent::Music(track) => {
+                    if let Some(w) = self.world.as_mut() {
+                        w.note_song_heard(&track);
+                    }
+                    ctx.audio.cmds.push(engine::SoundCmd::Music { track, volume: self.options.music_volume })
+                }
                 WorldEvent::OpenBundles => self.menus.push(Menu::Bundles { area: 0, hovered: None }),
                 WorldEvent::Lightning => self.flash = 12,
                 WorldEvent::DialogueQuestion { npc, prompt, choices } => {

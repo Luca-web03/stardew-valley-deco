@@ -122,3 +122,60 @@ fn outdoor_furniture_follows_its_placement_restriction() {
     w.begin_use(Some(TilePos::new(13, 19)));
     assert_eq!(w.locations["Farm"].state.furniture.len(), 1, "chairs stay indoors");
 }
+
+#[test]
+fn fish_tanks_hold_fish_up_to_capacity() {
+    let (_, mut w) = world();
+    w.farmer.set_tile(TilePos::new(3, 4));
+    w.farmer.facing = Dir::Down;
+    hold(&mut w, "Dev_FishTank");
+    assert!(w.begin_use(Some(TilePos::new(3, 5))));
+    let fish = w.items.objects.iter().find(|(_, o)| o.data.category == -4).map(|(k, _)| k.clone()).expect("a dev fish");
+    w.farmer.inventory.slots[12] = Some(Item::object(&fish, 9));
+    w.farmer.current_slot = 12;
+    for _ in 0..5 {
+        w.do_action(Some(TilePos::new(3, 5)));
+    }
+    assert_eq!(w.location().state.furniture[0].contents.len(), 3, "a 2-wide tank holds three");
+    assert_eq!(w.farmer.inventory.count(&fish), 6);
+    // Can't pick up a stocked tank; empty hands take a fish back out.
+    w.farmer.current_slot = 30;
+    assert!(w.begin_use(Some(TilePos::new(3, 5))));
+    assert_eq!(w.location().state.furniture.len(), 1);
+    assert!(w.do_action(Some(TilePos::new(3, 5))));
+    assert_eq!(w.location().state.furniture[0].contents.len(), 2);
+    assert_eq!(w.farmer.inventory.count(&fish), 7);
+}
+
+#[test]
+fn mannequins_wear_clothes_and_swap_outfits() {
+    let (_, mut w) = world();
+    let m = w.items.create("(M)Dev_Mannequin", 1).expect("mannequin item");
+    assert_eq!(m.qualified_id(), "(M)Dev_Mannequin");
+    w.farmer.set_tile(TilePos::new(3, 4));
+    w.farmer.facing = Dir::Down;
+    w.farmer.inventory.slots[11] = Some(m);
+    w.farmer.current_slot = 11;
+    assert!(w.begin_use(Some(TilePos::new(3, 5))));
+    // Dress it with a hat and a shirt.
+    w.farmer.inventory.slots[12] = w.items.create("(H)Dev_Cap", 1);
+    w.farmer.inventory.slots[13] = w.items.create("(S)Dev_Stripes", 1);
+    w.farmer.current_slot = 12;
+    assert!(w.do_action(Some(TilePos::new(3, 5))));
+    w.farmer.current_slot = 13;
+    assert!(w.do_action(Some(TilePos::new(3, 5))));
+    assert_eq!(w.location().state.furniture[0].contents.len(), 2);
+    // Swap: the farmer now wears them; what the farmer wore goes on the form.
+    w.farmer.hat = w.items.create("(H)Dev_StrawHat", 1);
+    w.farmer.current_slot = 30;
+    assert!(w.do_action(Some(TilePos::new(3, 5))));
+    assert_eq!(w.farmer.hat.as_ref().map(|h| h.qualified_id()), Some("(H)Dev_Cap".to_string()));
+    assert_eq!(w.farmer.shirt_item.as_ref().map(|h| h.qualified_id()), Some("(S)Dev_Stripes".to_string()));
+    let worn: Vec<String> = w.location().state.furniture[0].contents.iter().map(|i| i.qualified_id()).collect();
+    assert!(worn.contains(&"(H)Dev_StrawHat".to_string()));
+    // Using it with empty hands undresses it, then picks it up.
+    assert!(w.begin_use(Some(TilePos::new(3, 5))));
+    assert!(w.location().state.furniture[0].contents.is_empty());
+    assert!(w.begin_use(Some(TilePos::new(3, 5))));
+    assert!(w.location().state.furniture.is_empty());
+}

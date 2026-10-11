@@ -967,7 +967,7 @@ impl World {
                 e.end = match arg(1).as_str() {
                     "position" => EndAction::Position(TilePos::new(num(2), num(3))),
                     "warpOut" | "dialogueWarpOut" | "invisibleWarpOut" => EndAction::WarpOut,
-                    "bed" | "beginGame" => EndAction::Bed,
+                    "bed" | "beginGame" | "wedding" => EndAction::Bed,
                     "newDay" => EndAction::NewDay,
                     "" => EndAction::Return,
                     _ => EndAction::Stay,

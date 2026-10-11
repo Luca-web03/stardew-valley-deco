@@ -282,6 +282,15 @@ pub struct World {
     pub location_contexts: BTreeMap<String, crate::location_contexts::LocationContextData>,
     /// `Data/MonsterSlayerQuests`.
     pub monster_goals: BTreeMap<String, crate::monster_goals::MonsterGoal>,
+    /// `Data/IncomingPhoneCalls` and today's call.
+    pub incoming_calls: BTreeMap<String, crate::phone_calls::IncomingCall>,
+    pub pending_call: Option<crate::phone_calls::PendingCall>,
+    /// `Data/AquariumFish`: fish id -> (sprite index, swim type).
+    pub aquarium_fish: std::collections::HashMap<String, (i32, String)>,
+    /// `Data/JukeboxTracks`.
+    pub jukebox_tracks: BTreeMap<String, crate::jukebox::JukeboxTrack>,
+    /// `Data/Weddings`.
+    pub weddings: Option<crate::weddings::WeddingData>,
     /// `Data/ChairTiles` (map seats).
     pub chair_tiles: std::collections::HashMap<String, crate::seats::ChairTile>,
     /// `Data/TriggerActions`.
@@ -462,6 +471,11 @@ impl World {
             location_contexts: BTreeMap::new(),
             monster_goals: BTreeMap::new(),
             chair_tiles: std::collections::HashMap::new(),
+            weddings: None,
+            jukebox_tracks: BTreeMap::new(),
+            incoming_calls: BTreeMap::new(),
+            aquarium_fish: std::collections::HashMap::new(),
+            pending_call: None,
             mine_chest_overrides: BTreeMap::new(),
             buff_defs: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
@@ -596,6 +610,18 @@ impl World {
         w.location_contexts = crate::location_contexts::load(cm);
         w.monster_goals = crate::monster_goals::load(cm);
         w.chair_tiles = crate::seats::load(cm);
+        w.weddings = crate::weddings::load(cm);
+        w.jukebox_tracks = crate::jukebox::load(cm);
+        w.incoming_calls = crate::phone_calls::load(cm);
+        w.aquarium_fish = cm
+            .load_string_dict("Data/AquariumFish")
+            .into_iter()
+            .filter_map(|(k, v)| {
+                let mut f = v.split('/');
+                let idx = f.next()?.trim().parse().ok()?;
+                Some((k, (idx, f.next().unwrap_or("fish").to_string())))
+            })
+            .collect();
         w.mine_chest_overrides = cm.load_dict("Port/MineChests");
         w.buff_defs = cm.load_dict("Data/Buffs");
         w.place_start_objects();
@@ -899,6 +925,7 @@ impl World {
         }
         self.trigger_actions_morning();
         self.npc_appearances_morning();
+        self.phone_calls_morning();
         self.update_npc_schedules();
         self.raise_trigger("DayStarted");
         self.spouse_morning();
@@ -1170,6 +1197,7 @@ impl World {
                     self.farm_type_night();
                     self.quest_state_checks();
                     self.advance_machines(10);
+                    self.phone_calls_tick();
                     self.maybe_lightning();
                     for b in self.farmer.buffs.iter_mut() {
                         b.minutes_left -= 10;
@@ -1572,7 +1600,7 @@ impl World {
         if self.break_slime_ball(target) || self.load_incubator(target) {
             return true;
         }
-        if self.attach_to_sprinkler(target) || self.use_automation(target) || self.use_phone(target) || self.open_treasure(target) {
+        if self.attach_to_sprinkler(target) || self.use_automation(target) || self.use_phone(target) || self.use_mini_jukebox(target) || self.open_treasure(target) {
             return true;
         }
         if self.interact_object(target) {
@@ -1695,6 +1723,7 @@ impl World {
             "Port.Unlock" => self.unlock_action(&toks),
             "Port.Volcano" => self.enter_volcano_from_here(),
             "Port.Forge" | "Forge" => self.open_forge(),
+            "Jukebox" | "MiniJukebox" => self.open_jukebox(),
             "Port.KillList" => self.show_kill_list(),
             "Port.GuildMaster" => self.claim_goal_rewards(),
             "Port.Divorce" | "DivorceBook" => {

@@ -52,6 +52,15 @@ fn hearts_cap_until_dating_then_engagement_and_wedding() {
     for _ in 0..3 {
         w.end_day(false);
     }
+    // The ceremony plays in town (Data/Weddings), then it's home.
+    let e = w.event.as_ref().expect("wedding event");
+    assert_eq!((e.id.as_str(), e.location.as_str()), ("Port.Wedding", "Town"));
+    assert!(e.actors.iter().any(|a| a.name == "Mara"));
+    assert!(e.actors.iter().any(|a| a.name == "Tobin"), "attendees set up");
+    assert!(!e.commands.iter().any(|c| c.contains('[')), "tokens replaced: {:?}", e.commands);
+    w.skip_event();
+    assert!(w.event.is_none());
+    assert_eq!(w.current, "FarmHouse");
     assert_eq!(w.farmer.spouse.as_deref(), Some("Mara"));
     assert_eq!(w.farmer.friendships["Mara"].status, RelationStatus::Married);
     let mara = w.npcs.iter().find(|n| n.name == "Mara").unwrap();

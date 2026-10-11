@@ -233,6 +233,9 @@ pub struct Farmer {
     pub swimsuit: bool,
     #[serde(default)]
     pub swimming: bool,
+    /// Music cues heard (for jukeboxes).
+    #[serde(default)]
+    pub songs_heard: Vec<String>,
     /// Orientation the held furniture will be placed in.
     #[serde(default)]
     pub furniture_rotation: i32,
@@ -397,6 +400,7 @@ impl Farmer {
             swimsuit: false,
             swimming: false,
             furniture_rotation: 0,
+            songs_heard: Vec::new(),
             sitting: None,
             star_tokens: 0,
             qi_coins: 0,

@@ -1254,6 +1254,18 @@ pub fn craftables() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        // Mini jukebox: a rounded cabinet with a glowing grille.
+        let mut c = Cell::at(&mut img, 18, 8, 16, 32);
+        c.rect(2, 12, 12, 19, Color::rgb(150, 60, 50));
+        c.ellipse(8.0, 12.0, 6.0, 4.0, Color::rgb(170, 80, 60));
+        c.rect(4, 14, 8, 8, Color::rgb(250, 210, 110));
+        for x in [5, 7, 9] {
+            c.rect(x, 15, 1, 6, Color::rgb(200, 140, 60));
+        }
+        c.rect(4, 24, 8, 2, Color::rgb(90, 40, 35));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Telephone: a desk phone on a small stand.
         let mut c = Cell::at(&mut img, 17, 8, 16, 32);
         c.rect(3, 22, 10, 2, Color::rgb(140, 100, 60));
@@ -2160,7 +2172,8 @@ pub fn shed(w: i32, h: i32, wall: Color, roof: Color) -> Image {
 /// (rotations follow the front view: side, then back; the left view mirrors
 /// the side): 0 chair (1x2, 4 rotations), 3 table (2x2, side 1x3),
 /// 6 rug (3x2), 9 bookcase (2x3), 11 lamp (1x2), 12 couch (3x2, side 1x4,
-/// back 3x2), 19 fireplace (2x3, lit at 21), 23 garden lantern (1x2).
+/// back 3x2), 19 fireplace (2x3, lit at 21), 23 garden lantern (1x2),
+/// 24 small fish tank (2x2).
 pub fn furniture() -> Image {
     let mut img = Image::new(512, 64);
     let wood = Color::rgb(160, 104, 56);
@@ -2278,6 +2291,18 @@ pub fn furniture() -> Image {
         c.rect(41, 26, 3, 4, shade(wood, -30));
         c.auto_outline(OUTLINE);
     }
+    {
+        // Small fish tank: glass box with water, gravel and a weed.
+        let (ox, oy, w, h) = cell(&mut img, 24, 2, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(1, 4, 30, 22, Color::rgba(150, 200, 230, 255));
+        c.rect(2, 8, 28, 17, Color::rgb(80, 150, 200));
+        c.rect(2, 21, 28, 4, Color::rgb(200, 180, 130));
+        c.rect(6, 13, 2, 8, Color::rgb(60, 150, 70));
+        c.rect(0, 2, 32, 3, Color::rgb(70, 70, 80));
+        c.rect(2, 26, 28, 5, shade(wood, -20));
+        c.auto_outline(OUTLINE);
+    }
     for (idx, lit) in [(19, false), (21, true)] {
         // Brick fireplace (2x3), cold and lit.
         let (ox, oy, w, h) = cell(&mut img, idx, 2, 3);
@@ -2295,6 +2320,20 @@ pub fn furniture() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
+    img
+}
+
+/// A dress form on a stand (16x32).
+pub fn mannequin() -> Image {
+    let mut img = Image::new(16, 32);
+    let mut c = Cell { ox: 0, oy: 0, w: 16, h: 32, img: &mut img };
+    let form = Color::rgb(225, 205, 175);
+    c.ellipse(8.0, 7.0, 3.5, 3.5, form);
+    c.rect(7, 10, 2, 3, form);
+    c.rect(4, 13, 8, 10, form);
+    c.rect(7, 23, 2, 6, Color::rgb(120, 90, 60));
+    c.rect(4, 29, 8, 2, Color::rgb(100, 75, 50));
+    c.auto_outline(OUTLINE);
     img
 }
 

@@ -262,7 +262,9 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
         if o.big {
             let (tex, src) = big_sprite(rc, w, &o.item_id);
-            let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
+            // A ringing telephone rattles.
+            let ring = if w.phone_ringing() && w.is_telephone(&o.item_id) && (w.game_ms / 600) % 2 == 0 { ((w.game_ms / 50) % 2) as f32 * 4.0 - 2.0 } else { 0.0 };
+            let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake) + ring, pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
             s.flip_x = o.flip;
             out.sprite(s);
         } else {
@@ -425,6 +427,53 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         let mut s = Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), depth);
         s.flip_x = flip;
         out.sprite(s);
+        // A dressed mannequin wears its clothes (colors over the form, the hat on top).
+        if w.items.furniture.get(&f.id).is_some_and(|i| i.is_mannequin()) {
+            let white = rc.assets.white(rc.textures);
+            for c in &f.contents {
+                match c {
+                    valley_sim::item::Item::Clothing { slot: valley_sim::item::ClothingSlot::Hat, id } => {
+                        draw_hat(rc, out, w, id, Dir::Down, Vec2::new(p.x, p.y), 0, depth + 0.0002);
+                    }
+                    valley_sim::item::Item::Clothing { slot, id } => {
+                        let col = w.items.clothing(*slot, id).and_then(|ci| ci.color).unwrap_or([200, 200, 200]);
+                        let (y0, h) = if *slot == valley_sim::item::ClothingSlot::Shirt { (14.0, 8.0) } else { (22.0, 6.0) };
+                        let mut r = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(p.x + 4.0 * ZOOM, p.y + y0 * ZOOM, 8.0 * ZOOM, h * ZOOM), depth + 0.0001);
+                        r.tint = Color::rgb(col[0], col[1], col[2]);
+                        out.sprite(r);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // Fish swim back and forth inside a tank (Data/AquariumFish
+        // sprites from LooseSprites/AquariumFish, 24x24; else the item icon).
+        if !f.contents.is_empty() {
+            let inner_w = src.w as f32 * ZOOM - 40.0;
+            let inner_top = p.y + src.h as f32 * ZOOM * 0.25;
+            let inner_h = src.h as f32 * ZOOM * 0.45;
+            for (i, fish) in f.contents.iter().enumerate() {
+                let period = 4000.0 + i as f32 * 900.0;
+                let t = (w.game_ms as f32 / period + i as f32 * 0.37) * std::f32::consts::TAU;
+                let x = p.x + 20.0 + (t.sin() * 0.5 + 0.5) * (inner_w - 32.0).max(0.0);
+                let y = inner_top + ((i as f32 * 0.61).fract() * (inner_h - 32.0).max(0.0)) + (t * 2.0).sin() * 3.0;
+                let facing_right = t.cos() > 0.0;
+                let id = fish.object_id().unwrap_or("");
+                let sheet = w.aquarium_fish.get(id).map(|(idx, _)| *idx);
+                let (ftex, fsrc) = match sheet {
+                    Some(idx) if rc.cm.exists("LooseSprites/AquariumFish") => {
+                        let t = rc.assets.tex(rc.cm, rc.textures, "LooseSprites/AquariumFish");
+                        let cols = (rc.textures.size(t).0 / 24).max(1) as i32;
+                        (t, IRect::new((idx % cols) * 24, (idx / cols) * 24, 24, 24))
+                    }
+                    _ => item_sprite(rc, w, fish),
+                };
+                let size = 32.0;
+                let mut fs = Sprite::new(ftex, fsrc, FRect::new(x, y, size, size), depth + 0.0001 + i as f32 * 0.00001);
+                fs.flip_x = facing_right;
+                out.sprite(fs);
+            }
+        }
         // Something set on a table sits on its top, centred.
         if let Some(item) = &f.held {
             let (itex, isrc) = item_sprite(rc, w, item);

@@ -2,6 +2,7 @@
 //!
 //! Rules (simple, adjustable here):
 //! * title and menus before playing: [`TITLE_MUSIC`];
+//! * a jukebox set in the location wins;
 //! * a location's own music from `Data/Locations` (`Music` entries whose
 //!   `Condition` holds, else `MusicDefault`);
 //! * outdoors: rain ambience while it rains, silence at night, otherwise a
@@ -22,6 +23,9 @@ pub const RAIN_MUSIC: &str = "rain";
 
 /// Desired track while playing: `Some("")` = silence, `None` = no change.
 pub fn track_for_world(w: &World, current: Option<&str>) -> Option<String> {
+    if let Some(t) = w.jukebox_track() {
+        return Some(t);
+    }
     if let Some(t) = w.location_data.get(&w.current).and_then(|d| location_music(d, w)) {
         return Some(t);
     }

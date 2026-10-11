@@ -64,6 +64,7 @@ pub fn build() -> MemSource {
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
     m.insert("TileSheets/Dev_Trinkets.png", art::trinkets().encode_png());
     m.insert("TileSheets/Dev_Clothes.png", art::clothes().encode_png());
+    m.insert("TileSheets/Dev_Mannequins.png", art::mannequin().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_SlimeHutch.png", art::shed(5, 3, Color::rgb(150, 170, 150), Color::rgb(90, 140, 80)).encode_png());
     m.insert("Buildings/Dev_Mill.png", art::shed(4, 2, Color::rgb(190, 170, 130), Color::rgb(140, 80, 60)).encode_png());
@@ -83,6 +84,8 @@ pub fn build() -> MemSource {
     let villagers = [
         ("Mara", art::Look { skin: Color::rgb(200, 150, 110), hair: Color::rgb(40, 30, 60), shirt: Color::rgb(150, 80, 170), legs: Color::rgb(90, 50, 110), long_hair: true, beard: false }),
         ("Tobin", art::Look { skin: Color::rgb(240, 200, 170), hair: Color::rgb(190, 110, 50), shirt: Color::rgb(220, 140, 60), legs: Color::rgb(60, 70, 110), long_hair: false, beard: true }),
+        // Event-only actor (the wedding officiant).
+        ("Dev_Officiant", art::Look { skin: Color::rgb(210, 170, 130), hair: Color::rgb(200, 200, 205), shirt: Color::rgb(60, 60, 80), legs: Color::rgb(40, 40, 50), long_hair: false, beard: true }),
     ];
     for (name, look) in &villagers {
         m.insert(&format!("Characters/{name}.png"), art::character(look).encode_png());
@@ -286,6 +289,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "Price": 0, "SpriteIndex": 16 },
         "Dev_Telephone": { "Name": "Telephone", "DisplayName": "Telephone", "Description": "Call the shops around town.",
                            "Price": 0, "SpriteIndex": 17 },
+        "Dev_MiniJukebox": { "Name": "Mini-Jukebox", "DisplayName": "Mini-Jukebox", "Description": "Plays any song you've heard, wherever it's placed.",
+                             "Price": 750, "SpriteIndex": 18 },
         "Dev_BeeHouse": { "Name": "Bee House", "DisplayName": "Bee House", "Description": "Bees make honey, flavored by flowers growing nearby.",
                           "Price": 50, "SpriteIndex": 12 },
         "Dev_Scarecrow": { "Name": "Straw Scarecrow", "DisplayName": "Straw Scarecrow", "Description": "Keeps crows off the crops within 8 tiles.",
@@ -530,6 +535,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "couch", "ItemId": "(F)Dev_Couch" },
                 { "Id": "fireplace", "ItemId": "(F)Dev_Fireplace" },
                 { "Id": "lantern", "ItemId": "(F)Dev_Lantern" },
+                { "Id": "fishtank", "ItemId": "(F)Dev_FishTank" },
+                { "Id": "mannequin", "ItemId": "(M)Dev_Mannequin", "Price": 2500 },
+                { "Id": "jukebox", "ItemId": "(BC)Dev_MiniJukebox", "Price": 1500 },
                 { "Id": "wp0", "ItemId": "(WP)0" }, { "Id": "wp1", "ItemId": "(WP)1" }, { "Id": "wp2", "ItemId": "(WP)2" }, { "Id": "wp3", "ItemId": "(WP)3" },
                 { "Id": "fl0", "ItemId": "(FL)0" }, { "Id": "fl1", "ItemId": "(FL)1" }, { "Id": "fl2", "ItemId": "(FL)2" }, { "Id": "fl3", "ItemId": "(FL)3" }
             ]
@@ -736,7 +744,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Dev_Lamp": "Floor Lamp/lamp/1 2/1 1/1/200/-1/Floor Lamp/11",
             "Dev_Couch": "Plush Couch/couch/3 2/3 1/4/700/-1/Plush Couch/12",
             "Dev_Fireplace": "Brick Fireplace/fireplace/2 3/2 1/1/800/-1/Brick Fireplace/19",
-            "Dev_Lantern": "Garden Lantern/lamp/1 2/1 1/1/300/2/Garden Lantern/23"
+            "Dev_Lantern": "Garden Lantern/lamp/1 2/1 1/1/300/2/Garden Lantern/23",
+            "Dev_FishTank": "Small Fish Tank/fishtank/2 2/2 1/1/2000/-1/Small Fish Tank/24"
         })),
         ("Data/Boots", json!({
             "Dev_WorkBoots": "Work Boots/Sturdy and comfortable./300/2/0/0/Work Boots/0/55/Maps\\springobjects"
@@ -1062,6 +1071,31 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/MuseumRewards", json!({
             "first_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 1 }], "RewardItemId": "(O)Dev_SpeedGro", "RewardItemCount": 5 },
             "two_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 2 }], "RewardItemId": "(BC)Dev_Furnace", "RewardItemCount": 1 }
+        })),
+        ("Data/Mannequins", json!({
+            "Dev_Mannequin": { "DisplayName": "Dress Form", "Description": "Dress it up, or swap outfits with it.",
+                               "Texture": "TileSheets\\Dev_Mannequins", "SheetIndex": 0 }
+        })),
+        ("Data/IncomingPhoneCalls", json!({
+            "Dev_MaraCall": { "FromNpc": "Mara", "TriggerCondition": "PLAYER_HEARTS Current Mara 2", "IgnoreBaseChance": true,
+                              "Dialogue": "Hi, it's Mara! Just checking the line works.#$b#Come by the store sometime, okay?$h" },
+            "Dev_Survey": { "FromDisplayName": "Valley Survey Office", "Dialogue": "This is a recorded message.|Thank you for living in the valley.",
+                            "SimpleDialogueSplitBy": "|", "MaxCalls": 2 }
+        })),
+        ("Data/JukeboxTracks", json!({
+            "spring1": { "Name": "Spring Fields" },
+            "spring2": { "Name": "Spring Breeze" },
+            "Dev_Unreleased": { "Available": false },
+            "Dev_Theme": { "Name": "Valley Theme", "AlternativeTrackIds": ["Dev_ThemeShort"] }
+        })),
+        ("Data/Weddings", json!({
+            "EventScript": {
+                "default": "none/24 12/farmer 23 14 0 [SpouseActor] 24 14 0 Dev_Officiant 24 11 2 [SetupContextualWeddingAttendees]/skippable/pause 600/speak Dev_Officiant \"Friends, we're here to see these two promise to share their days.\"/pause 300/faceDirection farmer 1/faceDirection [SpouseActor] 3/pause 400/emote [SpouseActor] 20/speak [SpouseActor] \"I do.\"/pause 300/[ContextualWeddingCelebrations]/pause 400/message \"The town cheers as you head home together.\"/end wedding"
+            },
+            "Attendees": {
+                "Tobin": { "Id": "Tobin", "Setup": "Tobin 22 16 0", "Celebration": "textAboveHead Tobin \"Congratulations!\"" },
+                "Mara": { "Id": "Mara", "Setup": "Mara 26 16 0", "Celebration": "textAboveHead Mara \"Wonderful!\"" }
+            }
         })),
         ("Data/ChairTiles", json!({
             "dev_outdoors/7/4": "1/1/down/bench/-1/-1/true/"
