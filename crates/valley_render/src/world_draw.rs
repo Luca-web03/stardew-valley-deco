@@ -261,6 +261,41 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Resource clumps (stumps, boulders, giant crops).
+    for c in &loc.state.clumps {
+        let (tex, src) = match &c.kind {
+            valley_sim::clumps::ClumpKind::GiantCrop(key) => {
+                let Some(d) = w.giant_crops.get(key) else { continue };
+                let tex = rc.assets.tex(rc.cm, rc.textures, &d.texture.replace('\\', "/"));
+                (tex, IRect::new(d.texture_position.x, d.texture_position.y, 16 * c.size.0, 16 * c.size.1))
+            }
+            k => {
+                let i = k.sheet_index().unwrap_or(0);
+                let tex = rc.assets.tex(rc.cm, rc.textures, "Maps/springobjects");
+                (tex, IRect::new((i % 24) * 16, (i / 24) * 16, 32, 32))
+            }
+        };
+        // Giant crop sprites may be taller than their footprint; clamp to the texture.
+        let (tw, th) = rc.textures.size(tex);
+        let src = IRect::new(src.x, src.y, src.w.min(tw as i32 - src.x).max(1), src.h.min(th as i32 - src.y).max(1));
+        let bottom = ((c.tile.y + c.size.1) * TILE) as f32;
+        let p = cam.to_screen(Vec2::new((c.tile.x * TILE) as f32 + shake_off(c.shake), bottom - src.h as f32 * ZOOM));
+        out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), sort_depth(bottom - 2.0, map_h)));
+    }
+
+    // Crows pecking (or flying off) in the morning.
+    if w.crows.iter().any(|c| c.location == loc_name) {
+        let tex = rc.assets.tex(rc.cm, rc.textures, "LooseSprites/Port_Crow");
+        for c in w.crows.iter().filter(|c| c.location == loc_name) {
+            let frame = if c.flying { 2 + (c.ms / 120 % 2) as i32 } else { (c.ms / 400 % 2) as i32 };
+            let p = cam.to_screen(c.pos);
+            let depth = if c.flying { 0.95 } else { sort_depth(c.pos.y + 8.0, map_h) };
+            let mut s = Sprite::new(tex, IRect::new(frame * 16, 0, 16, 16), FRect::new(p.x - 32.0, p.y - 48.0, 64.0, 64.0), depth);
+            s.flip_x = c.flip;
+            out.sprite(s);
+        }
+    }
+
     // Furniture: rugs lie on the floor, the rest is y-sorted by its footprint bottom.
     for f in &loc.state.furniture {
         let (tex, src) = furniture_sprite(rc, w, &f.id);

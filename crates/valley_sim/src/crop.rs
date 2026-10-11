@@ -65,6 +65,16 @@ impl Crop {
         self.phase_days = Some(days);
     }
 
+    /// Jump straight to harvestable.
+    pub fn grow_fully(&mut self, data: &CropData) {
+        if self.dead {
+            return;
+        }
+        self.phase = self.phases(data).len();
+        self.day_in_phase = 0;
+        self.regrow_left = 0;
+    }
+
     pub fn grows_in(data: &CropData, season: Season) -> bool {
         data.seasons.iter().any(|s| Season::parse(s) == Some(season))
     }

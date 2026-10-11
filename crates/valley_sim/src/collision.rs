@@ -33,6 +33,9 @@ pub fn tile_passable(loc: &GameLocation, p: TilePos) -> bool {
             return false;
         }
     }
+    if loc.clump_at(p).is_some() {
+        return false;
+    }
     if loc.furniture_at(p).is_some_and(|f| !f.walkable) {
         return false;
     }

@@ -219,6 +219,9 @@ impl World {
         if self.pickup_object(t) {
             return;
         }
+        if self.hit_clump(t, ToolKind::Axe, self.tool_level(slot)) {
+            return;
+        }
         let damage = self.tool_level(slot) + 1;
         if let Some(o) = self.location().object(t) {
             if let ObjKind::Debris { debris: DebrisKind::Twig, .. } = o.kind {
@@ -311,6 +314,9 @@ impl World {
     fn use_pickaxe(&mut self, slot: usize, t: TilePos) {
         let power = self.tool_level(slot) + 1;
         if self.hit_mine_rock(t, power) {
+            return;
+        }
+        if self.hit_clump(t, ToolKind::Pickaxe, power - 1) {
             return;
         }
         if self.pickup_object(t) {

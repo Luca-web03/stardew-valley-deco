@@ -119,6 +119,11 @@ Other conventions:
 | Trinkets: `Data/Trinkets` items `(TR)id`, worn in the trinket slot; effects via `Port.TrinketStats` ("attack 2 defense 1 speed 1 magnet 32 luck 1"); the original's effect classes are not implemented | `valley_sim::item::TrinketData` |
 | Divorce: `Port.Divorce` / `DivorceBook` tile action, fee 50,000g (approx.); jealousy: -30 spouse points for gifts to another romanceable villager within 10 tiles of the spouse (approx.) | `valley_sim::romance` |
 | Collectibles: `Port.Collectible` ("<counter> [n]") objects go to a counter (golden walnut `73` -> `GoldenWalnut`); `Port.Unlock <counter> <cost> <flag> [text]` spends them; Buildings tiles with `Port.ClearedBy <flag>` vanish once the flag is set | `valley_sim::island` |
+| Resource clumps: 2x2 stumps (copper axe), logs (steel axe), boulders (steel pickaxe), meteorites (gold pickaxe), mine boulders, drawn from `Maps/springobjects` at sheet indices 600/602/672/622/752-758; health and drops approx.; random ones on a new farm unless the farm map has `Port.NoClumps` | `valley_sim::clumps` |
+| Giant crops: `Data/GiantCrops` (`FromItemId`, `HarvestItems`, `Texture`, `TexturePosition`, `TileSize`, `Health`, `Chance`, `Condition`); a square of ripe crops may merge overnight in outdoor locations | `valley_sim::clumps` |
+| Crows and scarecrows: crows need 16+ farm crops (30% per 16, max 4 a night); scarecrows are big craftables tagged `crow_scare` (radius `crow_scare_radius_<n>`, default 9) or named "...arecrow"; crow sprite `LooseSprites/Port_Crow` (4 frames of 16x16) | `valley_sim::farm_events` |
+| Night events (approx. 1% each): fairy (grows crops within 3 tiles), witch (void egg `305` in a coop), meteorite, stone owl (big craftable `95`), strange capsule (`96`, year 2+); summer 3 of year 1 sets the `Port_Earthquake` flag (pair with `Port.ClearedBy`) | `valley_sim::farm_events` |
+| Weather totems: `Port.SetWeather <Rain|Storm|Sun|Snow|Wind>` on an object, or the rain totem `681`; refused when tomorrow is a festival | `valley_sim::farm_events` |
 | Volcano (generic): `Port.Volcano` enters 5 generated floors with lava (`Type: Lava` tiles burn), shard-bearing rocks and a `Port.Forge` on the last floor; shards = object `848` or placeholder `Dev_EmberShard`; +3 damage per forge level (approx.) | `valley_sim::volcano` |
 
 ## Mods

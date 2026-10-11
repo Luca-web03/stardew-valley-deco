@@ -44,7 +44,7 @@ pub enum Channel {
 }
 
 impl World {
-    fn gsq_ok(&self, condition: Option<&str>) -> bool {
+    pub(crate) fn gsq_ok(&self, condition: Option<&str>) -> bool {
         let mut rng = self.day_rng(57);
         let mail = self.farmer.mail_received.clone();
         let seen = self.farmer.events_seen.clone();

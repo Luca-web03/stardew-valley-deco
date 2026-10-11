@@ -43,6 +43,8 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Horse.png", art::horse().encode_png());
     m.insert("Buildings/Dev_Stable.png", art::shed(4, 2, Color::rgb(150, 110, 70), Color::rgb(90, 110, 70)).encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
+    m.insert("LooseSprites/Port_Crow.png", art::crow().encode_png());
+    m.insert("TileSheets/Dev_GiantCrops.png", art::giant_crops().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
     m.insert("TileSheets/Dev_Trinkets.png", art::trinkets().encode_png());
@@ -101,6 +103,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "390": obj("Stone", "Basic", -16, 2, ICON_STONE, -300),
         "771": obj("Fiber", "Basic", -16, 1, ICON_FIBER, -300),
         "92": obj("Sap", "Basic", -81, 2, ICON_SAP, -300),
+        "709": obj("Hardwood", "Basic", -16, 15, ICON_HARDWOOD, -300),
+        "386": obj("Iridium Ore", "Basic", -15, 100, ICON_IRIDIUM_ORE, -300),
         "Dev_Bread": obj("Bread", "Cooking", -7, 60, ICON_BREAD, 20),
         "Dev_BerryTart": obj("Berry Tart", "Cooking", -7, 180, ICON_BERRY_TART, 40),
         "Dev_Berry": obj("Wild Berry", "Basic", -79, 20, ICON_BERRY, 6),
@@ -181,6 +185,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Buffs": [{ "Id": "food", "Duration": 360, "CustomAttributes": { "MiningLevel": 2, "Defense": 1 } }]
         },
         "Dev_Dust": obj("Wing Dust", "Basic", -28, 8, ICON_DUST, -300),
+        "Dev_RainTotem": {
+            "Name": "Rain Totem", "DisplayName": "Rain Totem", "Description": "Use it to make it rain tomorrow.",
+            "Type": "Crafting", "Category": -8, "Price": 20, "SpriteIndex": ICON_RAIN_TOTEM, "CustomFields": { "Port.SetWeather": "Rain" }
+        },
         "Dev_Sprinkler": {
             "Name": "Sprinkler", "DisplayName": "Sprinkler", "Description": "Waters the 4 adjacent tiles every morning.",
             "Type": "Crafting", "Category": -8, "Price": 50, "SpriteIndex": ICON_SPRINKLER, "ContextTags": ["sprinkler_cross"]
@@ -214,6 +222,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "Price": 50, "SpriteIndex": 5, "CustomFields": { "Port.Cask": "true" } },
         "Dev_SewingMachine": { "Name": "Sewing Machine", "DisplayName": "Sewing Machine", "Description": "Turns cloth into clothing.",
                                "Price": 50, "SpriteIndex": 6, "CustomFields": { "Port.SewingMachine": "true" } },
+        "Dev_Scarecrow": { "Name": "Straw Scarecrow", "DisplayName": "Straw Scarecrow", "Description": "Keeps crows off the crops within 8 tiles.",
+                           "Price": 50, "SpriteIndex": 7, "ContextTags": ["crow_scare", "crow_scare_radius_9"] },
     });
     let machines = json!({
         "(BC)Dev_Juicer": {
@@ -252,6 +262,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Sewing Machine": "388 10 Dev_IronBar 1/Home/Dev_SewingMachine/true/default/",
         "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
         "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
+        "Straw Scarecrow": "388 50 771 20 Dev_Coal 1/Home/Dev_Scarecrow/true/default/",
+        "Rain Totem": "388 1 92 5 Dev_Berry 1/Home/Dev_RainTotem/false/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -519,6 +531,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Objects", objects),
         ("Data/BigCraftables", bigs),
         ("Data/Machines", machines),
+        ("Data/GiantCrops", json!({
+            "Dev_Pumpkin": {
+                "FromItemId": "(O)Dev_Pumpkin",
+                "HarvestItems": [{ "ItemId": "(O)Dev_Pumpkin", "MinStack": 15, "MaxStack": 21 }],
+                "Texture": "TileSheets\\Dev_GiantCrops",
+                "TexturePosition": { "X": 0, "Y": 0 },
+                "TileSize": { "X": 3, "Y": 3 }
+            }
+        })),
         ("Data/CraftingRecipes", recipes),
         ("Data/Fish", json!({
             "Dev_Perch": "Pond Perch/25/smooth/4/14/600 2600/spring summer fall/both/x/1/.4/.1/0/false",

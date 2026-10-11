@@ -415,6 +415,9 @@ pub const ICON_TICKET: i32 = 67;
 pub const ICON_BOOK: i32 = 68;
 pub const ICON_SUN_SHELL: i32 = 69;
 pub const ICON_EMBER_SHARD: i32 = 70;
+pub const ICON_RAIN_TOTEM: i32 = 71;
+pub const ICON_HARDWOOD: i32 = 72;
+pub const ICON_IRIDIUM_ORE: i32 = 73;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -424,7 +427,10 @@ fn seed_packet(c: &mut Cell, col: Color) {
 }
 
 pub fn objects() -> Image {
-    let mut img = Image::new(16 * OBJ_COLS as u32, 16 * 4);
+    // Rows past the item icons hold 2x2 resource clumps at their sheet
+    // indices (600 stump ... 758 mine boulders).
+    let mut img = Image::new(16 * OBJ_COLS as u32, 16 * 33);
+    clumps(&mut img);
     let turnip = Color::rgb(240, 230, 230);
     let bean = Color::rgb(80, 170, 70);
     let pumpkin = Color::rgb(235, 130, 40);
@@ -886,6 +892,33 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_HARDWOOD, OBJ_COLS, 16, 16);
+        c.rect(2, 6, 12, 6, Color::rgb(110, 60, 35));
+        c.rect(2, 6, 12, 1, Color::rgb(150, 90, 50));
+        c.ellipse(13.0, 9.0, 2.0, 3.0, Color::rgb(190, 130, 80));
+        c.rect(5, 9, 5, 1, Color::rgb(80, 45, 25));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_IRIDIUM_ORE, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 6.0, 5.0, Color::rgb(90, 85, 95));
+        c.ellipse(6.0, 8.0, 2.0, 1.5, Color::rgb(200, 90, 220));
+        c.ellipse(10.0, 11.0, 1.5, 1.5, Color::rgb(170, 70, 200));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Rain totem: a carved post with a cloud.
+        let mut c = Cell::at(&mut img, ICON_RAIN_TOTEM, OBJ_COLS, 16, 16);
+        c.rect(6, 5, 4, 10, Color::rgb(150, 100, 60));
+        c.rect(6, 8, 4, 1, Color::rgb(100, 65, 35));
+        c.rect(6, 11, 4, 1, Color::rgb(100, 65, 35));
+        c.ellipse(8.0, 4.0, 5.5, 2.5, Color::rgb(170, 190, 220));
+        c.ellipse(6.0, 3.5, 2.5, 2.0, Color::rgb(200, 215, 235));
+        c.px(4, 7, Color::rgb(80, 140, 230));
+        c.px(12, 6, Color::rgb(80, 140, 230));
+        c.auto_outline(OUTLINE);
+    }
+    {
         let mut c = Cell::at(&mut img, ICON_SPEEDGRO, OBJ_COLS, 16, 16);
         c.rect(3, 4, 10, 11, Color::rgb(170, 200, 120));
         c.rect(3, 4, 10, 2, Color::rgb(120, 160, 80));
@@ -949,6 +982,21 @@ pub fn craftables() -> Image {
         c.rect(1, 25, 14, 1, Color::rgb(90, 90, 100));
         c.ellipse(8.0, 22.0, 2.0, 2.0, Color::rgb(110, 70, 40));
         c.rect(2, 29, 12, 2, Color::rgb(100, 65, 35));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Scarecrow: a straw figure on a post with a hat.
+        let mut c = Cell::at(&mut img, 7, 8, 16, 32);
+        c.rect(7, 12, 2, 19, Color::rgb(130, 90, 50));
+        c.rect(2, 15, 12, 2, Color::rgb(130, 90, 50));
+        c.rect(5, 14, 6, 9, Color::rgb(170, 70, 60));
+        c.ellipse(8.0, 10.0, 3.5, 3.5, Color::rgb(230, 200, 120));
+        c.rect(3, 6, 10, 2, Color::rgb(110, 80, 50));
+        c.rect(5, 3, 6, 4, Color::rgb(110, 80, 50));
+        c.px(7, 10, Color::rgb(40, 30, 30));
+        c.px(9, 10, Color::rgb(40, 30, 30));
+        c.rect(2, 17, 2, 2, Color::rgb(230, 200, 120));
+        c.rect(12, 17, 2, 2, Color::rgb(230, 200, 120));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1881,6 +1929,120 @@ pub fn silo() -> Image {
     }
     c.ellipse(16.0, 14.0, 13.0, 10.0, Color::rgb(150, 70, 60));
     c.rect(13, 50, 6, 12, Color::rgb(110, 80, 50));
+    c.auto_outline(OUTLINE);
+    img
+}
+
+/// 32x32 cell at an object sheet index (2x2 cells).
+fn clump_cell(img: &mut Image, index: i32) -> Cell<'_> {
+    Cell { ox: (index % OBJ_COLS) * 16, oy: (index / OBJ_COLS) * 16, w: 32, h: 32, img }
+}
+
+fn clumps(img: &mut Image) {
+    let bark = Color::rgb(120, 80, 45);
+    {
+        // Large stump: wide trunk with roots and rings on top.
+        let mut c = clump_cell(img, 600);
+        c.rect(5, 12, 22, 16, bark);
+        c.rect(2, 24, 6, 5, shade(bark, -15));
+        c.rect(24, 24, 6, 5, shade(bark, -15));
+        c.ellipse(16.0, 12.0, 11.0, 5.0, Color::rgb(200, 160, 100));
+        c.ellipse(16.0, 12.0, 7.0, 3.0, Color::rgb(170, 130, 80));
+        c.ellipse(16.0, 12.0, 3.0, 1.5, Color::rgb(200, 160, 100));
+        for x in [9, 15, 21] {
+            c.rect(x, 18, 1, 9, shade(bark, -30));
+        }
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Hollow log lying on its side.
+        let mut c = clump_cell(img, 602);
+        c.rect(3, 12, 26, 15, bark);
+        c.rect(3, 12, 26, 3, shade(bark, 25));
+        c.ellipse(4.5, 19.5, 4.0, 7.5, Color::rgb(190, 150, 95));
+        c.ellipse(4.5, 19.5, 2.2, 4.5, Color::rgb(50, 35, 25));
+        for x in [10, 16, 22] {
+            c.rect(x, 17, 4, 1, shade(bark, -30));
+        }
+        c.rect(18, 9, 2, 3, Color::rgb(80, 150, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Meteorite: dark, pitted, faintly glowing.
+        let mut c = clump_cell(img, 622);
+        c.ellipse(16.0, 18.0, 14.0, 12.0, Color::rgb(70, 60, 75));
+        c.ellipse(13.0, 14.0, 7.0, 5.0, Color::rgb(95, 85, 100));
+        for (x, y) in [(9, 20), (19, 13), (21, 23), (13, 25)] {
+            c.ellipse(x as f32, y as f32, 2.0, 1.5, Color::rgb(45, 35, 50));
+        }
+        c.px(17, 19, Color::rgb(240, 120, 60));
+        c.px(10, 15, Color::rgb(240, 120, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Boulder.
+        let mut c = clump_cell(img, 672);
+        c.ellipse(16.0, 19.0, 14.0, 11.0, Color::rgb(130, 128, 120));
+        c.ellipse(12.0, 14.0, 8.0, 5.0, Color::rgb(160, 158, 150));
+        c.rect(18, 20, 6, 1, Color::rgb(100, 98, 92));
+        c.rect(9, 24, 5, 1, Color::rgb(100, 98, 92));
+        c.auto_outline(OUTLINE);
+    }
+    for v in 0..4 {
+        let mut c = clump_cell(img, 752 + 2 * v);
+        let base = shade(Color::rgb(110, 100, 95), v * 8 - 12);
+        c.ellipse(16.0, 19.0, 13.0 + v as f32 * 0.5, 11.0, base);
+        c.ellipse(12.0 + v as f32, 14.0, 6.0, 4.0, shade(base, 25));
+        c.rect(15, 22, 7, 1, shade(base, -30));
+        c.auto_outline(OUTLINE);
+    }
+}
+
+/// Crow: two pecking frames and two flying frames (16x16 each).
+pub fn crow() -> Image {
+    let mut img = Image::new(64, 16);
+    let body = Color::rgb(40, 40, 55);
+    for f in 0..4 {
+        let mut c = Cell::at(&mut img, f, 4, 16, 16);
+        if f < 2 {
+            let dy = f; // head bob
+            c.ellipse(7.0, 11.0, 5.0, 3.5, body);
+            c.ellipse(11.0, 8.0 + dy as f32 * 2.0, 2.5, 2.5, body);
+            c.rect(13, 8 + dy * 2, 2, 1, Color::rgb(220, 180, 60));
+            c.px(11, 7 + dy * 2, Color::WHITE);
+            c.rect(2, 10, 3, 1, shade(body, -10));
+            c.rect(6, 14, 1, 2, Color::rgb(220, 180, 60));
+            c.rect(9, 14, 1, 2, Color::rgb(220, 180, 60));
+        } else {
+            let up = f == 2;
+            c.ellipse(8.0, 9.0, 4.5, 2.5, body);
+            c.ellipse(12.0, 8.0, 2.0, 2.0, body);
+            c.rect(14, 8, 2, 1, Color::rgb(220, 180, 60));
+            if up {
+                c.rect(4, 3, 3, 5, body);
+                c.rect(8, 2, 3, 6, body);
+            } else {
+                c.rect(4, 10, 3, 5, body);
+                c.rect(8, 10, 3, 5, body);
+            }
+        }
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// A giant pumpkin (48x48).
+pub fn giant_crops() -> Image {
+    let mut img = Image::new(48, 48);
+    let mut c = Cell::at(&mut img, 0, 1, 48, 48);
+    let orange = Color::rgb(235, 130, 40);
+    c.ellipse(24.0, 28.0, 22.0, 17.0, orange);
+    for x in [12.0, 24.0, 36.0] {
+        c.ellipse(x, 28.0, 3.0, 15.0, shade(orange, -30));
+    }
+    c.ellipse(18.0, 20.0, 6.0, 4.0, shade(orange, 30));
+    c.rect(22, 6, 4, 7, Color::rgb(90, 120, 50));
+    c.ellipse(30.0, 9.0, 5.0, 2.5, Color::rgb(80, 160, 60));
     c.auto_outline(OUTLINE);
     img
 }

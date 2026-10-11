@@ -35,6 +35,8 @@ pub struct DayReport {
     pub earned: i32,
     pub passed_out: bool,
     pub money_lost: i32,
+    /// What happened on the farm overnight.
+    pub night_event: Option<crate::farm_events::NightEvent>,
 }
 
 /// Things the front end should react to (sounds, UI, transitions).
@@ -217,6 +219,10 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// Crows on the farm this morning.
+    pub crows: Vec<crate::farm_events::Crow>,
+    /// Data/GiantCrops.
+    pub giant_crops: BTreeMap<String, valley_content::data::GiantCropData>,
     /// Data/Powers (book powers).
     pub powers: BTreeMap<String, crate::mastery::PowerData>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
@@ -376,6 +382,8 @@ impl World {
             festival_original_maps: BTreeMap::new(),
             casino_plays: 0,
             powers: crate::mastery::load_powers(cm),
+            giant_crops: crate::clumps::load_giant_crops(cm),
+            crows: Vec::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -475,6 +483,7 @@ impl World {
                 w.spouse_dialogue.insert(n, d);
             }
         }
+        w.place_farm_clumps();
         w.populate_new_farm();
         w.adopt_pet("Biscuit");
         let mut grass_rng = Rng::new(Rng::seed_from(&[w.seed as i64, 88]));
@@ -857,6 +866,9 @@ impl World {
                 loc.state.terrain.remove(&p);
             }
         }
+        self.giant_crops_overnight();
+        self.crows_overnight();
+        let night_event = self.night_event_overnight();
         self.animals_overnight();
         self.horses_overnight();
         self.huts_overnight();
@@ -888,7 +900,7 @@ impl World {
         self.paused = false;
         self.farmhands_overnight(passed_out);
         self.start_day();
-        let report = DayReport { shipped, earned, passed_out, money_lost };
+        let report = DayReport { shipped, earned, passed_out, money_lost, night_event };
         self.last_report = Some(report.clone());
         self.emit(WorldEvent::DayEnded(report));
     }
@@ -984,6 +996,7 @@ impl World {
         self.update_projectiles(dt);
         self.update_bombs(dt);
         self.update_animals(dt);
+        self.update_crows(dt);
         self.update_pet(dt);
         self.update_children(dt);
         self.update_dropped(dt);
@@ -1006,6 +1019,7 @@ impl World {
                 o.shake = (o.shake - 1).max(0);
             }
         }
+        self.animate_clumps();
     }
 
     fn update_farmer(&mut self, input: &PlayerInput, dt: u32) {
@@ -1363,7 +1377,7 @@ impl World {
         let slot = self.farmer.current_slot;
         // Warp items and note scraps act before placement.
         if let Some(Item::Object { id, .. }) = self.farmer.current_item().cloned() {
-            if self.use_warp_totem(slot, &id) || self.read_note_scrap(slot, &id) || self.read_book(slot, &id) {
+            if self.use_warp_totem(slot, &id) || self.use_weather_totem(slot, &id) || self.read_note_scrap(slot, &id) || self.read_book(slot, &id) {
                 return true;
             }
         }

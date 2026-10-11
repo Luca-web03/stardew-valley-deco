@@ -27,7 +27,11 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Crops: phases, watering, regrowth, seasons, quality formula,
       fertilizer (quality / speed / retention), sprinklers, greenhouse
 - [x] Trees (chop, stump, growth — approx.), tree seeds, tappers,
-      fruit trees, debris, grass, forage, artifact spots
+      fruit trees, debris, grass, forage, artifact spots, resource clumps
+      (large stumps, logs, boulders, meteorites; approx. health)
+- [x] Giant crops (Data/GiantCrops), crows and scarecrows, night events
+      (fairy, witch, meteorite, owl, capsule, earthquake; approx. chances),
+      rain/weather totems
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart

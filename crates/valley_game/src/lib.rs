@@ -555,7 +555,11 @@ impl ValleyGame {
                 }
                 WorldEvent::DayEnded(report) => {
                     self.menus.clear();
+                    let night = report.night_event;
                     self.menus.push(Menu::DayEnd { report, ms: 0 });
+                    if let Some(kind) = night {
+                        self.menus.push(Menu::NightEvent { kind, ms: 0 });
+                    }
                     self.save();
                 }
                 WorldEvent::LevelUp(skill, level) => self.toast(format!("{skill:?} level {level}!")),
@@ -1214,6 +1218,12 @@ impl ValleyGame {
                     }
                 }
                 if input_map::menu_pressed(&ctx.input) || input_map::journal_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::NightEvent { ms, .. } => {
+                *ms += 16;
+                if (*ms > 600 && confirm) || *ms > 6000 {
                     close = true;
                 }
             }
@@ -2527,6 +2537,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 }
             }
         }
+        Menu::NightEvent { kind, ms } => draw_night_event(ui, *kind, *ms, sw, sh),
         Menu::DayEnd { report, .. } => {
             ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(30, 20, 40));
             let f = menu_frame(sw, sh);
@@ -2691,7 +2702,43 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenBundles);
                 "opening bundles".into()
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile".into(),
+            Some("clump") => {
+                use valley_sim::clumps::{ClumpKind, ResourceClump};
+                let kind = match t.get(1).copied().unwrap_or("stump") {
+                    "log" => ClumpKind::Log,
+                    "boulder" => ClumpKind::Boulder,
+                    "meteorite" => ClumpKind::Meteorite,
+                    "mine" => ClumpKind::MineBoulder(0),
+                    "stump" => ClumpKind::Stump,
+                    other => ClumpKind::GiantCrop(other.to_string()),
+                };
+                let (dx, dy) = w.farmer.facing.delta();
+                let at = w.farmer.tile();
+                let tile = valley_sim::TilePos::new(at.x + dx * 2 - if dx < 0 { 1 } else { 0 }, at.y + dy * 2 - if dy < 0 { 1 } else { 0 });
+                let mut c = ResourceClump::new(kind.clone(), tile);
+                if let ClumpKind::GiantCrop(k) = &kind {
+                    match w.giant_crops.get(k) {
+                        Some(d) => c.size = (d.tile_size.x, d.tile_size.y),
+                        None => return format!("no giant crop {k}"),
+                    }
+                }
+                w.location_mut().state.clumps.push(c);
+                format!("placed {kind:?} at {tile:?}")
+            }
+            Some("night") => {
+                use valley_sim::farm_events::NightEvent;
+                let kind = match t.get(1).copied().unwrap_or("fairy") {
+                    "witch" => NightEvent::Witch,
+                    "meteorite" => NightEvent::Meteorite,
+                    "owl" => NightEvent::Owl,
+                    "capsule" => NightEvent::Capsule,
+                    "earthquake" => NightEvent::Earthquake,
+                    _ => NightEvent::Fairy,
+                };
+                self.menus.push(Menu::NightEvent { kind, ms: 0 });
+                format!("showing {kind:?}")
+            }
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event>".into(),
         }
     }
 }
@@ -2857,5 +2904,86 @@ impl GameModule for ValleyGame {
         if self.flash > 0 {
             out.fill(FRect::new(0.0, 0.0, ctx.screen_w as f32, ctx.screen_h as f32), Color::rgba(255, 255, 255, (self.flash * 15).min(200) as u8), 99.0);
         }
+    }
+}
+
+/// A short night scene: sky, the farm's silhouette and the event itself
+/// (all drawn with plain shapes), with a caption.
+fn draw_night_event(ui: &mut Ui, kind: valley_sim::farm_events::NightEvent, ms: u32, sw: f32, sh: f32) {
+    use valley_sim::farm_events::NightEvent;
+    let t = ms as f32 / 1000.0;
+    let quake = if kind == NightEvent::Earthquake && t < 3.0 { ((t * 40.0).sin() * 6.0 * (1.0 - t / 3.0)).round() } else { 0.0 };
+    ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(14, 18, 40));
+    ui.fill(FRect::new(0.0, sh * 0.45, sw, sh * 0.2), Color::rgb(20, 26, 55));
+    for i in 0..60u32 {
+        let x = (i.wrapping_mul(7919) % 1000) as f32 / 1000.0 * sw;
+        let y = (i.wrapping_mul(104_729) % 1000) as f32 / 1000.0 * sh * 0.55;
+        let tw = ((t * 2.0 + i as f32).sin() * 0.5 + 0.5) * 0.6 + 0.4;
+        ui.fill(FRect::new(x, y, 3.0, 3.0), Color::rgb(230, 230, 255).with_alpha(tw));
+    }
+    ui.fill(FRect::new(sw * 0.78, sh * 0.12, 60.0, 60.0), Color::rgb(240, 236, 200));
+    // Ground and the farmhouse silhouette.
+    let ground = sh * 0.68;
+    ui.fill(FRect::new(quake, ground, sw, sh - ground), Color::rgb(16, 32, 22));
+    ui.fill(FRect::new(sw * 0.15 + quake, ground - 90.0, 160.0, 90.0), Color::rgb(10, 14, 20));
+    ui.fill(FRect::new(sw * 0.15 - 12.0 + quake, ground - 120.0, 184.0, 34.0), Color::rgb(10, 14, 20));
+    ui.fill(FRect::new(sw * 0.15 + 60.0 + quake, ground - 60.0, 26.0, 26.0), Color::rgb(230, 190, 90));
+    for k in 0..8 {
+        let x = sw * 0.4 + k as f32 * 56.0 + quake;
+        ui.fill(FRect::new(x, ground + 20.0, 36.0, 10.0), Color::rgb(28, 60, 34));
+    }
+    match kind {
+        NightEvent::Fairy => {
+            let x = sw * 0.3 + t * sw * 0.12;
+            let y = sh * 0.45 + (t * 3.0).sin() * 30.0;
+            ui.fill(FRect::new(x - 12.0, y - 12.0, 24.0, 24.0), Color::rgb(255, 200, 240).with_alpha(0.5));
+            ui.fill(FRect::new(x - 5.0, y - 5.0, 10.0, 10.0), Color::rgb(255, 250, 255));
+            for k in 0..6 {
+                let a = t * 4.0 + k as f32;
+                ui.fill(FRect::new(x - 40.0 * (k as f32 / 6.0) - 20.0, y + a.sin() * 14.0, 4.0, 4.0), Color::rgb(255, 230, 120).with_alpha(1.0 - k as f32 / 6.0));
+            }
+        }
+        NightEvent::Witch => {
+            let x = sw + 100.0 - t * sw * 0.35;
+            let y = sh * 0.2 + (t * 2.0).sin() * 20.0;
+            ui.fill(FRect::new(x - 40.0, y + 10.0, 90.0, 5.0), Color::rgb(60, 40, 30));
+            ui.fill(FRect::new(x - 8.0, y - 20.0, 22.0, 30.0), Color::rgb(30, 20, 50));
+            ui.fill(FRect::new(x - 4.0, y - 38.0, 14.0, 18.0), Color::rgb(30, 20, 50));
+            ui.fill(FRect::new(x + 30.0, y + 6.0, 16.0, 14.0), Color::rgb(120, 200, 80).with_alpha(0.6));
+        }
+        NightEvent::Meteorite => {
+            let k = (t / 1.5).min(1.0);
+            let (x, y) = (sw * 0.95 - k * sw * 0.4, sh * 0.05 + k * (ground - sh * 0.05 - 20.0));
+            if k < 1.0 {
+                for j in 0..10 {
+                    let f = j as f32 * 12.0;
+                    ui.fill(FRect::new(x + f, y - f * 0.8, 10.0 - j as f32 * 0.8, 10.0 - j as f32 * 0.8), Color::rgb(255, 180, 80).with_alpha(1.0 - j as f32 / 10.0));
+                }
+            } else {
+                let flash = (1.0 - (t - 1.5) * 1.5).max(0.0);
+                ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(255, 240, 210).with_alpha(flash * 0.8));
+                ui.fill(FRect::new(x - 30.0, ground - 10.0, 60.0, 40.0), Color::rgb(60, 50, 70));
+            }
+        }
+        NightEvent::Owl => {
+            let blink = (t * 1.3).fract() > 0.92;
+            if !blink {
+                for dx in [0.0, 30.0] {
+                    ui.fill(FRect::new(sw * 0.6 + dx, ground - 40.0, 14.0, 14.0), Color::rgb(250, 220, 90));
+                }
+            }
+        }
+        NightEvent::Capsule => {
+            let a = ((t * 2.0).sin() * 0.5 + 0.5) * 0.6;
+            ui.fill(FRect::new(sw * 0.62, 0.0, 70.0, ground), Color::rgb(170, 255, 200).with_alpha(a));
+            ui.fill(FRect::new(sw * 0.62 + 15.0, ground - 40.0, 40.0, 40.0), Color::rgb(200, 210, 220));
+        }
+        NightEvent::Earthquake => {}
+    }
+    let f = FRect::new(sw * 0.1, sh - 140.0, sw * 0.8, 100.0);
+    ui.panel(f);
+    let lines = ui.wrap(kind.text(), f.w - 60.0, 2.0);
+    for (i, l) in lines.iter().enumerate() {
+        ui.text_centered(l, sw / 2.0, f.y + 28.0 + i as f32 * 24.0, 2.0, ui::TEXT);
     }
 }

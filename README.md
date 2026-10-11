@@ -45,7 +45,7 @@ cargo run -p valley_app -- --headless --new Robin \
 | Toolbar slot | 1–0, -, =, mouse wheel |
 | Menu (items, crafting, skills, social, options) | E / I / Esc |
 | Journal (quests) | F |
-| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `host`) |
+| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `clump`, `night`, `host`) |
 | Weapon special move | X or right click with a weapon held (nothing else to interact with) |
 | Slingshot | hold C / left mouse to pull, release to fire (aims at the mouse) |
 | Debug overlay | F3 |
@@ -53,8 +53,8 @@ cargo run -p valley_app -- --headless --new Robin \
 
 ## What's in the game
 
-Farming (tilling, watering, crops, fertilizer, sprinklers), foraging,
-trees and debris, tools and upgrades, crafting and machines, cooking and
+Farming (tilling, watering, crops, fertilizer, sprinklers, giant crops,
+crows and scarecrows), foraging, trees, debris and resource clumps, tools and upgrades, crafting and machines, cooking and
 buffs, a kitchen fridge, fishing minigame, crab pots and fish ponds, mines
 with combat, weapon special moves, a slingshot and a deep cavern with
 shafts, farm buildings and animals, a farm pet, villagers with schedules,

@@ -622,3 +622,52 @@ pub struct ArtifactSpotDrop {
     pub min_stack: i32,
     pub max_stack: i32,
 }
+
+/// One drop from a giant crop (`Data/GiantCrops` `HarvestItems`).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct GiantCropHarvestItem {
+    pub id: Option<String>,
+    pub item_id: String,
+    pub chance: f64,
+    pub condition: Option<String>,
+    pub min_stack: i32,
+    pub max_stack: i32,
+}
+
+impl Default for GiantCropHarvestItem {
+    fn default() -> Self {
+        Self { id: None, item_id: String::new(), chance: 1.0, condition: None, min_stack: 1, max_stack: -1 }
+    }
+}
+
+/// `Data/GiantCrops`: crops that can merge into one giant crop.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct GiantCropData {
+    pub from_item_id: String,
+    pub harvest_items: Vec<GiantCropHarvestItem>,
+    pub texture: String,
+    pub texture_position: Point,
+    pub tile_size: Point,
+    pub health: i32,
+    pub chance: f64,
+    pub condition: Option<String>,
+    pub custom_fields: Option<BTreeMap<String, String>>,
+}
+
+impl Default for GiantCropData {
+    fn default() -> Self {
+        Self {
+            from_item_id: String::new(),
+            harvest_items: vec![],
+            texture: String::new(),
+            texture_position: Point::default(),
+            tile_size: Point { x: 3, y: 3 },
+            health: 3,
+            chance: 0.01,
+            condition: None,
+            custom_fields: None,
+        }
+    }
+}

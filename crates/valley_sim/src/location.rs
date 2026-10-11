@@ -42,6 +42,9 @@ pub struct LocationState {
     pub objects: BTreeMap<TilePos, PlacedObject>,
     #[serde(default)]
     pub furniture: Vec<PlacedFurniture>,
+    /// Large stumps, boulders, giant crops...
+    #[serde(default)]
+    pub clumps: Vec<crate::clumps::ResourceClump>,
 }
 
 /// A piece of furniture placed in a location (top-left footprint tile).
@@ -172,6 +175,7 @@ impl GameLocation {
     pub fn is_clear(&self, p: TilePos) -> bool {
         !self.blocked.contains(&p)
             && self.furniture_at(p).is_none()
+            && self.clump_at(p).is_none()
             && self.in_bounds(p)
             && self.has_tile("Back", p)
             && !self.has_tile("Buildings", p)

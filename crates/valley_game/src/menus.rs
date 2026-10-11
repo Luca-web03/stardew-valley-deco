@@ -76,6 +76,11 @@ pub enum Menu {
         report: DayReport,
         ms: u32,
     },
+    /// What happened on the farm overnight (shown before the day report).
+    NightEvent {
+        kind: valley_sim::farm_events::NightEvent,
+        ms: u32,
+    },
     Chest {
         tile: valley_sim::TilePos,
         hovered: Option<(bool, usize)>,
