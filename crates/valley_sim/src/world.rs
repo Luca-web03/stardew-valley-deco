@@ -264,6 +264,9 @@ pub struct World {
     pub enemy_shots: Vec<crate::monster_kinds::EnemyShot>,
     /// Data/GiantCrops.
     pub giant_crops: BTreeMap<String, valley_content::data::GiantCropData>,
+    /// `Data/Fences` and `Data/FloorsAndPaths` (see `fences`).
+    pub fences: BTreeMap<String, crate::fences::FenceData>,
+    pub floors: BTreeMap<String, crate::fences::FloorPathData>,
     /// Data/Powers (book powers).
     pub powers: BTreeMap<String, crate::mastery::PowerData>,
     /// Level maps from content (Maps/Mines/1..), empty = generate caves.
@@ -428,6 +431,8 @@ impl World {
             casino_plays: 0,
             powers: crate::mastery::load_powers(cm),
             giant_crops: crate::clumps::load_giant_crops(cm),
+            fences: crate::fences::load_fences(cm),
+            floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
             activity: Default::default(),
@@ -953,8 +958,7 @@ impl World {
                             tree.stage += 1;
                         }
                     }
-                    TerrainFeature::FruitTree(_) => {}
-                    TerrainFeature::Grass(_) => {}
+                    TerrainFeature::FruitTree(_) | TerrainFeature::Grass(_) | TerrainFeature::Flooring(_) => {}
                 }
             }
             for p in remove {
@@ -962,6 +966,7 @@ impl World {
             }
         }
         self.giant_crops_overnight();
+        self.fences_overnight();
         self.crows_overnight();
         let night_event = self.night_event_overnight();
         self.animals_overnight();
@@ -1195,7 +1200,7 @@ impl World {
         }
 
         // Movement (each axis separately so the farmer slides along walls).
-        let mut speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + self.total_attrs().speed as f32 * 0.5 };
+        let mut speed = if input.walk { crate::farmer::WALK_SPEED } else { crate::farmer::RUN_SPEED + (self.total_attrs().speed as f32 + self.floor_speed_bonus()) * 0.5 };
         if self.farmer.mounted.is_some() {
             speed *= crate::horse::HORSE_SPEED;
         }
@@ -1237,7 +1242,9 @@ impl World {
             if before / step_ms != self.farmer.walk_ms / step_ms {
                 let ground = self.location().ground_type(self.farmer.tile());
                 let has_dirt = matches!(self.location().terrain(self.farmer.tile()), Some(TerrainFeature::HoeDirt(_)));
+                let floor = self.floor_footstep();
                 let cue = match ground.as_deref() {
+                    _ if floor.is_some() => floor.as_deref().unwrap_or("stoneStep"),
                     _ if has_dirt => "sandyStep",
                     Some("Grass") => "grassyStep",
                     Some("Stone") => "stoneStep",

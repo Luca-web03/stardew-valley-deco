@@ -101,7 +101,10 @@ impl World {
         match item {
             Item::Big { .. } => true,
             Item::Object { id, .. } => {
-                sprinkler_shape(&self.items, id).is_some() || self.items.object(id).is_some_and(|o| o.data.category == category::CRAFTING_PLACEABLE)
+                sprinkler_shape(&self.items, id).is_some()
+                    || self.items.object(id).is_some_and(|o| o.data.category == category::CRAFTING_PLACEABLE)
+                    || self.fence_data(id).is_some()
+                    || self.floor_for_item(id).is_some()
             }
             Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => false,
         }
@@ -114,9 +117,12 @@ impl World {
         if !self.is_placeable(&item) {
             return false;
         }
+        if let Some(placed) = item.object_id().and_then(|id| self.place_floor(t, &id.to_string())) {
+            return placed;
+        }
         let loc = self.location();
         let farmer_here = self.farmer.tile() == t;
-        if !loc.is_clear(t) || !tile_passable(loc, t) || farmer_here {
+        if !loc.is_clear_for_object(t) || !tile_passable(loc, t) || farmer_here {
             return false;
         }
         let obj = match &item {
@@ -133,18 +139,22 @@ impl World {
                 };
                 PlacedObject::new(id, true, kind)
             }
-            Item::Object { id, .. } => {
-                let kind = match sprinkler_shape(&self.items, id) {
-                    Some(s) => ObjKind::Sprinkler { radius: s },
-                    None => ObjKind::Placed,
-                };
-                PlacedObject::new(id, false, kind)
-            }
+            Item::Object { id, .. } => match self.fence_object(id) {
+                Some(fence) => fence,
+                None => {
+                    let kind = match sprinkler_shape(&self.items, id) {
+                        Some(s) => ObjKind::Sprinkler { radius: s },
+                        None => ObjKind::Placed,
+                    };
+                    PlacedObject::new(id, false, kind)
+                }
+            },
             Item::Tool(_) | Item::Weapon { .. } | Item::Boots { .. } | Item::Furniture { .. } | Item::Clothing { .. } | Item::Trinket { .. } => return false,
         };
+        let fence_cue = matches!(obj.kind, ObjKind::Fence { .. }).then(|| self.fence_data(&obj.item_id).and_then(|d| d.placement_sound)).flatten();
         self.location_mut().state.objects.insert(t, obj);
         self.farmer.inventory.reduce(slot, 1);
-        self.sound("woodyStep");
+        self.sound(fence_cue.as_deref().unwrap_or("woodyStep"));
         let here = self.current.clone();
         self.machine_auto_trigger(&here, t, "MachinePutDown", None);
         true
@@ -154,7 +164,7 @@ impl World {
     pub fn pickup_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
         match &o.kind {
-            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::Shaft | ObjKind::ArtifactSpot => return false,
+            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::Shaft | ObjKind::ArtifactSpot | ObjKind::Fence { .. } => return false,
             ObjKind::CrabPot { catch: Some(_), .. } => return false,
             ObjKind::Tapper { .. } => {
                 if let Some(TerrainFeature::Tree(tr)) = self.location_mut().terrain_mut(t) {
@@ -228,6 +238,7 @@ impl World {
                 true
             }
             ObjKind::Machine { output: None, .. } => self.load_machine(t, &o.qualified_id()),
+            ObjKind::Fence { .. } => self.toggle_gate(t),
             _ => false,
         }
     }

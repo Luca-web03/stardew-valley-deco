@@ -2937,6 +2937,16 @@ impl ValleyGame {
                 Some(e) => format!("event {} at command {}/{}", e.id, e.pc, e.commands.len()),
                 None => format!("no event; seen: {}", w.farmer.events_seen.join(", ")),
             },
+            Some("clear") => {
+                // Clear debris, trees and clumps around the farmer.
+                let r = num(1).unwrap_or(6).clamp(1, 40);
+                let c = w.farmer.tile();
+                let loc = w.location_mut();
+                loc.state.objects.retain(|p, _| (p.x - c.x).abs() > r || (p.y - c.y).abs() > r);
+                loc.state.terrain.retain(|p, _| (p.x - c.x).abs() > r || (p.y - c.y).abs() > r);
+                loc.state.clumps.retain(|k| (k.tile.x - c.x).abs() > r || (k.tile.y - c.y).abs() > r);
+                format!("cleared {r} tiles around {c:?}")
+            }
             Some("forge") => {
                 w.emit(valley_sim::world::WorldEvent::OpenForge);
                 "opening the forge".into()
@@ -2981,7 +2991,7 @@ impl ValleyGame {
                 self.menus.push(Menu::NightEvent { kind, ms: 0 });
                 format!("showing {kind:?}")
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event> | arcade <ranger|rails> | forge".into(),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event> | arcade <ranger|rails> | forge | clear [r]".into(),
         }
     }
 }

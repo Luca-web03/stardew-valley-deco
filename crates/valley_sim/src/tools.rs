@@ -236,7 +236,7 @@ impl World {
     }
 
     fn use_axe(&mut self, slot: usize, t: TilePos) {
-        if self.pickup_object(t) {
+        if self.hit_fence(t, ToolKind::Axe) || self.pickup_object(t) || self.hit_floor(t) {
             return;
         }
         let powerful = self.tool_has(slot, "Powerful") as i32;
@@ -344,7 +344,7 @@ impl World {
         if self.hit_clump(t, ToolKind::Pickaxe, power - 1) {
             return;
         }
-        if self.pickup_object(t) {
+        if self.hit_fence(t, ToolKind::Pickaxe) || self.pickup_object(t) || self.hit_floor(t) {
             return;
         }
         if let Some(o) = self.location().object(t) {

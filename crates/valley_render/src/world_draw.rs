@@ -140,11 +140,47 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         }
     }
 
+    // Floors and paths, joined to their neighbours.
+    for (p, t) in &loc.state.terrain {
+        let TerrainFeature::Flooring(key) = t else { continue };
+        let Some(d) = w.floors.get(key) else { continue };
+        let tex_name = match (&d.winter_texture, season) {
+            (Some(wt), "winter") if loc.outdoors => wt.clone(),
+            _ => d.texture.clone(),
+        };
+        let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name.replace('\\', "/"));
+        let mask = valley_sim::fences::neighbour_mask(*p, |q| matches!(loc.terrain(q), Some(TerrainFeature::Flooring(k)) if k == key));
+        let fl = &lay.flooring;
+        let src = IRect::new(d.corner.x + (mask % fl.cols.max(1)) * fl.tile, d.corner.y + (mask / fl.cols.max(1)) * fl.tile, fl.tile, fl.tile);
+        let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
+        out.draw(tex, src, pos, ZOOM * 16.0 / fl.tile.max(1) as f32, DEPTH_GROUND - 0.0005);
+    }
+
     // Placed objects (debris, forage).
     let shake_off = |shake: i32| if shake > 0 { ((shake as f32) * 1.3).sin() * 3.0 } else { 0.0 };
     for (p, o) in &loc.state.objects {
         let pos = cam.to_screen(Vec2::new((p.x * TILE) as f32, (p.y * TILE) as f32));
         let depth = sort_depth((p.y * TILE + TILE - 4) as f32, map_h);
+        if let ObjKind::Fence { health, open } = o.kind {
+            // Fences join their fence neighbours; fallen ones lie dimmed.
+            let texture = w.fence_data(&o.item_id).map(|d| d.texture).filter(|t| !t.is_empty()).unwrap_or_else(|| "LooseSprites/Dev_Fence_Wood".into());
+            let tex = rc.assets.tex(rc.cm, rc.textures, &texture.replace('\\', "/"));
+            let fl = &lay.fences;
+            let frame = if w.is_gate(&o.item_id) {
+                if open { fl.gate_open } else { fl.gate_closed }
+            } else {
+                valley_sim::fences::neighbour_mask(*p, |q| matches!(loc.object(q).map(|x| &x.kind), Some(ObjKind::Fence { .. })))
+            };
+            let cols = fl.cols.max(1);
+            let src = IRect::new((frame % cols) * fl.frame_w, (frame / cols) * fl.frame_h, fl.frame_w, fl.frame_h);
+            let mut s = Sprite::new(tex, src, FRect::new(pos.x + shake_off(o.shake), pos.y - TILE_F, TILE_F, TILE_F * 2.0), depth);
+            if health <= 0 && !w.is_gate(&o.item_id) {
+                s.tint = Color::rgb(140, 120, 100);
+                s.dst = FRect::new(pos.x, pos.y - TILE_F * 0.4, TILE_F, TILE_F * 1.4);
+            }
+            out.sprite(s);
+            continue;
+        }
         if let ObjKind::Ladder { down } = o.kind {
             let tex = rc.assets.ladder(rc.textures);
             out.draw(tex, IRect::new(if down { 0 } else { 16 }, 0, 16, 16), pos, ZOOM, DEPTH_GROUND + 0.002);

@@ -28,6 +28,8 @@ pub enum ObjKind {
     CrabPot { bait: bool, catch: Option<Item> },
     /// Cask aging `item`; `aged` is in base days.
     Cask { item: Option<Item>, aged: f32 },
+    /// Fence or gate (`fences`): days of health left, gate open.
+    Fence { health: i32, open: bool },
     /// Any other placed item.
     Placed,
 }
@@ -111,6 +113,7 @@ impl PlacedObject {
         if self.big { Item::big(&self.item_id, 1) } else { Item::object(&self.item_id, 1) }
     }
     pub fn passable(&self) -> bool {
-        false
+        // Open gates and fallen fences can be walked through.
+        matches!(self.kind, ObjKind::Fence { open: true, .. } | ObjKind::Fence { health: ..=0, .. })
     }
 }

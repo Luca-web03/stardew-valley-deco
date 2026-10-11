@@ -36,6 +36,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
+- [x] Fences (wear, falling over, removal tools), gates, floors and paths
+      (joined sprites, speed bonus on the farm)
 - [x] Crafting, placeables, chests, data-driven machines (Data/Machines,
       including day-update / put-down / output-collected triggers and the
       seed maker, flavored artisan goods, bee houses with flower honey),

@@ -184,6 +184,21 @@ impl GameLocation {
             && !self.state.terrain.contains_key(&p)
     }
 
+    /// Clear for placing an object: like `is_clear`, but floors and paths
+    /// may lie underneath.
+    pub fn is_clear_for_object(&self, p: TilePos) -> bool {
+        match self.state.terrain.get(&p) {
+            Some(crate::terrain::TerrainFeature::Flooring(_)) => {
+                !self.blocked.contains(&p)
+                    && self.furniture_at(p).is_none()
+                    && self.clump_at(p).is_none()
+                    && !self.has_tile("Buildings", p)
+                    && !self.state.objects.contains_key(&p)
+            }
+            _ => self.is_clear(p),
+        }
+    }
+
     pub fn map_prop_tile(&self, name: &str) -> Option<TilePos> {
         let s = self.map.prop(name)?;
         let mut it = s.split_whitespace();

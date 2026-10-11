@@ -442,6 +442,12 @@ pub const ICON_HONEY: i32 = 79;
 pub const ICON_GEMS: i32 = 80;
 pub const ICON_PRISMATIC: i32 = 86;
 pub const ICON_DRAGON_TOOTH: i32 = 87;
+pub const ICON_WOOD_FENCE: i32 = 88;
+pub const ICON_STONE_FENCE: i32 = 89;
+pub const ICON_GATE: i32 = 90;
+pub const ICON_WOOD_FLOOR: i32 = 91;
+pub const ICON_STONE_PATH: i32 = 92;
+pub const ICON_GRAVEL_PATH: i32 = 93;
 pub const GEM_COLORS: [(u8, u8, u8); 6] = [(60, 190, 100), (90, 200, 220), (220, 50, 70), (160, 90, 210), (240, 180, 50), (100, 170, 110)];
 
 fn seed_packet(c: &mut Cell, col: Color) {
@@ -1006,6 +1012,32 @@ pub fn objects() -> Image {
             c.rect(4 + i / 3, 3 + i, w, 1, Color::rgb(235, 225, 200));
         }
         c.px(5, 4, Color::rgb(255, 250, 235));
+        c.auto_outline(OUTLINE);
+    }
+    // Fence and path icons.
+    for (icon, post) in [(ICON_WOOD_FENCE, Color::rgb(160, 110, 60)), (ICON_STONE_FENCE, Color::rgb(150, 150, 155))] {
+        let mut c = Cell::at(&mut img, icon, OBJ_COLS, 16, 16);
+        c.rect(3, 3, 3, 12, post);
+        c.rect(10, 3, 3, 12, post);
+        c.rect(1, 6, 14, 2, shade(post, 20));
+        c.rect(1, 10, 14, 2, shade(post, 20));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_GATE, OBJ_COLS, 16, 16);
+        let wood = Color::rgb(170, 120, 70);
+        c.rect(2, 4, 12, 10, wood);
+        c.rect(2, 8, 12, 1, shade(wood, -40));
+        c.rect(7, 4, 1, 10, shade(wood, -40));
+        c.px(12, 9, Color::rgb(60, 60, 70));
+        c.auto_outline(OUTLINE);
+    }
+    for (icon, base) in [(ICON_WOOD_FLOOR, Color::rgb(170, 120, 70)), (ICON_STONE_PATH, Color::rgb(160, 160, 165)), (ICON_GRAVEL_PATH, Color::rgb(150, 135, 110))] {
+        let mut c = Cell::at(&mut img, icon, OBJ_COLS, 16, 16);
+        c.rect(2, 4, 12, 9, base);
+        c.rect(2, 4, 12, 2, shade(base, 25));
+        c.px(5, 8, shade(base, -35));
+        c.px(10, 10, shade(base, -35));
         c.auto_outline(OUTLINE);
     }
     {
@@ -2373,4 +2405,88 @@ pub fn dog2() -> Image {
 /// A ginger cat (the dog's sheet, recoloured and with a slimmer build).
 pub fn cat() -> Image {
     recolor(&dog(), |c| Color::rgba(c.r.saturating_add(40), (c.g as u32 * 9 / 10) as u8, (c.b as u32 * 6 / 10) as u8, c.a))
+}
+
+/// A fence sheet: 16x32 frames for each neighbour mask (N=1, E=2, S=4,
+/// W=8) in four columns, then the closed and open gate.
+pub fn fence(post: Color) -> Image {
+    let mut img = Image::new(64, 160);
+    let rail = shade(post, 20);
+    for mask in 0..16 {
+        let mut c = Cell::at(&mut img, mask, 4, 16, 32);
+        let top = if mask & 1 != 0 { 4 } else { 14 };
+        let bottom = if mask & 4 != 0 { 32 } else { 30 };
+        c.rect(6, top, 4, bottom - top, post);
+        c.rect(6, top, 4, 1, shade(post, 30));
+        if mask & 2 != 0 {
+            c.rect(10, 18, 6, 2, rail);
+            c.rect(10, 24, 6, 2, rail);
+        }
+        if mask & 8 != 0 {
+            c.rect(0, 18, 6, 2, rail);
+            c.rect(0, 24, 6, 2, rail);
+        }
+        c.auto_outline(OUTLINE);
+    }
+    let wood = Color::rgb(170, 120, 70);
+    {
+        let mut c = Cell::at(&mut img, 16, 4, 16, 32);
+        c.rect(0, 16, 16, 12, wood);
+        c.rect(0, 21, 16, 1, shade(wood, -40));
+        c.rect(7, 16, 1, 12, shade(wood, -40));
+        c.px(13, 22, Color::rgb(60, 60, 70));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, 17, 4, 16, 32);
+        c.rect(0, 16, 3, 12, wood);
+        c.rect(13, 16, 3, 12, shade(wood, -20));
+        c.auto_outline(OUTLINE);
+    }
+    img
+}
+
+/// Floors and paths: 64x64 blocks of 4x4 tiles (one per neighbour mask):
+/// wood floor at (0,0), stone path at (64,0), gravel at (0,64).
+pub fn flooring() -> Image {
+    let mut img = Image::new(128, 128);
+    let kinds = [(0, 0, Color::rgb(170, 120, 70)), (64, 0, Color::rgb(160, 160, 165)), (0, 64, Color::rgb(150, 135, 110))];
+    for (k, (bx, by, base)) in kinds.iter().enumerate() {
+        for mask in 0..16 {
+            let mut c = Cell { ox: bx + (mask % 4) * 16, oy: by + (mask / 4) * 16, w: 16, h: 16, img: &mut img };
+            c.noise(*base, 8, (k as u32) * 31 + mask as u32);
+            match k {
+                0 => {
+                    for y in [3, 7, 11, 15] {
+                        c.rect(0, y, 16, 1, shade(*base, -30));
+                    }
+                }
+                1 => {
+                    c.rect(0, 8, 16, 1, shade(*base, -30));
+                    c.rect(8, 0, 1, 8, shade(*base, -30));
+                    c.rect(4, 8, 1, 8, shade(*base, -30));
+                }
+                _ => {
+                    for i in 0..10 {
+                        c.px((i * 7 + mask) % 16, (i * 5) % 16, shade(*base, if i % 2 == 0 { -30 } else { 25 }));
+                    }
+                }
+            }
+            // Edges where the floor ends.
+            let edge = shade(*base, -50);
+            if mask & 1 == 0 {
+                c.rect(0, 0, 16, 1, edge);
+            }
+            if mask & 2 == 0 {
+                c.rect(15, 0, 1, 16, edge);
+            }
+            if mask & 4 == 0 {
+                c.rect(0, 15, 16, 1, edge);
+            }
+            if mask & 8 == 0 {
+                c.rect(0, 0, 1, 16, edge);
+            }
+        }
+    }
+    img
 }

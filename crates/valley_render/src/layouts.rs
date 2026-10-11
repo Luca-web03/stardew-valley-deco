@@ -49,6 +49,39 @@ impl Default for HoeDirtLayout {
     }
 }
 
+/// Fence sheets: 16x32 frames for each neighbour mask (N=1, E=2, S=4,
+/// W=8) in `cols` columns, then gate frames.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct FenceLayout {
+    pub cols: i32,
+    pub frame_w: i32,
+    pub frame_h: i32,
+    pub gate_closed: i32,
+    pub gate_open: i32,
+}
+
+impl Default for FenceLayout {
+    fn default() -> Self {
+        Self { cols: 4, frame_w: 16, frame_h: 32, gate_closed: 16, gate_open: 17 }
+    }
+}
+
+/// Floors and paths: from each entry's `Corner`, 16x16 tiles for each
+/// neighbour mask in `cols` columns.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct FlooringLayout {
+    pub cols: i32,
+    pub tile: i32,
+}
+
+impl Default for FlooringLayout {
+    fn default() -> Self {
+        Self { cols: 4, tile: 16 }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct TreeLayout {
@@ -153,6 +186,8 @@ pub struct Layouts {
     pub character: CharacterLayout,
     pub crops: CropLayout,
     pub hoe_dirt: HoeDirtLayout,
+    pub fences: FenceLayout,
+    pub flooring: FlooringLayout,
     pub trees: TreeLayout,
     pub farmer: FarmerLayout,
 }

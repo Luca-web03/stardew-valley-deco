@@ -26,6 +26,9 @@ pub fn build() -> MemSource {
     m.insert("Maps/springobjects.png", art::objects().encode_png());
     m.insert("TileSheets/crops.png", art::crops().encode_png());
     m.insert("TerrainFeatures/hoeDirt.png", art::hoe_dirt().encode_png());
+    m.insert("LooseSprites/Dev_Fence_Wood.png", art::fence(Color::rgb(160, 110, 60)).encode_png());
+    m.insert("LooseSprites/Dev_Fence_Stone.png", art::fence(Color::rgb(150, 150, 155)).encode_png());
+    m.insert("TerrainFeatures/Dev_Flooring.png", art::flooring().encode_png());
     m.insert("TileSheets/tools.png", art::tools().encode_png());
     m.insert("TileSheets/Craftables.png", art::craftables().encode_png());
     m.insert("Maps/dev_mine.png", art::mine_sheet().encode_png());
@@ -163,6 +166,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                                 "Type": "Minerals", "Category": -2, "Price": 2000, "SpriteIndex": ICON_PRISMATIC, "CustomFields": { "Port.Forge": "Prismatic" } },
         "Dev_DragonTooth": { "Name": "Dragon Tooth", "DisplayName": "Dragon Tooth", "Description": "Huge and sharp. The forge can awaken a weapon's hidden strength with it.",
                              "Type": "Basic", "Category": -2, "Price": 500, "SpriteIndex": ICON_DRAGON_TOOTH, "CustomFields": { "Port.Forge": "DragonTooth" } },
+        "Dev_WoodFence": obj("Wood Fence", "Crafting", -8, 1, ICON_WOOD_FENCE, -300),
+        "Dev_StoneFence": obj("Stone Fence", "Crafting", -8, 2, ICON_STONE_FENCE, -300),
+        "Dev_Gate": obj("Gate", "Crafting", -8, 4, ICON_GATE, -300),
+        "Dev_WoodFloor": obj("Wood Floor", "Crafting", -24, 1, ICON_WOOD_FLOOR, -300),
+        "Dev_StonePath": obj("Stone Path", "Crafting", -24, 1, ICON_STONE_PATH, -300),
+        "Dev_GravelPath": obj("Gravel Path", "Crafting", -24, 1, ICON_GRAVEL_PATH, -300),
         "Dev_EmberShard": { "Name": "Ember Shard", "DisplayName": "Ember Shard", "Description": "Still warm. The forge in the volcano runs on these.", "Type": "Basic", "Category": 0, "Price": 50,
                             "SpriteIndex": ICON_EMBER_SHARD },
         "Dev_Ticket": { "Name": "Movie Ticket", "DisplayName": "Movie Ticket", "Description": "Good for one showing. Give it to a friend to invite them along.", "Type": "Basic", "Category": 0, "Price": 250,
@@ -318,6 +327,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Seed Maker": "388 25 Dev_Coal 10 Dev_GoldBar 1/Home/Dev_SeedMaker/true/default/",
         "Rain Totem": "388 1 92 5 Dev_Berry 1/Home/Dev_RainTotem/false/default/",
         "Bee House": "388 40 Dev_Coal 8 Dev_IronBar 1 92 10/Home/Dev_BeeHouse/true/default/",
+        "Wood Fence": "388 2/Field/Dev_WoodFence 2/false/default/",
+        "Stone Fence": "390 4/Field/Dev_StoneFence 2/false/default/",
+        "Gate": "388 10/Home/Dev_Gate/false/default/",
+        "Wood Floor": "388 1/Field/Dev_WoodFloor 2/false/default/",
+        "Stone Path": "390 1/Field/Dev_StonePath 2/false/default/",
+        "Gravel Path": "390 1/Field/Dev_GravelPath 3/false/default/",
     });
     let strings = json!({
         "TurnipSeeds_Name": "Turnip Seeds", "TurnipSeeds_Description": "Plant in spring. Ready in 4 days.",
@@ -326,6 +341,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Bean_Name": "Bean", "Bean_Description": "A handful of green beans.",
         "PumpkinSeeds_Name": "Pumpkin Seeds", "PumpkinSeeds_Description": "Plant in fall. Takes a while.",
         "Pumpkin_Name": "Pumpkin", "Pumpkin_Description": "Big, round and orange.",
+        "WoodFence_Name": "Wood Fence", "WoodFence_Description": "Keeps animals in and wanders out. Lasts about a month.",
+        "StoneFence_Name": "Stone Fence", "StoneFence_Description": "A sturdier fence. Lasts about two months.",
+        "Gate_Name": "Gate", "Gate_Description": "Opens and closes. Never wears out.",
+        "WoodFloor_Name": "Wood Floor", "WoodFloor_Description": "Lay it down for a tidy floor. Paths speed you up on the farm.",
+        "StonePath_Name": "Stone Path", "StonePath_Description": "A neat stone path. Paths speed you up on the farm.",
+        "GravelPath_Name": "Gravel Path", "GravelPath_Description": "Crunchy underfoot. Paths speed you up on the farm.",
         "SunbloomSeeds_Name": "Sunbloom Seeds", "SunbloomSeeds_Description": "Plant in spring or summer. Bees love it.",
         "Sunbloom_Name": "Sunbloom", "Sunbloom_Description": "A cheerful yellow flower.",
         "Honey_Name": "Honey", "Honey_Description": "Sweet and golden.",
@@ -909,6 +930,21 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Workshop/0": "Builder's Bundle/BO Dev_Juicer 1/388 50 0 390 50 0 771 20 0/2/3/Builder's Bundle",
             "Workshop/1": "Smith's Bundle/O Dev_IronBar 3/Dev_CopperBar 2 0 Dev_Quartz 1 0 Dev_Coal 5 0/3/3/Smith's Bundle",
             "Workshop/2": "Repair Fund/O Dev_GoldBar 1/-1 1000 1000/4/1/Repair Fund"
+        })),
+        ("Data/Fences", json!({
+            "Dev_WoodFence": { "Health": 28, "RepairHealthAdjustmentMinimum": 0, "RepairHealthAdjustmentMaximum": 4, "Texture": "LooseSprites\\Dev_Fence_Wood",
+                               "PlacementSound": "axe", "RemovalSound": "axchop", "RemovalToolTypes": ["Axe"] },
+            "Dev_StoneFence": { "Health": 60, "RepairHealthAdjustmentMinimum": 0, "RepairHealthAdjustmentMaximum": 6, "Texture": "LooseSprites\\Dev_Fence_Stone",
+                                "PlacementSound": "stoneStep", "RemovalSound": "hammer", "RemovalToolTypes": ["Pickaxe"] },
+            "Dev_Gate": { "Health": 1, "Texture": "LooseSprites\\Dev_Fence_Wood", "PlacementSound": "axe", "RemovalSound": "axchop", "RemovalToolTypes": ["Axe", "Pickaxe"] }
+        })),
+        ("Data/FloorsAndPaths", json!({
+            "Dev_WoodFloor": { "Id": "Dev_WoodFloor", "ItemId": "(O)Dev_WoodFloor", "Texture": "TerrainFeatures\\Dev_Flooring", "Corner": { "X": 0, "Y": 0 },
+                               "PlacementSound": "axchop", "RemovalSound": "axchop", "FootstepSound": "woodyStep" },
+            "Dev_StonePath": { "Id": "Dev_StonePath", "ItemId": "(O)Dev_StonePath", "Texture": "TerrainFeatures\\Dev_Flooring", "Corner": { "X": 64, "Y": 0 },
+                               "PlacementSound": "stoneStep", "RemovalSound": "hammer", "FootstepSound": "stoneStep" },
+            "Dev_GravelPath": { "Id": "Dev_GravelPath", "ItemId": "(O)Dev_GravelPath", "Texture": "TerrainFeatures\\Dev_Flooring", "Corner": { "X": 0, "Y": 64 },
+                                "PlacementSound": "dirtyHit", "RemovalSound": "hammer", "FootstepSound": "sandyStep", "FarmSpeedBuff": 0.1 }
         })),
         ("Data/RandomBundles", json!([
             { "AreaName": "Garden", "Keys": "0 1",
