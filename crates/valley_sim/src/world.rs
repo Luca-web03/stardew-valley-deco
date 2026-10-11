@@ -158,11 +158,13 @@ pub struct NewGame {
     /// Starting pet (None: the first available) and its name.
     pub pet: Option<crate::pets::PetChoice>,
     pub pet_name: String,
+    /// Roll remixed community bundles (`Data/RandomBundles`).
+    pub remixed_bundles: bool,
 }
 
 impl Default for NewGame {
     fn default() -> Self {
-        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345, farm_type: "Standard".into(), pet: None, pet_name: String::new() }
+        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345, farm_type: "Standard".into(), pet: None, pet_name: String::new(), remixed_bundles: false }
     }
 }
 
@@ -508,6 +510,9 @@ impl World {
             }
         }
         w.bundles = crate::bundles::parse_bundles(&cm.load_string_dict("Data/Bundles"), &w.items);
+        if opts.remixed_bundles {
+            w.remix_bundles(cm);
+        }
         if let Some(v) = cm.load_json_value("Data/MuseumRewards") {
             w.museum_rewards = crate::bundles::parse_museum_rewards(&v);
         }

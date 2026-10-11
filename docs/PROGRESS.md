@@ -73,7 +73,8 @@ were not available; such values are isolated constants that can be tuned.
       subset)
 - [x] Grandpa's evaluation (year 3, candles, diamond re-evaluation),
       Joja membership and community development projects
-- [x] Mail, quests, help-wanted board, journal, bundles, museum,
+- [x] Mail, quests, help-wanted board, journal, bundles (standard or
+      remixed from Data/RandomBundles), museum,
       collections, achievements (original ids/names from Data/Achievements,
       or engine-defined milestones), secret notes,
       perfection score (engine-defined)

@@ -34,7 +34,7 @@ enum Field {
 enum Screen {
     Title { hovered: Option<usize> },
     LoadList { selected: usize },
-    Create { name: String, farm: String, favorite: String, male: bool, field: Field, look: valley_sim::farmer::Appearance, farm_type: usize, pet: usize },
+    Create { name: String, farm: String, favorite: String, male: bool, field: Field, look: valley_sim::farmer::Appearance, farm_type: usize, pet: usize, remix: bool },
     Playing,
 }
 
@@ -101,6 +101,8 @@ pub struct ValleyGame {
     /// Farm map choices offered on the new-game screen.
     farm_choices: Vec<valley_sim::farm_types::FarmChoice>,
     pet_choices: Vec<valley_sim::pets::PetChoice>,
+    /// The content has `Data/RandomBundles` (offer remixed bundles).
+    remix_available: bool,
     /// Remaining ticks of a lightning flash.
     flash: u32,
     pub options: Options,
@@ -135,6 +137,7 @@ impl ValleyGame {
             net: None,
             farm_choices: Vec::new(),
             pet_choices: Vec::new(),
+            remix_available: false,
             flash: 0,
             options,
             console: None,
@@ -260,7 +263,8 @@ impl ValleyGame {
             Some(0) => {
                 self.farm_choices = valley_sim::farm_types::available(&mut self.cm);
                 self.pet_choices = valley_sim::pets::pet_choices(&mut self.cm);
-                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name, look: Default::default(), farm_type: 0, pet: 0 };
+                self.remix_available = self.cm.load_json_value("Data/RandomBundles").is_some_and(|v| v.as_array().is_some_and(|a| !a.is_empty()));
+                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name, look: Default::default(), farm_type: 0, pet: 0, remix: false };
             }
             Some(1) => self.screen = Screen::LoadList { selected: 0 },
             Some(2) => ctx.quit_requested = true,
@@ -307,7 +311,7 @@ impl ValleyGame {
     }
 
     fn update_create(&mut self, ctx: &mut EngineCtx) {
-        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet } = &mut self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet, remix } = &mut self.screen else { return };
         if ctx.input.pressed(Key::Escape) {
             self.screen = Screen::Title { hovered: None };
             return;
@@ -348,6 +352,8 @@ impl ValleyGame {
                 *farm_type = (*farm_type + 1) % self.farm_choices.len();
             } else if pet_rect(sw, sh).contains(m) && !self.pet_choices.is_empty() {
                 *pet = (*pet + 1) % self.pet_choices.len();
+            } else if remix_rect(sw, sh).contains(m) && self.remix_available {
+                *remix = !*remix;
             }
             use valley_sim::farmer::{HAIR_COLORS, PANTS_COLORS, SHIRT_COLORS, SKIN_TONES};
             let cycle = |cur: [u8; 3], list: &[[u8; 3]], d: i32| -> [u8; 3] {
@@ -383,6 +389,7 @@ impl ValleyGame {
                 farm_type: self.farm_choices.get(*farm_type).map(|c| c.id.clone()).unwrap_or_else(|| "Standard".into()),
                 pet: self.pet_choices.get(*pet).cloned(),
                 pet_name: String::new(),
+                remixed_bundles: *remix,
             };
             self.start_new_game(opts);
             self.save();
@@ -1495,9 +1502,10 @@ impl ValleyGame {
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
-        ui.text_shadow("valley-rs", Vec2::new(sw / 2.0 - 9.0 * 4.0 * 8.0 / 2.0, sh * 0.15), 8.0, ui::TEXT_LIGHT);
+        let title_w = BuiltinFont::measure("valley-rs", 8.0).x;
+        ui.text_shadow("valley-rs", Vec2::new((sw - title_w) / 2.0, sh * 0.15), 8.0, ui::TEXT_LIGHT);
         let sub = if self.cm.has_game_content { "using your game content" } else { "placeholder content (no game folder set)" };
-        ui.text_centered(sub, sw / 2.0, sh * 0.15 + 80.0, 2.0, ui::TEXT_LIGHT);
+        ui.text_centered(sub, sw / 2.0, sh * 0.15 + 96.0, 2.0, ui::TEXT_LIGHT);
         let hovered = match &self.screen {
             Screen::Title { hovered } => *hovered,
             _ => None,
@@ -1535,7 +1543,7 @@ impl ValleyGame {
     fn draw_create(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
         let (sw, sh) = (ctx.screen_w as f32, ctx.screen_h as f32);
         out.clear(Color::rgb(60, 90, 60));
-        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet } = &self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet, remix } = &self.screen else { return };
         let look = look.clone();
         let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
         let farmer_tex = valley_render::world_draw::farmer_texture(&mut rc, &look);
@@ -1567,6 +1575,9 @@ impl ValleyGame {
             ui.text(&shown, Vec2::new(r.x + 12.0, r.y + 14.0), 2.0, ui::TEXT);
         }
         ui.button(rects[3], if *male { "Male" } else { "Female" }, false);
+        if self.remix_available {
+            ui.button(remix_rect(sw, sh), if *remix { "Bundles: Mix" } else { "Bundles: Std" }, *remix);
+        }
         ui.button(rects[4], "OK", !name.trim().is_empty());
         if let Some(choice) = self.farm_choices.get(*farm_type) {
             let fr = farm_type_rect(sw, sh);
@@ -1750,9 +1761,14 @@ fn create_rects(sw: f32, sh: f32) -> [FRect; 5] {
         FRect::new(x, y, 560.0, 44.0),
         FRect::new(x, y + 90.0, 560.0, 44.0),
         FRect::new(x, y + 180.0, 560.0, 44.0),
-        FRect::new(x, y + 250.0, 200.0, 56.0),
-        FRect::new(x + 360.0, y + 250.0, 200.0, 56.0),
+        FRect::new(x, y + 250.0, 160.0, 56.0),
+        FRect::new(x + 400.0, y + 250.0, 160.0, 56.0),
     ]
+}
+
+/// Standard / remixed community bundles toggle on the new-game screen.
+fn remix_rect(sw: f32, sh: f32) -> FRect {
+    FRect::new(create_cx(sw) - 280.0 + 170.0, sh / 2.0 - 150.0 + 250.0, 220.0, 56.0)
 }
 
 /// The farm map and pet choice buttons on the new-game screen.

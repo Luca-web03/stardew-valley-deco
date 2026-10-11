@@ -74,6 +74,7 @@ impl SaveData {
         w.weather_tomorrow = self.weather_tomorrow;
         w.daily_luck = self.daily_luck;
         w.farmer = self.farmer;
+        w.apply_bundle_data();
         w.apply_farm_type(cm);
         w.setup_compat_pub();
         w.apply_house_map();

@@ -910,6 +910,30 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "Workshop/1": "Smith's Bundle/O Dev_IronBar 3/Dev_CopperBar 2 0 Dev_Quartz 1 0 Dev_Coal 5 0/3/3/Smith's Bundle",
             "Workshop/2": "Repair Fund/O Dev_GoldBar 1/-1 1000 1000/4/1/Repair Fund"
         })),
+        ("Data/RandomBundles", json!([
+            { "AreaName": "Garden", "Keys": "0 1",
+              "BundleSets": [
+                { "Id": "classic", "Bundles": [
+                    { "Name": "Spring Basket", "Index": 0, "Color": "Green", "Items": "3 Turnip, 3 Bean, 2 Wild Berry, 1 Sunbloom", "Pick": 3, "RequiredItems": 3, "Reward": "2 Dev_Sprinkler" },
+                    { "Name": "Fresh Catch", "Index": 1, "Color": "Blue", "Items": "1 Pond Perch, 1 River Darter, 1 Pond Crawler", "Pick": 2, "RequiredItems": 2, "Reward": "5 Dev_SpeedGro" } ] },
+                { "Id": "orchard", "Bundles": [
+                    { "Name": "Orchard Basket", "Index": 0, "Color": "Purple", "Items": "2 Plum, 3 Wild Berry, 1 Tree Syrup", "Pick": 3, "RequiredItems": 2, "Reward": "1 Plum Sapling" } ] }
+              ],
+              "Bundles": [
+                { "Name": "Angler's Bundle", "Index": 1, "Color": "Teal", "Items": "1 Pond Perch, 1 River Darter, 1 Pond Crawler, 10 Bait", "Pick": 3, "RequiredItems": 3, "Reward": "1 Dev_WhirlLure" },
+                { "Name": "Sweet Bundle", "Index": 1, "Color": "Yellow", "Items": "1 Honey, 3 Sunbloom, 1 GQ Turnip", "Pick": 3, "RequiredItems": 3, "Reward": "1 BO Dev_BeeHouse" }
+              ] },
+            { "AreaName": "Workshop", "Keys": "0 1 2",
+              "BundleSets": [
+                { "Id": "builders", "Bundles": [
+                    { "Name": "Builder's Bundle", "Index": 0, "Color": "Orange", "Items": "50 Wood, 50 Stone, 20 Fiber, 10 Hardwood", "Pick": 3, "RequiredItems": 3, "Reward": "1 BO Dev_Juicer" },
+                    { "Name": "Repair Fund", "Index": 2, "Color": "Yellow", "Items": "1000 Money", "Reward": "1 Gold Bar" } ] }
+              ],
+              "Bundles": [
+                { "Name": "Smith's Bundle", "Index": 1, "Color": "Red", "Items": "2 Copper Bar, 1 Clear Quartz, 5 Coal, 1 Iron Bar", "Pick": 3, "RequiredItems": 3, "Reward": "3 Iron Bar" },
+                { "Name": "Miner's Bundle", "Index": 1, "Color": "Purple", "Items": "10 Copper Ore, 5 Iron Ore, 1 Amberite, 1 Ruby", "Pick": 3, "RequiredItems": 3, "Reward": "1 Dev_EmberShard" }
+              ] }
+        ])),
         ("Data/GarbageCans", json!({
             "DefaultChanceToFindItem": 0.25,
             "BeforeAll": [],

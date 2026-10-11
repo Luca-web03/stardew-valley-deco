@@ -60,7 +60,14 @@ pub fn parse_bundles(raw: &std::collections::HashMap<String, String>, db: &ItemD
                 })
                 .collect();
             let num_required = f.get(4).and_then(|n| n.trim().parse().ok()).filter(|n: &usize| *n > 0).unwrap_or(reqs.len());
-            let name = f.get(5).filter(|s| !s.is_empty()).or(f.first()).unwrap_or(&"").to_string();
+            // Display name: field 6 (after the sprite) or 5, else the name.
+            let name = f
+                .get(6)
+                .filter(|s| !s.is_empty())
+                .or_else(|| f.get(5).filter(|s| !s.is_empty() && s.parse::<i32>().is_err()))
+                .or(f.first())
+                .unwrap_or(&"")
+                .to_string();
             Some(BundleDef { key: key.clone(), area, name, reward: f.get(1).and_then(|r| parse_reward(r, db)), reqs, num_required })
         })
         .collect();

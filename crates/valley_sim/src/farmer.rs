@@ -267,6 +267,10 @@ pub struct Farmer {
     /// Forge level per weapon id (each level adds damage).
     #[serde(default)]
     pub weapon_forge: BTreeMap<String, i32>,
+    /// Bundle definitions rolled for this game (remixed bundles); empty
+    /// means `Data/Bundles` as is.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub bundle_data: BTreeMap<String, String>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -384,6 +388,7 @@ impl Farmer {
             powers: Vec::new(),
             counters: BTreeMap::new(),
             weapon_forge: BTreeMap::new(),
+            bundle_data: BTreeMap::new(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),
