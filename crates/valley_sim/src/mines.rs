@@ -88,11 +88,12 @@ pub fn level_of(location: &str) -> Option<i32> {
 /// Monster names that can appear at a depth (most specific available).
 fn spawn_table(level: i32) -> &'static [&'static str] {
     match level {
-        0..=9 => &["Green Slime", "Bug", "Dev_Blob"],
-        10..=29 => &["Green Slime", "Duggy", "Fly", "Dev_Blob", "Dev_Moth"],
-        30..=39 => &["Bat", "Stone Golem", "Dev_Moth", "Dev_Blob"],
-        40..=79 => &["Frost Jelly", "Frost Bat", "Dust Spirit", "Dev_Blob", "Dev_Moth"],
-        _ => &["Sludge", "Lava Bat", "Shadow Brute", "Metal Head", "Dev_Blob", "Dev_Moth"],
+        0..=9 => &["Green Slime", "Bug", "Rock Crab", "Dev_Blob", "Dev_StoneCrab"],
+        10..=29 => &["Green Slime", "Duggy", "Fly", "Grub", "Rock Crab", "Dev_Blob", "Dev_Moth", "Dev_Mole", "Dev_Larva"],
+        30..=39 => &["Bat", "Stone Golem", "Duggy", "Dev_Moth", "Dev_Blob", "Dev_Skeleton"],
+        40..=79 => &["Frost Jelly", "Frost Bat", "Dust Spirit", "Skeleton", "Ghost", "Dev_Blob", "Dev_Moth", "Dev_Skeleton"],
+        80..=120 => &["Sludge", "Lava Bat", "Shadow Brute", "Shadow Shaman", "Metal Head", "Squid Kid", "Lava Crab", "Dev_Blob", "Dev_Moth", "Dev_Mummy"],
+        _ => &["Mummy", "Serpent", "Big Slime", "Iridium Bat", "Iridium Crab", "Pepper Rex", "Sludge", "Dev_Mummy", "Dev_Skeleton", "Dev_Blob"],
     }
 }
 

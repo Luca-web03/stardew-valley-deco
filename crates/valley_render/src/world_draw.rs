@@ -587,6 +587,20 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
 
     // Monsters.
     for m in w.monsters.iter().filter(|m| m.location == loc_name) {
+        if m.hidden {
+            let p = cam.to_screen(m.pos);
+            let depth = sort_depth(m.pos.y + TILE_F, map_h);
+            if m.species == valley_sim::monster_kinds::Species::Crab {
+                // Disguised as a rock.
+                let (tex, src) = object_sprite(rc, w, &w.mine_items.stone);
+                out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, TILE_F, TILE_F), depth));
+            } else {
+                // A mound of loose dirt moving underground.
+                out.fill(FRect::new(p.x + 14.0, p.y + TILE_F - 22.0, TILE_F - 28.0, 12.0), Color::rgb(110, 80, 55), depth);
+                out.fill(FRect::new(p.x + 20.0, p.y + TILE_F - 28.0, TILE_F - 40.0, 8.0), Color::rgb(130, 95, 65), depth + 0.0001);
+            }
+            continue;
+        }
         let tex = rc.assets.tex(rc.cm, rc.textures, &format!("Characters/Monsters/{}", m.info.name));
         let (tw, th) = rc.textures.size(tex);
         let fh = if th % 24 == 0 && th >= 24 { 24 } else { 16 };
@@ -611,8 +625,26 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         if m.invincible_ms > 0 && (m.invincible_ms / 50) % 2 == 0 {
             s.tint = Color::rgb(255, 120, 120);
         }
+        if m.collapsed_ms > 0 {
+            s.tint = Color::rgba(150, 140, 130, 170);
+        }
+        if m.fuse_ms.is_some_and(|f| (f / 100) % 2 == 0) {
+            s.tint = Color::rgb(255, 80, 60);
+        }
         s.flip_x = m.movement != valley_sim::combat::Movement::Walker && m.facing == Dir::Left;
         out.sprite(s);
+    }
+
+    // Monster projectiles.
+    for s in w.enemy_shots.iter().filter(|s| s.location == loc_name) {
+        let p = cam.to_screen(s.pos);
+        let (col, size) = match s.kind {
+            valley_sim::monster_kinds::ShotKind::Bone => (Color::rgb(240, 235, 220), 12.0),
+            valley_sim::monster_kinds::ShotKind::Fireball => (Color::rgb(255, 140, 40), 16.0),
+            valley_sim::monster_kinds::ShotKind::Spell => (Color::rgb(190, 110, 255), 14.0),
+        };
+        out.fill(FRect::new(p.x - size / 2.0, p.y - size / 2.0, size, size), col, DEPTH_SORT_MAX + 0.02);
+        out.fill(FRect::new(p.x - size / 4.0, p.y - size / 4.0, size / 2.0, size / 2.0), Color::rgb(255, 250, 230), DEPTH_SORT_MAX + 0.021);
     }
 
     // Farmer.

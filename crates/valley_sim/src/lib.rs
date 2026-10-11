@@ -16,6 +16,7 @@ pub mod equipment;
 pub mod evaluation;
 pub mod machines;
 pub mod mines;
+pub mod monster_kinds;
 pub mod dialogue;
 pub mod events;
 pub mod farm;

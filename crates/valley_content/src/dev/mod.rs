@@ -36,6 +36,11 @@ pub fn build() -> MemSource {
     m.insert("Buildings/Dev_Hut.png", art::hut().encode_png());
     m.insert("Characters/Monsters/Dev_Blob.png", art::monster_blob().encode_png());
     m.insert("Characters/Monsters/Dev_Moth.png", art::monster_moth().encode_png());
+    m.insert("Characters/Monsters/Dev_StoneCrab.png", art::monster_simple(Color::rgb(120, 115, 110), 0).encode_png());
+    m.insert("Characters/Monsters/Dev_Mole.png", art::monster_simple(Color::rgb(110, 80, 60), 1).encode_png());
+    m.insert("Characters/Monsters/Dev_Larva.png", art::monster_simple(Color::rgb(220, 210, 160), 2).encode_png());
+    m.insert("Characters/Monsters/Dev_Skeleton.png", art::monster_simple(Color::rgb(235, 230, 215), 3).encode_png());
+    m.insert("Characters/Monsters/Dev_Mummy.png", art::monster_simple(Color::rgb(200, 185, 150), 4).encode_png());
     m.insert("TileSheets/weapons.png", art::weapons().encode_png());
     m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
@@ -858,7 +863,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1 Dev_SlimeEgg .03/0/.01/6/2/.0/true/3/Mud Blob",
-            "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"
+            "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth",
+            "Dev_StoneCrab": "30/6/0/0/false/1000/390 .8 Dev_CopperOre .2/1/.0/3/2/.0/true/4/Stone Crab",
+            "Dev_Mole": "28/7/0/0/false/1000/Dev_Goo .4/0/.0/12/3/.0/true/5/Burrowing Mole",
+            "Dev_Larva": "16/3/0/0/false/1000/Dev_Goo .5/0/.02/6/1/.0/true/2/Cave Larva",
+            "Dev_Skeleton": "40/8/0/0/false/1000/Dev_IronOre .3/1/.02/10/2/.05/true/8/Rattle Skeleton",
+            "Dev_Mummy": "60/10/0/0/false/1000/Dev_GoldOre .3/2/.0/8/2/.0/true/12/Wrapped Mummy"
         })),
         ("Data/Weapons", json!({
             "Dev_Sword": { "Name": "Training Sword", "DisplayName": "Training Sword",

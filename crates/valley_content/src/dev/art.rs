@@ -2166,3 +2166,61 @@ pub fn emotes() -> Image {
     }
     img
 }
+
+/// Simple 4-frame monster sheets (16x24 frames): 0 crab, 1 mole, 2 larva,
+/// 3 skeleton, 4 mummy.
+pub fn monster_simple(body: Color, style: u8) -> Image {
+    let mut img = Image::new(64, 24);
+    let dark = shade(body, -50);
+    for f in 0..4 {
+        let mut c = Cell { ox: f * 16, oy: 0, w: 16, h: 24, img: &mut img };
+        let step = (f % 2) as i32;
+        match style {
+            0 => {
+                c.ellipse(8.0, 17.0, 7.0, 5.0, body);
+                c.ellipse(6.0, 15.0, 2.5, 1.5, shade(body, 30));
+                for x in [2, 5, 10, 13] {
+                    c.rect(x, 21 + step, 1, 2, dark);
+                }
+                c.px(6, 18, Color::BLACK);
+                c.px(10, 18, Color::BLACK);
+            }
+            1 => {
+                c.ellipse(8.0, 17.0, 6.0, 5.0, body);
+                c.ellipse(8.0, 14.0, 4.0, 3.0, shade(body, 20));
+                c.rect(7, 16, 2, 1, Color::rgb(230, 150, 160));
+                c.rect(3 + step, 21, 3, 2, Color::rgb(230, 150, 160));
+                c.rect(10 - step, 21, 3, 2, Color::rgb(230, 150, 160));
+            }
+            2 => {
+                for i in 0..4 {
+                    c.ellipse(4.0 + i as f32 * 2.8, 19.0 - (i % 2) as f32 * step as f32, 2.6, 2.6, if i == 3 { shade(body, -20) } else { body });
+                }
+                c.px(13, 18, Color::BLACK);
+            }
+            3 => {
+                c.ellipse(8.0, 6.0, 4.0, 4.0, body);
+                c.px(6, 6, Color::BLACK);
+                c.px(10, 6, Color::BLACK);
+                c.rect(7, 10, 2, 7, body);
+                for y in [11, 13, 15] {
+                    c.rect(5, y, 6, 1, body);
+                }
+                c.rect(6 - step, 17, 1, 6, body);
+                c.rect(9 + step, 17, 1, 6, body);
+            }
+            _ => {
+                c.rect(5, 4, 6, 18, body);
+                for y in (5..22).step_by(3) {
+                    c.rect(5, y, 6, 1, dark);
+                }
+                c.px(7, 7, Color::rgb(200, 40, 40));
+                c.px(9, 7, Color::rgb(200, 40, 40));
+                c.rect(3 - step, 10, 2, 2, body);
+                c.rect(11 + step, 10, 2, 2, body);
+            }
+        }
+        c.auto_outline(OUTLINE);
+    }
+    img
+}

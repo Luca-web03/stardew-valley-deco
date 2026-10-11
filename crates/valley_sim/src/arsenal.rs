@@ -111,7 +111,7 @@ impl World {
             .monsters
             .iter()
             .enumerate()
-            .filter(|(_, m)| m.location == here && (hit.ignore_invincible || m.invincible_ms == 0) && m.bbox().intersects(&area))
+            .filter(|(_, m)| m.location == here && !m.hidden && m.collapsed_ms == 0 && (hit.ignore_invincible || m.invincible_ms == 0) && m.bbox().intersects(&area))
             .map(|(i, _)| i)
             .collect();
         if targets.is_empty() {
@@ -143,6 +143,14 @@ impl World {
                 dmg = (dmg as f32 * hit.crit_mult) as i32;
             }
             dmg = (dmg - m.info.resilience).max(1);
+            if m.shell > 0 {
+                // The shell takes the hit.
+                m.shell -= 1;
+                dmg = 0;
+            }
+            if m.species == crate::monster_kinds::Species::HotHead && m.fuse_ms.is_none() {
+                m.fuse_ms = Some(crate::monster_kinds::FUSE_MS);
+            }
             m.health -= dmg;
             m.invincible_ms = MONSTER_INVINCIBLE_MS;
             let away = (m.center() - center).normalized();
@@ -161,22 +169,46 @@ impl World {
         self.sound(if killed.is_empty() { "hitEnemy" } else { "monsterKilled" });
         killed.sort_unstable();
         for i in killed.into_iter().rev() {
-            let m = self.monsters.remove(i);
-            if let Some(l) = self.farmer.skills.gain(Skill::Combat, m.info.exp) {
-                self.emit(WorldEvent::LevelUp(Skill::Combat, l));
+            if self.monsters[i].species == crate::monster_kinds::Species::Mummy {
+                // Mummies collapse; only a bomb finishes them.
+                let m = &mut self.monsters[i];
+                m.collapsed_ms = crate::monster_kinds::MUMMY_DOWN_MS;
+                m.health = 0;
+                continue;
             }
-            self.monsters_killed += 1;
-            self.quest_killed(&m.info.name.clone());
-            self.quest_killed(&m.info.display_name.clone());
-            for (id, chance) in &m.info.drops {
-                if rng.chance(*chance) {
-                    if let Some(item) = self.items.create(id, 1) {
-                        self.spawn_drop(item, m.center());
-                    }
+            let m = self.monsters.remove(i);
+            self.monster_killed(m, false);
+        }
+        targets.len()
+    }
+
+    /// A monster died: experience, counters, quests, drops and species
+    /// effects (big slimes split).
+    pub(crate) fn monster_killed(&mut self, m: crate::combat::Monster, by_bomb: bool) {
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, m.id as i64, 37]));
+        if let Some(l) = self.farmer.skills.gain(Skill::Combat, m.info.exp) {
+            self.emit(WorldEvent::LevelUp(Skill::Combat, l));
+        }
+        self.monsters_killed += 1;
+        self.quest_killed(&m.info.name.clone());
+        self.quest_killed(&m.info.display_name.clone());
+        for (id, chance) in &m.info.drops {
+            if rng.chance(*chance) {
+                if let Some(item) = self.items.create(id, 1) {
+                    self.spawn_drop(item, m.center());
                 }
             }
         }
-        targets.len()
+        if m.species == crate::monster_kinds::Species::BigSlime {
+            let small = self.monster_info.keys().find(|k| { let k = k.to_ascii_lowercase(); (k.contains("slime") || k.contains("blob")) && !k.contains("big") }).cloned();
+            if let Some(small) = small {
+                for k in 0..rng.range(2, 4) {
+                    let off = Vec2::new((k as f32 - 1.0) * 40.0, (k % 2) as f32 * 30.0);
+                    self.spawn_monster_at(&small, "slime", &m.location, m.center() + off);
+                }
+            }
+        }
+        let _ = by_bomb;
     }
 
     // ------------------------------------------------------------ specials

@@ -89,12 +89,35 @@ pub struct Monster {
     pub hop_cooldown: u32,
     pub wander: Vec2,
     pub wander_ms: u32,
+    /// Species behaviour (from the name) and its state.
+    pub species: crate::monster_kinds::Species,
+    /// Disguised (crab) or underground (burrower): no contact, no hits.
+    pub hidden: bool,
+    pub state_ms: u32,
+    /// Hits the shell still absorbs (crabs).
+    pub shell: i32,
+    pub shot_cd: u32,
+    /// Collapsed mummy: ms until it gets back up.
+    pub collapsed_ms: u32,
+    /// Lit fuse (hot heads).
+    pub fuse_ms: Option<u32>,
+    pub age_ms: u32,
 }
 
 impl Monster {
     pub fn new(id: u32, info: MonsterInfo, location: &str, tile: TilePos) -> Self {
+        use crate::monster_kinds::Species;
         let movement = movement_for(&info);
+        let species = crate::monster_kinds::species_for(&info.name);
         Self {
+            species,
+            hidden: matches!(species, Species::Crab),
+            state_ms: 1000,
+            shell: if species == Species::Crab { crate::monster_kinds::SHELL_HITS } else { 0 },
+            shot_cd: 1500,
+            collapsed_ms: 0,
+            fuse_ms: None,
+            age_ms: 0,
             id,
             health: info.health,
             info,
@@ -217,9 +240,14 @@ impl World {
             Some(l) => l,
             None => return,
         };
+        let mut fx = crate::monster_kinds::SpeciesEffects::default();
         for m in self.monsters.iter_mut().filter(|m| m.location == here) {
             m.anim_ms += dt;
             m.invincible_ms = m.invincible_ms.saturating_sub(dt);
+            if crate::monster_kinds::species_step(m, dt, target, &mut rng, &mut fx) == crate::monster_kinds::Step::Hold {
+                m.knock = Vec2::ZERO;
+                continue;
+            }
             // Knockback first.
             if m.knock.length() > 0.2 {
                 let np = m.pos + m.knock;
@@ -242,7 +270,7 @@ impl World {
                 }
                 m.wander * 0.5
             };
-            let speed = m.info.speed.max(1.0);
+            let speed = m.info.speed.max(1.0) * if m.species == crate::monster_kinds::Species::Dust { 1.6 } else { 1.0 };
             match m.movement {
                 Movement::Flyer => {
                     let wobble = Vec2::new((m.anim_ms as f32 / 200.0).sin(), (m.anim_ms as f32 / 260.0).cos()) * 0.6;
@@ -279,13 +307,19 @@ impl World {
             if dir.length() > 0.1 {
                 m.facing = Dir::toward((dir.x * 100.0) as i32, (dir.y * 100.0) as i32);
             }
-            if contact_damage.is_none() && m.bbox().intersects(&fb) && m.z < 16.0 {
+            if contact_damage.is_none() && !m.hidden && m.bbox().intersects(&fb) && m.z < 16.0 {
                 contact_damage = Some((m.info.damage, m.center()));
             }
+        }
+        // Collapsed mummies and fused hot heads stand still but still hurt.
+        if contact_damage.is_none() {
+            contact_damage = self.monsters.iter().filter(|m| m.location == here && m.collapsed_ms == 0 && !m.hidden && m.bbox().intersects(&fb)).map(|m| (m.info.damage, m.center())).next();
         }
         if let Some((dmg, from)) = contact_damage {
             self.damage_farmer(dmg, from);
         }
+        self.apply_species_effects(fx);
+        self.update_enemy_shots(dt);
         for f in self.floaters.iter_mut() {
             f.ms = f.ms.saturating_sub(dt);
             f.pos.y -= 0.8;

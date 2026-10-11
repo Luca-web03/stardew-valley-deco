@@ -263,8 +263,7 @@ impl World {
         }
         for i in killed.into_iter().rev() {
             let m = self.monsters.remove(i);
-            self.farmer.skills.gain(crate::farmer::Skill::Combat, m.info.exp);
-            self.monsters_killed += 1;
+            self.monster_killed(m, true);
         }
         if self.farmer.center().distance(center) <= reach * 0.75 {
             self.damage_farmer(dmg / 3, center);

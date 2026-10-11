@@ -243,6 +243,8 @@ pub struct World {
     pub spawned_hutches: std::collections::BTreeSet<String>,
     /// Crows on the farm this morning.
     pub crows: Vec<crate::farm_events::Crow>,
+    /// Monster projectiles in flight.
+    pub enemy_shots: Vec<crate::monster_kinds::EnemyShot>,
     /// Data/GiantCrops.
     pub giant_crops: BTreeMap<String, valley_content::data::GiantCropData>,
     /// Data/Powers (book powers).
@@ -410,6 +412,7 @@ impl World {
             powers: crate::mastery::load_powers(cm),
             giant_crops: crate::clumps::load_giant_crops(cm),
             crows: Vec::new(),
+            enemy_shots: Vec::new(),
             spawned_hutches: Default::default(),
             cave_offered: false,
             joja_projects: crate::evaluation::load_joja_projects(cm),
@@ -930,6 +933,7 @@ impl World {
         self.leave_mines();
         self.bombs.clear();
         self.explosions.clear();
+        self.enemy_shots.clear();
         self.dropped.clear();
         self.floaters.clear();
         self.weapon_swing = None;

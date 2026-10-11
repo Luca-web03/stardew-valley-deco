@@ -43,6 +43,10 @@ were not available; such values are isolated constants that can be tuned.
       tackle, treasure chests
 - [x] Mines: levels, rocks/ores, ladders, elevator, bombs; monsters,
       weapons, rings, boots, combat, fainting
+- [x] Monster species behaviours by name (approx.): rock-disguised shelled
+      crabs, burrowers, bone/spell/fireball throwers, healing shamans,
+      reviving mummies, exploding hot heads, splitting big slimes, grubs
+      turning into flies, quick dust sprites
 - [x] Weapon special moves (block, flurry, slam; approx. timings),
       slingshot with ammo and projectiles
 - [x] Deep cavern below the mines (shafts, tougher floors), paid travel
