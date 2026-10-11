@@ -145,3 +145,42 @@ fn gifts_follow_quality_weekly_limits_and_friends_drift_apart() {
     w.end_day(false);
     assert_eq!(w.farmer.friendships["Mara"].points, 1992);
 }
+
+#[test]
+fn a_happy_spouse_does_morning_chores() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    w.event = None;
+    w.farmer.spouse = Some("Mara".into());
+    w.farmer.friendship("Mara").status = RelationStatus::Married;
+    w.farmer.friendship("Mara").points = 1000;
+    assert_eq!(w.spouse_chores_pub(), None, "not happy enough");
+    w.farmer.friendship("Mara").points = 3000;
+    let mut seen = std::collections::BTreeSet::new();
+    for day in 1..=28 {
+        w.clock.day = day;
+        w.weather = valley_sim::time::Weather::Sun;
+        if let Some(p) = w.pet.as_mut() {
+            p.bowl_filled = false;
+        }
+        let dishes_before: i32 = w.farmer.inventory.slots.iter().flatten().filter(|i| i.object_id().is_some_and(|id| w.items.object(id).is_some_and(|o| o.data.category == -7))).map(|i| i.stack()).sum();
+        match w.spouse_chores_pub() {
+            Some(c @ valley_sim::romance::Chore::PetBowl) => {
+                assert!(w.pet.as_ref().unwrap().bowl_filled);
+                seen.insert(format!("{c:?}"));
+            }
+            Some(c @ valley_sim::romance::Chore::Breakfast) => {
+                let after: i32 = w.farmer.inventory.slots.iter().flatten().filter(|i| i.object_id().is_some_and(|id| w.items.object(id).is_some_and(|o| o.data.category == -7))).map(|i| i.stack()).sum();
+                assert_eq!(after, dishes_before + 1);
+                seen.insert(format!("{c:?}"));
+            }
+            Some(c) => {
+                seen.insert(format!("{c:?}"));
+            }
+            None => {}
+        }
+    }
+    assert!(seen.len() >= 2, "chores over a month: {seen:?}");
+    let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
+    assert!(w.npcs[i].dialogue.get("__spouse_today").is_some());
+}

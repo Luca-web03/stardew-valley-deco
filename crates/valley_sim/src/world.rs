@@ -937,6 +937,7 @@ impl World {
         self.spouse_morning();
         self.children_morning();
         self.pet_morning();
+        self.spouse_chores();
         self.cart_morning();
         self.orders_morning();
         self.passive_festivals_morning();
