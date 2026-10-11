@@ -753,11 +753,18 @@ impl World {
                 if d.is_empty() { name.clone() } else { d }
             };
             let facing = Dir::parse(&home.direction).unwrap_or(Dir::Down);
+            let portrait = format!("Portraits/{}", data.texture_name.clone().unwrap_or_else(|| name.clone()));
+            let base_look = (texture.clone(), portrait.clone());
             let mut npc = Npc {
                 name: name.clone(),
                 display_name: display,
                 texture,
-                portrait: format!("Portraits/{}", data.texture_name.clone().unwrap_or_else(|| name.clone())),
+                portrait,
+                appearances: data.appearance.clone(),
+                look_indoors: base_look.clone(),
+                look_outdoors: base_look.clone(),
+                base_look,
+                unlock: data.unlock_conditions.clone(),
                 location: home.location.clone(),
                 pos: Vec2::ZERO,
                 facing,
@@ -879,6 +886,7 @@ impl World {
             };
         }
         self.trigger_actions_morning();
+        self.npc_appearances_morning();
         self.update_npc_schedules();
         self.raise_trigger("DayStarted");
         self.spouse_morning();
@@ -2497,8 +2505,13 @@ impl World {
     // ---------------------------------------------------------------- NPCs
 
     fn update_npc_schedules(&mut self) {
+        self.refresh_npc_looks();
         let time = self.clock.time;
         for i in 0..self.npcs.len() {
+            // Hidden NPCs (locked or made invisible) stay away.
+            if self.npcs[i].location.is_empty() {
+                continue;
+            }
             loop {
                 let npc = &self.npcs[i];
                 let Some(entry) = npc.schedule.get(npc.next_entry).cloned() else { break };

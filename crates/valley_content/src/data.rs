@@ -152,6 +152,33 @@ pub struct CharacterData {
     pub size: Point,
     pub texture_name: Option<String>,
     pub spouse_room: Option<serde_json::Value>,
+    /// Outfits by season/indoors/condition (sprite and portrait assets).
+    pub appearance: Vec<CharacterAppearance>,
+    /// The NPC only exists while this query passes.
+    pub unlock_conditions: Option<String>,
+    pub flower_dance_can_dance: Option<bool>,
+    pub winter_star_participant: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct CharacterAppearance {
+    pub id: String,
+    pub season: Option<String>,
+    pub indoors: bool,
+    pub outdoors: bool,
+    pub condition: Option<String>,
+    pub portrait: Option<String>,
+    pub sprite: Option<String>,
+    pub is_island_attire: bool,
+    pub precedence: i32,
+    pub weight: i32,
+}
+
+impl Default for CharacterAppearance {
+    fn default() -> Self {
+        Self { id: String::new(), season: None, indoors: true, outdoors: true, condition: None, portrait: None, sprite: None, is_island_attire: false, precedence: 0, weight: 1 }
+    }
 }
 
 impl Default for CharacterData {
@@ -170,6 +197,10 @@ impl Default for CharacterData {
             size: Point { x: 16, y: 32 },
             texture_name: None,
             spouse_room: None,
+            appearance: Vec::new(),
+            unlock_conditions: None,
+            flower_dance_can_dance: None,
+            winter_star_participant: None,
         }
     }
 }

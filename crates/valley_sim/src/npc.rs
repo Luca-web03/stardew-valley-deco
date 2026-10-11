@@ -53,6 +53,14 @@ pub struct Npc {
     pub bubble: Option<(String, u32)>,
     /// Pause after being talked to (ms) during which the NPC stands still.
     pub pause_ms: u32,
+    /// Outfit choices from `Appearance`, the default sprite/portrait, and
+    /// today's (sprite, portrait) picks for indoors and outdoors.
+    pub appearances: Vec<valley_content::data::CharacterAppearance>,
+    pub base_look: (String, String),
+    pub look_indoors: (String, String),
+    pub look_outdoors: (String, String),
+    /// `UnlockConditions`: the NPC is only around while this passes.
+    pub unlock: Option<String>,
 }
 
 impl Npc {
@@ -126,5 +134,69 @@ impl Npc {
 
     pub fn is_traveling(&self) -> bool {
         !self.route.is_empty()
+    }
+}
+
+impl crate::world::World {
+    /// Morning: pick today's outfits (indoors and outdoors) from each
+    /// NPC's `Appearance` list, lowest precedence first and then by
+    /// weight; hide NPCs whose `UnlockConditions` fail.
+    pub(crate) fn npc_appearances_morning(&mut self) {
+        let season = self.clock.season;
+        for i in 0..self.npcs.len() {
+            let n = &self.npcs[i];
+            if let Some(c) = n.unlock.clone() {
+                let mut rng = self.day_rng(600 + i as i64);
+                if !self.check_query(Some(&c), None, None, &mut rng) {
+                    self.npcs[i].location.clear();
+                    continue;
+                }
+            }
+            if n.appearances.is_empty() {
+                continue;
+            }
+            let mut picks = Vec::new();
+            for indoors in [true, false] {
+                let mut rng = self.day_rng(700 + i as i64 * 2 + indoors as i64);
+                let ok: Vec<&valley_content::data::CharacterAppearance> = n
+                    .appearances
+                    .iter()
+                    .filter(|a| !a.is_island_attire)
+                    .filter(|a| a.season.as_deref().map_or(true, |s| crate::time::Season::parse(s) == Some(season)))
+                    .filter(|a| if indoors { a.indoors } else { a.outdoors })
+                    .filter(|a| self.check_query(a.condition.as_deref(), None, None, &mut rng.clone()))
+                    .collect();
+                let best = ok.iter().map(|a| a.precedence).min();
+                let group: Vec<&&valley_content::data::CharacterAppearance> = ok.iter().filter(|a| Some(a.precedence) == best).collect();
+                let total: i32 = group.iter().map(|a| a.weight.max(1)).sum();
+                let mut roll = if total > 0 { rng.range(0, total) } else { 0 };
+                let chosen = group.iter().find(|a| {
+                    roll -= a.weight.max(1);
+                    roll < 0
+                });
+                let look = match chosen {
+                    Some(a) => (
+                        a.sprite.clone().map(|s| s.replace('\\', "/")).unwrap_or_else(|| n.base_look.0.clone()),
+                        a.portrait.clone().map(|s| s.replace('\\', "/")).unwrap_or_else(|| n.base_look.1.clone()),
+                    ),
+                    None => n.base_look.clone(),
+                };
+                picks.push(look);
+            }
+            let n = &mut self.npcs[i];
+            n.look_indoors = picks[0].clone();
+            n.look_outdoors = picks[1].clone();
+        }
+        self.refresh_npc_looks();
+    }
+
+    /// Dress NPCs for where they are now.
+    pub(crate) fn refresh_npc_looks(&mut self) {
+        for n in self.npcs.iter_mut() {
+            let outdoors = self.locations.get(&n.location).is_some_and(|l| l.outdoors);
+            let look = if outdoors { &n.look_outdoors } else { &n.look_indoors };
+            n.texture = look.0.clone();
+            n.portrait = look.1.clone();
+        }
     }
 }
