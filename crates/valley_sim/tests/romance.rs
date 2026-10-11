@@ -184,3 +184,27 @@ fn a_happy_spouse_does_morning_chores() {
     let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
     assert!(w.npcs[i].dialogue.get("__spouse_today").is_some());
 }
+
+#[test]
+fn spouses_follow_marriage_schedules_on_dry_days() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    w.event = None;
+    w.farmer.spouse = Some("Mara".into());
+    w.farmer.friendship("Mara").status = RelationStatus::Married;
+    w.farmer.friendship("Mara").points = 2600;
+    let mut s = std::collections::HashMap::new();
+    s.insert("marriage_Tue".to_string(), "900 Town 10 10 2".to_string());
+    w.schedule_data.insert("Mara".into(), s);
+    w.clock.day = 1;
+    w.weather_tomorrow = valley_sim::time::Weather::Sun;
+    w.end_day(false);
+    assert_eq!(w.clock.weekday(), "Tue");
+    let mara = w.npcs.iter().find(|n| n.name == "Mara").unwrap();
+    assert_eq!(mara.location, "FarmHouse");
+    assert_eq!(mara.schedule.first().map(|e| e.location.as_str()), Some("Town"));
+    // Wednesday: no schedule, she stays home.
+    w.weather_tomorrow = valley_sim::time::Weather::Sun;
+    w.end_day(false);
+    assert!(w.npcs.iter().find(|n| n.name == "Mara").unwrap().schedule.is_empty());
+}

@@ -109,6 +109,21 @@ impl World {
         let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
         let pages = dialogue::parse(&text, &subs);
         npc.dialogue.insert("__spouse_today".into(), pages.iter().map(|p| p.text.clone()).collect::<Vec<_>>().join("#$b#"));
+        // Days out: `marriage_<season>_<day>`, `marriage_<day>` or
+        // `marriage_<weekday>` schedules, when it isn't raining.
+        if !self.weather.is_raining() {
+            if let Some(s) = self.schedule_data.get(&spouse).cloned() {
+                let keys = [format!("marriage_{}_{}", self.clock.season.key(), self.clock.day), format!("marriage_{}", self.clock.day), format!("marriage_{}", self.clock.weekday())];
+                if let Some(k) = keys.iter().find(|k| s.contains_key(*k)) {
+                    let friends = self.farmer.friendships.clone();
+                    let hearts_of = |n: &str| friends.get(n).map(|f| f.hearts()).unwrap_or(0);
+                    let entries = crate::schedule::parse_with(&s[k], &s, 0, &hearts_of);
+                    let npc = &mut self.npcs[i];
+                    npc.schedule = entries;
+                    npc.next_entry = 0;
+                }
+            }
+        }
     }
 
     /// Paperwork at town hall: end the marriage (approx. cost). The former
