@@ -24,6 +24,7 @@ pub mod farm_cave;
 pub mod farm_events;
 pub mod farm_types;
 pub mod farmer;
+pub mod festival_activities;
 pub mod festivals;
 pub mod furniture;
 pub mod fishing;

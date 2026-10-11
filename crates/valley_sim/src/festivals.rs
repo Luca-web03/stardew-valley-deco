@@ -85,6 +85,7 @@ impl World {
             return false;
         }
         let Some(setup) = f.data.get("set-up").cloned() else { return false };
+        self.activity = Default::default();
         self.start_event(&format!("festival_{}", f.key), &setup);
         if let Some(e) = self.event.as_mut() {
             e.festival = Some(FestivalState {
@@ -146,6 +147,7 @@ impl World {
         // Camera follows the farmer while roaming.
         let c = e.actors[fi].pos;
         e.viewport = Vec2::new(c.x / TILE_F, (c.y + 16.0) / TILE_F);
+        let mut talk: Option<(String, bool, String)> = None;
         if input.action {
             let me = TilePos::from_world(Farmer::bbox_at(e.actors[fi].pos).center());
             let target = me.offset(e.actors[fi].facing);
@@ -158,25 +160,32 @@ impl World {
                 let toward = Dir::toward(me.x - target.x, me.y - target.y);
                 e.actors[i].facing = toward;
                 let fest = e.festival.as_mut().unwrap();
-                if fest.host.as_deref() == Some(name.as_str()) {
-                    self.emit(WorldEvent::FestivalHost { festival: fest.name.clone() });
-                } else {
-                    let raw = fest.dialogue.get(&name).cloned().unwrap_or_else(|| "Isn't this fun? I look forward to this all year.".into());
-                    if fest.talked.insert(name.clone()) {
-                        let f = self.farmer.friendship(&name);
-                        if !f.talked_today {
-                            f.talked_today = true;
-                            f.points += 20;
-                        }
-                        f.met = true;
+                let is_host = fest.host.as_deref() == Some(name.as_str());
+                let raw = fest.dialogue.get(&name).cloned().unwrap_or_else(|| "Isn't this fun? I look forward to this all year.".into());
+                if !is_host && fest.talked.insert(name.clone()) {
+                    let f = self.farmer.friendship(&name);
+                    if !f.talked_today {
+                        f.talked_today = true;
+                        f.points += 20;
                     }
-                    let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
-                    let pages = dialogue::parse(&raw, &subs);
-                    self.emit(WorldEvent::Dialogue { npc: Some(name), pages });
+                    f.met = true;
                 }
+                talk = Some((name, is_host, if is_host { fest.name.clone() } else { raw }));
             }
         }
         self.event = Some(e);
+        if let Some((name, is_host, text)) = talk {
+            if self.activity.hunting {
+                // No chatting during the hunt.
+            } else if is_host {
+                self.festival_host_talk(&text);
+            } else if !self.festival_villager_talk(&name) {
+                let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
+                let pages = dialogue::parse(&text, &subs);
+                self.emit(WorldEvent::Dialogue { npc: Some(name), pages });
+            }
+        }
+        self.update_egg_hunt(dt);
     }
 
     /// Talked to the host and agreed: run the main event.
@@ -189,6 +198,11 @@ impl World {
         e.pc = 0;
         e.finished = false;
         e.waiting_ui = false;
+        if self.festival_main_activity() {
+            if let Some(e) = self.event.as_mut() {
+                e.waiting_ui = true;
+            }
+        }
     }
 
     /// Leave a festival early (or after it ends).

@@ -1596,6 +1596,12 @@ impl ValleyGame {
         if !w.in_event() || w.festival_roaming() {
             hud::draw_hud(&mut rc, &mut ui, w, sw, sh, &self.toasts);
         }
+        if let Some(status) = w.festival_status() {
+            let width = ui.measure(&status, 3.0).x + 48.0;
+            let r = FRect::new(sw / 2.0 - width / 2.0, 16.0, width, 56.0);
+            ui.panel(r);
+            ui.text_centered(&status, sw / 2.0, r.y + 18.0, 3.0, ui::TEXT);
+        }
         ui.depth = DEPTH_HUD + 0.5;
         hud::draw_fishing_overlay(&mut rc, &mut ui, w, sw, sh);
 

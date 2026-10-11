@@ -247,6 +247,8 @@ pub struct World {
     pub spawned_hutches: std::collections::BTreeSet<String>,
     /// Crows on the farm this morning.
     pub crows: Vec<crate::farm_events::Crow>,
+    /// The current festival's activity state.
+    pub activity: crate::festival_activities::ActivityState,
     /// Monster projectiles in flight.
     pub enemy_shots: Vec<crate::monster_kinds::EnemyShot>,
     /// Data/GiantCrops.
@@ -417,6 +419,7 @@ impl World {
             giant_crops: crate::clumps::load_giant_crops(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
+            activity: Default::default(),
             spawned_hutches: Default::default(),
             cave_offered: false,
             joja_projects: crate::evaluation::load_joja_projects(cm),
@@ -809,6 +812,7 @@ impl World {
         self.passive_festivals_morning();
         self.apply_cleared_tiles();
         self.grandpa_morning();
+        self.secret_friend_morning();
         self.green_rain_morning();
         self.cave_morning();
         self.quest_state_checks();
@@ -2487,6 +2491,9 @@ impl World {
         if tile == FRIDGE_TILE {
             return Some(&self.farmer.fridge);
         }
+        if tile == crate::festival_activities::GRANGE_TILE {
+            return self.grange();
+        }
         if tile.y == -2 {
             return self.buildings.iter().find(|b| b.id as i32 == tile.x).and_then(|b| b.storage.as_ref());
         }
@@ -2498,6 +2505,13 @@ impl World {
 
     /// Move a stack between the farmer's inventory and a chest (or fridge).
     pub fn chest_transfer(&mut self, chest: TilePos, from_player: bool, slot: usize) {
+        if chest == crate::festival_activities::GRANGE_TILE {
+            if let Some(g) = self.activity.grange.as_mut() {
+                move_stack(&mut self.farmer.inventory, g, from_player, slot);
+                self.sound("pickUpItem");
+            }
+            return;
+        }
         if chest == FRIDGE_TILE {
             let f = &mut self.farmer;
             move_stack(&mut f.inventory, &mut f.fridge, from_player, slot);

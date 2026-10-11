@@ -239,6 +239,9 @@ pub struct Farmer {
     /// Conversation topics from events, with days left.
     #[serde(default)]
     pub conversation_topics: BTreeMap<String, i32>,
+    /// This winter's secret friend for the gift exchange.
+    #[serde(default)]
+    pub secret_friend: Option<String>,
     /// Quests completed (for request achievements).
     #[serde(default)]
     pub quests_completed: i32,
@@ -373,6 +376,7 @@ impl Farmer {
             cave_choice: None,
             farm_type: String::new(),
             quests_completed: 0,
+            secret_friend: None,
             conversation_topics: BTreeMap::new(),
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),

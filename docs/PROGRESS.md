@@ -83,7 +83,10 @@ were not available; such values are isolated constants that can be tuned.
       props and animated sprites, temporary map edits, camera pans, ambient
       light, rewards and state commands, `end` variants; emote sheet;
       HUD hidden during cutscenes (code-only commands are skipped)
-- [x] Festivals, passive festivals (multi-day map swaps)
+- [x] Festivals with activities: egg hunt, flower dance partners, luau
+      soup, grange display judging for star tokens, ice fishing contest
+      (simulated), winter feast secret gift exchange (approx. scoring);
+      passive festivals (multi-day map swaps)
 - [x] Movie theater: seasonal movies, tickets, inviting villagers,
       reactions by movie tags, concessions with guest tastes
 - [x] Farm cave (mushrooms or fruit bats), Qi challenge board with gem

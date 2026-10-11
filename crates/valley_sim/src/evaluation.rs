@@ -221,6 +221,8 @@ impl World {
             self.choose_concession(c);
         } else if let Some(c) = id.strip_prefix("cave:") {
             self.choose_cave(c);
+        } else if let Some(f) = id.strip_prefix("festival:") {
+            self.choose_festival(f);
         }
     }
 
