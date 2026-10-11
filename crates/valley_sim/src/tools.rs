@@ -72,6 +72,8 @@ impl World {
             Some(item) if self.is_placeable(&item) => self.place_current(target),
             // Wallpaper and flooring reach any wall or floor in view.
             Some(Item::Decor { .. }) => self.apply_decor(cursor.unwrap_or(target)),
+            Some(Item::Furniture { .. }) => self.place_furniture(target),
+            None => self.pickup_furniture(target),
             _ => false,
         }
     }

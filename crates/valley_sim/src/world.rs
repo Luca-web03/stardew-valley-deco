@@ -280,6 +280,10 @@ pub struct World {
     pub mine_chest_overrides: BTreeMap<String, String>,
     /// `Data/LocationContexts`.
     pub location_contexts: BTreeMap<String, crate::location_contexts::LocationContextData>,
+    /// `Data/MonsterSlayerQuests`.
+    pub monster_goals: BTreeMap<String, crate::monster_goals::MonsterGoal>,
+    /// `Data/ChairTiles` (map seats).
+    pub chair_tiles: std::collections::HashMap<String, crate::seats::ChairTile>,
     /// `Data/TriggerActions`.
     pub trigger_actions: Vec<crate::trigger_actions::TriggerActionData>,
     /// Telephone numbers (`phone`).
@@ -456,6 +460,8 @@ impl World {
             phone_contacts: BTreeMap::new(),
             trigger_actions: Vec::new(),
             location_contexts: BTreeMap::new(),
+            monster_goals: BTreeMap::new(),
+            chair_tiles: std::collections::HashMap::new(),
             mine_chest_overrides: BTreeMap::new(),
             buff_defs: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
@@ -588,6 +594,8 @@ impl World {
         };
         w.trigger_actions = crate::trigger_actions::load(cm);
         w.location_contexts = crate::location_contexts::load(cm);
+        w.monster_goals = crate::monster_goals::load(cm);
+        w.chair_tiles = crate::seats::load(cm);
         w.mine_chest_overrides = cm.load_dict("Port/MineChests");
         w.buff_defs = cm.load_dict("Data/Buffs");
         w.place_start_objects();
@@ -938,6 +946,7 @@ impl World {
 
     /// End the day (sleep or pass out) and start the next one.
     pub fn end_day(&mut self, passed_out: bool) {
+        self.farmer.sitting = None;
         self.raise_trigger("DayEnding");
         // Shipping.
         let mut shipped = Vec::new();
@@ -1264,6 +1273,15 @@ impl World {
             return;
         }
 
+        // Seated: moving or using a tool gets up.
+        if self.farmer.sitting.is_some() {
+            self.farmer.moving = false;
+            if input.move_x != 0 || input.move_y != 0 || input.use_tool || input.action {
+                self.stand_up();
+            }
+            return;
+        }
+
         if input.use_tool {
             if let Some(t) = input.cursor_tile {
                 self.face_toward(t);
@@ -1437,6 +1455,7 @@ impl World {
         }
         let from_pos = self.farmer.pos;
         self.farmer.swimming = false;
+        self.farmer.sitting = None;
         self.last_touch = None;
         let from = std::mem::replace(&mut self.current, target.to_string());
         let loc = self.location();
@@ -1514,7 +1533,7 @@ impl World {
         if self.collect_tapper(target) || self.place_tapper(target) || self.shake_fruit_tree(target) || self.shake_bush(target) {
             return true;
         }
-        if self.crab_pot_action(target) || self.place_bomb(target) || self.place_furniture(target) || self.pickup_furniture(target) {
+        if self.crab_pot_action(target) || self.place_bomb(target) || self.furniture_action(target) || self.try_sit(target) || self.pickup_furniture(target) {
             return true;
         }
         if self.interact_pond(target) || self.interact_hut(target) || self.interact_building(target) {
@@ -1676,6 +1695,8 @@ impl World {
             "Port.Unlock" => self.unlock_action(&toks),
             "Port.Volcano" => self.enter_volcano_from_here(),
             "Port.Forge" | "Forge" => self.open_forge(),
+            "Port.KillList" => self.show_kill_list(),
+            "Port.GuildMaster" => self.claim_goal_rewards(),
             "Port.Divorce" | "DivorceBook" => {
                 if self.farmer.spouse.is_none() {
                     self.emit(WorldEvent::Message("Marriage and divorce records. You have nothing to file.".into()));
@@ -1914,6 +1935,13 @@ impl World {
         let seen = self.farmer.events_seen.clone();
         let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: &self.current, rng: &mut rng, world: Some(self) };
         let mut stock = shop::build_stock(id, &data, &self.items, &mut ctx);
+        if id == crate::monster_goals::GUILD_SHOP {
+            for (qid, price) in self.goal_shop_items() {
+                if let Some(item) = self.items.create(&qid, 1) {
+                    stock.entries.push(shop::ShopEntry { item, price, stock: -1, limit: -1, currency: 0, trade: None, actions: Vec::new(), is_recipe: false });
+                }
+            }
+        }
         self.apply_shop_sold(&mut stock);
         self.emit(WorldEvent::OpenShop(stock));
     }

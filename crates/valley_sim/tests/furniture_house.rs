@@ -17,7 +17,7 @@ fn furniture_places_blocks_and_picks_up() {
     w.farmer.facing = Dir::Down;
     w.farmer.inventory.slots[11] = Some(Item::Furniture { id: "Dev_Table".into() });
     w.farmer.current_slot = 11;
-    assert!(w.do_action(None));
+    assert!(w.begin_use(None));
     assert_eq!(w.location().state.furniture.len(), 1);
     // A 2x1 table blocks both tiles.
     assert!(!valley_sim::collision::tile_passable(w.location(), TilePos::new(4, 5)));

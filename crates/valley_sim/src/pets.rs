@@ -1,5 +1,7 @@
 //! The farm pet, trash cans (Data/GarbageCans) and achievements.
-//! Pet friendship gains are approximations.
+//! Pet friendship gains are approximations. Pets with enough friendship
+//! may leave a gift by them in the morning (`Data/Pets` `GiftChance` and
+//! weighted `Gifts` with `MinimumFriendshipThreshold`).
 
 use std::collections::BTreeMap;
 
@@ -19,6 +21,30 @@ pub struct PetTypeData {
     pub bark_sound: Option<String>,
     pub content_sound: Option<String>,
     pub breeds: Vec<PetBreed>,
+    #[serde(default = "default_gift_chance")]
+    pub gift_chance: f64,
+    pub gifts: Vec<PetGift>,
+}
+
+fn default_gift_chance() -> f64 {
+    0.2
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct PetGift {
+    pub id: Option<String>,
+    #[serde(alias = "QualifiedItemId")]
+    pub qualified_item_i_d: String,
+    pub stack: i32,
+    pub minimum_friendship_threshold: i32,
+    pub weight: f64,
+}
+
+impl Default for PetGift {
+    fn default() -> Self {
+        Self { id: None, qualified_item_i_d: String::new(), stack: 1, minimum_friendship_threshold: 1000, weight: 1.0 }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -269,6 +295,42 @@ impl World {
         } else {
             p.location = "Farm".into();
             p.pos = Vec2::new((farm_tile.x + 2) as f32 * TILE_F, (farm_tile.y + 1) as f32 * TILE_F - 16.0);
+        }
+        self.pet_gift();
+    }
+
+    /// Morning: a fond pet may leave a gift beside it.
+    fn pet_gift(&mut self) {
+        let Some(p) = self.pet.clone() else { return };
+        let Some(data) = self.pets_data.get(&p.pet_type) else { return };
+        let options: Vec<&PetGift> = data.gifts.iter().filter(|g| p.friendship >= g.minimum_friendship_threshold && g.weight > 0.0).collect();
+        if options.is_empty() {
+            return;
+        }
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, 4217]));
+        if !rng.chance(data.gift_chance) {
+            return;
+        }
+        let total: f64 = options.iter().map(|g| g.weight).sum();
+        let mut roll = rng.next_f64() * total;
+        let mut pick = options[0];
+        for g in &options {
+            if roll < g.weight {
+                pick = g;
+                break;
+            }
+            roll -= g.weight;
+        }
+        let Some(item) = self.items.create(&pick.qualified_item_i_d, pick.stack.max(1)) else { return };
+        let Some(id) = item.object_id().map(String::from) else { return };
+        let center = TilePos::from_world(p.pos + Vec2::new(TILE_F / 2.0, TILE_F / 2.0 + 16.0));
+        let Some(loc) = self.locations.get_mut(&p.location) else { return };
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)] {
+            let t = TilePos::new(center.x + dx, center.y + dy);
+            if loc.is_clear(t) && crate::collision::tile_passable(loc, t) {
+                loc.state.objects.insert(t, crate::objects::PlacedObject::forage(&id));
+                return;
+            }
         }
     }
 

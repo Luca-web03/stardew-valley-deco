@@ -198,3 +198,12 @@ mod tests {
         assert_eq!(Clock::minutes_between(650, 720), 30);
     }
 }
+
+/// When it starts getting dark (approx. seasonal dusk).
+pub fn dusk(season: Season) -> i32 {
+    match season {
+        Season::Winter => 1700,
+        Season::Fall => 1800,
+        _ => 1900,
+    }
+}

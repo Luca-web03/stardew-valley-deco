@@ -418,11 +418,21 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
 
     // Furniture: rugs lie on the floor, the rest is y-sorted by its footprint bottom.
     for f in &loc.state.furniture {
-        let (tex, src) = furniture_sprite(rc, w, &f.id);
+        let (tex, src, flip) = furniture_sprite_at(rc, w, &f.id, f.rotation, f.on);
         let bottom = ((f.tile.y + f.footprint.1) * TILE) as f32;
         let p = cam.to_screen(Vec2::new((f.tile.x * TILE) as f32, bottom - src.h as f32 * ZOOM));
         let depth = if f.walkable { DEPTH_GROUND + 0.004 } else { sort_depth(bottom - 1.0, map_h) };
-        out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), depth));
+        let mut s = Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), depth);
+        s.flip_x = flip;
+        out.sprite(s);
+        // Something set on a table sits on its top, centred.
+        if let Some(item) = &f.held {
+            let (itex, isrc) = item_sprite(rc, w, item);
+            let cx = p.x + src.w as f32 * ZOOM / 2.0;
+            let top = cam.to_screen(Vec2::new(0.0, bottom - TILE_F)).y - TILE_F * 0.75;
+            let scale = if isrc.h > 16 { ZOOM * 0.75 } else { ZOOM };
+            out.draw(itex, isrc, Vec2::new(cx - isrc.w as f32 * scale / 2.0, top - (isrc.h as f32 - 16.0).max(0.0) * scale), scale, depth + 0.0001);
+        }
     }
 
     // Farm buildings.
@@ -834,8 +844,22 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
     };
     let shadow = rc.assets.shadow(rc.textures);
     let p = cam.to_screen(f.pos);
-    let depth = sort_depth(f.pos.y + TILE_F, map_h);
+    let mut depth = sort_depth(f.pos.y + TILE_F, map_h);
     let mut frame = walk_frame(f.moving, f.walk_ms, 120);
+    if f.sitting.is_some() {
+        // Seated: legs tucked out of sight, in front of the seat unless
+        // facing away (its back is then in front).
+        if f.facing != Dir::Up {
+            depth = sort_depth(f.pos.y + TILE_F + 20.0, map_h);
+        }
+        let src = character_src(f.facing, 0);
+        let shown = IRect::new(src.x, src.y, src.w, src.h - 6);
+        out.draw(tex, shown, Vec2::new(p.x, p.y - TILE_F + 8.0), ZOOM, depth);
+        if let Some(valley_sim::item::Item::Clothing { id, .. }) = &f.hat {
+            draw_hat(rc, out, w, id, f.facing, Vec2::new(p.x, p.y - TILE_F + 8.0), 0, depth + 0.0001);
+        }
+        return;
+    }
     if let Some(u) = &f.tool_use {
         frame = if u.elapsed_ms < 150 { 1 } else { 3 };
     }
@@ -1007,16 +1031,14 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
     let full = FRect::new(0.0, 0.0, cam.screen_w, cam.screen_h);
     let time = w.clock.time;
     // Approximate seasonal dusk.
-    let dusk = match w.clock.season {
-        valley_sim::time::Season::Winter => 1700,
-        valley_sim::time::Season::Fall => 1800,
-        _ => 1900,
-    };
+    let dusk = valley_sim::time::dusk(w.clock.season);
     let mut darkness = 0.0f32;
-    if loc.outdoors && time >= dusk {
+    // Homes dim at night too (approx.), so lamps and fireplaces matter.
+    let home = !loc.outdoors && valley_sim::decor::is_decoratable(loc, &w.current);
+    if (loc.outdoors || home) && time >= dusk {
         let mins = valley_sim::time::Clock::minutes_between(dusk, time) as f32;
         let total = valley_sim::time::Clock::minutes_between(dusk, 2400) as f32;
-        darkness = (mins / total).clamp(0.0, 1.0) * 0.75;
+        darkness = (mins / total).clamp(0.0, 1.0) * if home { 0.45 } else { 0.75 };
     }
     if loc.outdoors && w.weather.is_raining() {
         darkness = darkness.max(0.25);
@@ -1035,6 +1057,9 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
                     lights.push((c[0], c[1]));
                 }
             }
+        }
+        for t in w.furniture_lights(&w.current) {
+            lights.push((t.x, t.y));
         }
         if let Some(b) = loc.map.layer("Buildings") {
             let (x0, y0, x1, y1) = cam.tile_range(TILE_F, 2);
@@ -1305,6 +1330,22 @@ fn draw_hat(rc: &mut RenderCtx, out: &mut DrawList, w: &World, id: &str, facing:
     // Bob with the walk cycle like the head does.
     let bob = if frame % 2 == 1 { ZOOM } else { 0.0 };
     out.draw(tex, src, Vec2::new(at.x + lay.offset[0] as f32 * ZOOM, at.y + lay.offset[1] as f32 * ZOOM + bob), ZOOM, depth);
+}
+
+/// Texture, source rect and mirroring of a placed furniture piece at a
+/// rotation (see `FurnitureInfo::sprite_at`).
+pub fn furniture_sprite_at(rc: &mut RenderCtx, w: &World, id: &str, rotation: i32, lit: bool) -> (engine::TexId, IRect, bool) {
+    let Some(f) = w.items.furniture.get(id) else {
+        let (t, r) = furniture_sprite(rc, w, id);
+        return (t, r, false);
+    };
+    let tex_name = f.texture.clone().unwrap_or_else(|| "TileSheets/furniture".into()).replace('\\', "/");
+    let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name);
+    let (tw, _) = rc.textures.size(tex);
+    let cols = (tw / 16).max(1) as i32;
+    let (dx, sw, sh, flip) = f.sprite_at(rotation, lit);
+    let idx = f.sprite_index;
+    (tex, IRect::new((idx % cols + dx) * 16, (idx / cols) * 16, sw * 16, sh * 16), flip)
 }
 
 /// Texture + source rect of a furniture piece (sprite size from its data).

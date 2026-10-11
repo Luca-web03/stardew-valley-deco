@@ -212,12 +212,13 @@ impl World {
 
     /// A monster died: experience, counters, quests, drops and species
     /// effects (big slimes split).
-    pub(crate) fn monster_killed(&mut self, m: crate::combat::Monster, by_bomb: bool) {
+    pub fn monster_killed(&mut self, m: crate::combat::Monster, by_bomb: bool) {
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, m.id as i64, 37]));
         if let Some(l) = self.farmer.skills.gain(Skill::Combat, m.info.exp) {
             self.emit(WorldEvent::LevelUp(Skill::Combat, l));
         }
         self.monsters_killed += 1;
+        self.count_monster_kill(&m.info.name.clone());
         self.quest_killed(&m.info.name.clone());
         self.quest_killed(&m.info.display_name.clone());
         for (id, chance) in &m.info.drops {

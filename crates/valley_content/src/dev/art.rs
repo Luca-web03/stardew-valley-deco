@@ -36,6 +36,7 @@ pub const BOULDER: i32 = 35;
 pub const SANDSTONE: i32 = 36;
 pub const MINECART: i32 = 37;
 pub const SHRINE: i32 = 38;
+pub const BENCH: i32 = 39;
 
 // Indoor sheet tile indices.
 pub const FLOOR: i32 = 0;
@@ -271,6 +272,17 @@ pub fn outdoors(season: &str) -> Image {
         c.ellipse(8.0, 11.0, 7.0, 4.0, OUTLINE);
         c.ellipse(8.0, 11.0, 6.0, 3.0, Color::rgb(70, 110, 190));
         c.ellipse(8.0, 10.0, 4.0, 1.5, Color::rgb(40, 60, 110));
+    }
+    {
+        // Park bench seen from the front: slatted back over a seat.
+        let mut c = Cell::at(&mut img, BENCH, OUT_COLS, 16, 16);
+        c.noise(g, 6, 3);
+        let wood = Color::rgb(150, 100, 60);
+        c.rect(0, 2, 16, 2, shade(wood, 15));
+        c.rect(0, 5, 16, 2, shade(wood, 15));
+        c.rect(0, 9, 16, 3, shade(wood, 30));
+        c.rect(1, 12, 2, 4, Color::rgb(70, 70, 80));
+        c.rect(13, 12, 2, 4, Color::rgb(70, 70, 80));
     }
     img
 }
@@ -2144,21 +2156,46 @@ pub fn shed(w: i32, h: i32, wall: Color, roof: Color) -> Image {
     img
 }
 
-/// Furniture sheet: 32 columns of 16px cells. Pieces start at these indices:
-/// 0 chair (1x2), 2 table (2x2), 4 rug (3x2), 8 bookcase (2x3), 11 lamp (1x2).
+/// Furniture sheet: 32 columns of 16px cells. Pieces start at these indices
+/// (rotations follow the front view: side, then back; the left view mirrors
+/// the side): 0 chair (1x2, 4 rotations), 3 table (2x2, side 1x3),
+/// 6 rug (3x2), 9 bookcase (2x3), 11 lamp (1x2), 12 couch (3x2, side 1x4,
+/// back 3x2), 19 fireplace (2x3, lit at 21), 23 garden lantern (1x2).
 pub fn furniture() -> Image {
-    let mut img = Image::new(512, 48);
+    let mut img = Image::new(512, 64);
     let wood = Color::rgb(160, 104, 56);
-    {
-        let mut c = Cell { ox: 0, oy: 0, w: 16, h: 32, img: &mut img };
-        c.rect(4, 4, 8, 12, shade(wood, 10));
-        c.rect(4, 16, 8, 3, shade(wood, 30));
-        c.rect(4, 19, 2, 11, shade(wood, -20));
-        c.rect(10, 19, 2, 11, shade(wood, -20));
+    let cell = |img: &mut Image, idx: i32, w: i32, h: i32| -> (i32, i32, i32, i32) {
+        let _ = img;
+        ((idx % 32) * 16, (idx / 32) * 16, w * 16, h * 16)
+    };
+    // Chair: front, side, back.
+    for (k, view) in [(0, "front"), (1, "side"), (2, "back")] {
+        let (ox, oy, w, h) = cell(&mut img, k, 1, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        match view {
+            "front" => {
+                c.rect(4, 4, 8, 12, shade(wood, 10));
+                c.rect(4, 16, 8, 3, shade(wood, 30));
+                c.rect(4, 19, 2, 11, shade(wood, -20));
+                c.rect(10, 19, 2, 11, shade(wood, -20));
+            }
+            "side" => {
+                c.rect(3, 4, 3, 26, shade(wood, -10));
+                c.rect(3, 16, 10, 3, shade(wood, 30));
+                c.rect(11, 19, 2, 11, shade(wood, -20));
+            }
+            _ => {
+                c.rect(4, 4, 8, 15, shade(wood, -15));
+                c.rect(5, 6, 6, 1, shade(wood, -35));
+                c.rect(4, 19, 2, 11, shade(wood, -20));
+                c.rect(10, 19, 2, 11, shade(wood, -20));
+            }
+        }
         c.auto_outline(OUTLINE);
     }
     {
-        let mut c = Cell { ox: 32, oy: 0, w: 32, h: 32, img: &mut img };
+        let (ox, oy, w, h) = cell(&mut img, 3, 2, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
         c.rect(2, 10, 28, 8, shade(wood, 25));
         c.rect(2, 16, 28, 2, shade(wood, -15));
         c.rect(4, 18, 3, 12, shade(wood, -25));
@@ -2166,7 +2203,18 @@ pub fn furniture() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
-        let mut c = Cell { ox: 64, oy: 0, w: 48, h: 32, img: &mut img };
+        // Table, side view (1x3).
+        let (ox, oy, w, h) = cell(&mut img, 5, 1, 3);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(2, 10, 12, 26, shade(wood, 25));
+        c.rect(2, 34, 12, 2, shade(wood, -15));
+        c.rect(3, 36, 3, 10, shade(wood, -25));
+        c.rect(10, 36, 3, 10, shade(wood, -25));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let (ox, oy, w, h) = cell(&mut img, 6, 3, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
         c.rect(1, 2, 46, 28, Color::rgb(70, 110, 160));
         c.rect(4, 5, 40, 22, Color::rgb(220, 200, 140));
         c.rect(8, 9, 32, 14, Color::rgb(170, 70, 80));
@@ -2175,7 +2223,8 @@ pub fn furniture() -> Image {
         }
     }
     {
-        let mut c = Cell { ox: 128, oy: 0, w: 32, h: 48, img: &mut img };
+        let (ox, oy, w, h) = cell(&mut img, 9, 2, 3);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
         c.rect(1, 2, 30, 44, shade(wood, -30));
         for (row, y) in [8, 22, 36].iter().enumerate() {
             c.rect(3, *y, 26, 2, shade(wood, 20));
@@ -2186,12 +2235,64 @@ pub fn furniture() -> Image {
         }
         c.auto_outline(OUTLINE);
     }
-    {
-        let mut c = Cell { ox: 176, oy: 0, w: 16, h: 32, img: &mut img };
+    for (idx, glass) in [(11, Color::rgb(250, 230, 160)), (23, Color::rgb(255, 200, 110))] {
+        let (ox, oy, w, h) = cell(&mut img, idx, 1, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
         c.rect(7, 10, 2, 18, Color::rgb(70, 70, 80));
         c.rect(4, 27, 8, 3, Color::rgb(60, 60, 70));
-        c.rect(3, 2, 10, 9, Color::rgb(250, 230, 160));
-        c.rect(3, 9, 10, 2, Color::rgb(220, 180, 100));
+        c.rect(3, 2, 10, 9, glass);
+        c.rect(3, 9, 10, 2, shade(glass, -40));
+        c.auto_outline(OUTLINE);
+    }
+    let plush = Color::rgb(90, 120, 170);
+    {
+        // Couch front (3x2).
+        let (ox, oy, w, h) = cell(&mut img, 12, 3, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(2, 6, 44, 12, shade(plush, -10));
+        c.rect(2, 16, 44, 8, plush);
+        c.rect(0, 10, 5, 16, shade(plush, -25));
+        c.rect(43, 10, 5, 16, shade(plush, -25));
+        c.rect(4, 26, 3, 4, shade(wood, -30));
+        c.rect(41, 26, 3, 4, shade(wood, -30));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Couch side (1x4).
+        let (ox, oy, w, h) = cell(&mut img, 15, 1, 4);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(1, 8, 5, 52, shade(plush, -10));
+        c.rect(5, 12, 10, 46, plush);
+        c.rect(3, 6, 12, 5, shade(plush, -25));
+        c.rect(3, 57, 12, 5, shade(plush, -25));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Couch back (3x2).
+        let (ox, oy, w, h) = cell(&mut img, 16, 3, 2);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(2, 6, 44, 20, shade(plush, -30));
+        c.rect(0, 10, 5, 16, shade(plush, -25));
+        c.rect(43, 10, 5, 16, shade(plush, -25));
+        c.rect(4, 26, 3, 4, shade(wood, -30));
+        c.rect(41, 26, 3, 4, shade(wood, -30));
+        c.auto_outline(OUTLINE);
+    }
+    for (idx, lit) in [(19, false), (21, true)] {
+        // Brick fireplace (2x3), cold and lit.
+        let (ox, oy, w, h) = cell(&mut img, idx, 2, 3);
+        let mut c = Cell { ox, oy, w, h, img: &mut img };
+        c.rect(1, 4, 30, 42, Color::rgb(150, 70, 55));
+        for y in (8..44).step_by(6) {
+            c.rect(1, y, 30, 1, Color::rgb(120, 55, 45));
+        }
+        c.rect(0, 2, 32, 4, Color::rgb(110, 100, 100));
+        c.rect(7, 24, 18, 20, Color::rgb(30, 25, 25));
+        c.rect(9, 40, 14, 3, Color::rgb(110, 70, 40));
+        if lit {
+            c.ellipse(16.0, 36.0, 6.0, 7.0, Color::rgb(250, 140, 40));
+            c.ellipse(16.0, 38.0, 3.5, 4.0, Color::rgb(255, 220, 90));
+        }
         c.auto_outline(OUTLINE);
     }
     img

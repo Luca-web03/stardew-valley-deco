@@ -57,6 +57,15 @@ pub struct PlacedFurniture {
     pub tile: TilePos,
     pub footprint: (i32, i32),
     pub walkable: bool,
+    /// Orientation (0 front, 1 right, 2 back, 3 left).
+    #[serde(default)]
+    pub rotation: i32,
+    /// An item set on a table.
+    #[serde(default)]
+    pub held: Option<crate::item::Item>,
+    /// A fireplace that's lit.
+    #[serde(default)]
+    pub on: bool,
 }
 
 impl PlacedFurniture {

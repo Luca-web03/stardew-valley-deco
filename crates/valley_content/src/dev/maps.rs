@@ -297,6 +297,11 @@ pub fn town() -> Map {
     b.set_props("Buildings", 32, 14, SIGN, &[("Action", "Carpenter")]);
     b.set_props("Buildings", 34, 14, SIGN, &[("Action", "Blacksmith")]);
     b.set_props("Buildings", 36, 14, SIGN, &[("Action", "OpenShop AdventureShop")]);
+    // A park bench to sit on.
+    b.set("Buildings", 12, 14, BENCH);
+    b.set("Buildings", 13, 14, BENCH);
+    b.set_props("Buildings", 37, 13, SIGN, &[("Action", "Port.KillList")]);
+    b.set_props("Buildings", 38, 13, SIGN, &[("Action", "Port.GuildMaster")]);
     b.set_props("Buildings", 37, 17, SIGN, &[("Action", "Port.Travel Dev_Dunes 6 16 300 0900-1700")]);
     b.set_props("Buildings", 16, 11, SIGN, &[("Action", "Bundles")]);
     b.set_props("Buildings", 14, 11, SIGN, &[("Action", "Museum")]);

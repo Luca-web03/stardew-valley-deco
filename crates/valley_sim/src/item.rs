@@ -504,12 +504,82 @@ pub struct FurnitureInfo {
     pub display_name: String,
     pub sprite_index: i32,
     pub texture: Option<String>,
+    /// Orientations it can be turned to (1, 2 or 4).
+    pub rotations: i32,
+    /// Placement restriction: -1 default (indoors), 0 indoors, 1 outdoors,
+    /// 2 both.
+    pub placement: i32,
 }
 
 impl FurnitureInfo {
     /// Rugs and window decorations don't block movement.
     pub fn walkable(&self) -> bool {
         matches!(self.kind.as_str(), "rug" | "window" | "painting" | "decor" | "lamp_wall")
+    }
+
+    /// Farmers can sit on it.
+    pub fn is_seat(&self) -> bool {
+        matches!(self.kind.as_str(), "chair" | "bench" | "couch" | "armchair")
+    }
+
+    /// Items can be set on it.
+    pub fn is_table(&self) -> bool {
+        matches!(self.kind.as_str(), "table" | "long table")
+    }
+
+    /// Lights up at night.
+    pub fn is_lamp(&self) -> bool {
+        matches!(self.kind.as_str(), "lamp" | "sconce" | "torch")
+    }
+
+    pub fn is_fireplace(&self) -> bool {
+        self.kind == "fireplace"
+    }
+
+    pub fn allowed_outdoors(&self) -> bool {
+        matches!(self.placement, 1 | 2)
+    }
+
+    pub fn allowed_indoors(&self) -> bool {
+        self.placement != 1
+    }
+
+    /// Sprite at a rotation as (cell offset from `sprite_index`, width,
+    /// height in tiles, mirrored). Approximate sheet layout: front view,
+    /// then the side view (width = side footprint width, height grown by
+    /// the footprint swap), then the back view; the left view mirrors the
+    /// side. A lit fireplace's sprite follows the last view.
+    pub fn sprite_at(&self, rotation: i32, lit: bool) -> (i32, i32, i32, bool) {
+        let (sw, sh) = self.sheet_size;
+        let side = if self.kind == "chair" {
+            (sw, sh)
+        } else {
+            let (fw, fh) = self.footprint_at(1);
+            (fw, (sh + fh - self.footprint.1).max(1))
+        };
+        let views = match self.rotations {
+            4 => sw + side.0 + sw,
+            2 => sw + side.0,
+            _ => sw,
+        };
+        if lit {
+            return (views, sw, sh, false);
+        }
+        match (self.rotations, rotation.rem_euclid(self.rotations.max(1))) {
+            (2 | 4, 1) => (sw, side.0, side.1, false),
+            (4, 2) => (sw + side.0, sw, sh, false),
+            (4, 3) => (sw, side.0, side.1, true),
+            _ => (0, sw, sh, false),
+        }
+    }
+
+    /// Footprint at a rotation: side views (odd rotations) swap it.
+    pub fn footprint_at(&self, rotation: i32) -> (i32, i32) {
+        if rotation % 2 == 1 && self.kind != "chair" {
+            (self.footprint.1, self.footprint.0)
+        } else {
+            self.footprint
+        }
     }
 }
 
@@ -549,6 +619,8 @@ pub fn parse_furniture(id: &str, s: &str) -> Option<FurnitureInfo> {
         display_name: f.get(7).filter(|s| !s.is_empty()).or(f.first()).unwrap_or(&"").to_string(),
         sprite_index: f.get(8).and_then(|v| v.trim().parse().ok()).unwrap_or_else(|| id.parse().unwrap_or(0)),
         texture: f.get(9).filter(|s| !s.trim().is_empty()).map(|s| s.to_string()),
+        rotations: f.get(4).and_then(|v| v.trim().parse().ok()).filter(|n: &i32| matches!(n, 1 | 2 | 4)).unwrap_or(1),
+        placement: f.get(6).and_then(|v| v.trim().parse().ok()).unwrap_or(-1),
     })
 }
 

@@ -233,6 +233,12 @@ pub struct Farmer {
     pub swimsuit: bool,
     #[serde(default)]
     pub swimming: bool,
+    /// Orientation the held furniture will be placed in.
+    #[serde(default)]
+    pub furniture_rotation: i32,
+    /// Sitting on a chair or bench.
+    #[serde(skip)]
+    pub sitting: Option<crate::seats::Sitting>,
     /// Other currencies: festival star tokens, casino coins, Qi gems.
     #[serde(default)]
     pub star_tokens: i32,
@@ -275,6 +281,9 @@ pub struct Farmer {
     /// Collectible counters (e.g. golden walnuts) and other tallies.
     #[serde(default)]
     pub counters: BTreeMap<String, i32>,
+    /// Kills per monster name (eradication goals).
+    #[serde(default)]
+    pub monster_kills: BTreeMap<String, i32>,
     /// Forge level per weapon id (each level adds damage).
     #[serde(default)]
     pub weapon_forge: BTreeMap<String, i32>,
@@ -387,6 +396,8 @@ impl Farmer {
             mail_tomorrow: Vec::new(),
             swimsuit: false,
             swimming: false,
+            furniture_rotation: 0,
+            sitting: None,
             star_tokens: 0,
             qi_coins: 0,
             qi_gems: 0,
@@ -402,6 +413,7 @@ impl Farmer {
             mastery_perks: Vec::new(),
             powers: Vec::new(),
             counters: BTreeMap::new(),
+            monster_kills: BTreeMap::new(),
             weapon_forge: BTreeMap::new(),
             bundle_data: BTreeMap::new(),
             baby_due: None,

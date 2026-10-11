@@ -38,6 +38,8 @@ were not available; such values are isolated constants that can be tuned.
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
 - [x] Wallpaper and flooring for the rooms of your home
+- [x] Furniture rotations, outdoor furniture, items on tables, fireplaces and
+      lamps; sitting on chairs, couches and map benches (Data/ChairTiles)
 - [x] Swimming (swimsuit, pool entrances) and the spa; telephone calls
 - [x] Bushes (berry seasons, tea bushes, cutting), `Paths` layer spawns
 - [x] Automation: auto-grabber, auto-petter, mini shipping bin, workbench
@@ -82,6 +84,8 @@ were not available; such values are isolated constants that can be tuned.
       (approx. timings), divorce, jealousy
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
+- [x] Monster eradication goals (Data/MonsterSlayerQuests) with guild
+      rewards; pets bring gifts (Data/Pets Gifts)
 - [x] Grandpa's evaluation (year 3, candles, diamond re-evaluation),
       Joja membership and community development projects
 - [x] Mail, quests, help-wanted board, journal, bundles (standard or

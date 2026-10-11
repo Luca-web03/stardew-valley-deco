@@ -129,3 +129,28 @@ fn pet_and_achievements_survive_save() {
     assert_eq!(r.pet.as_ref().unwrap().name, "Biscuit");
     assert_eq!(r.farmer.achievements, vec!["fish_10".to_string()]);
 }
+
+#[test]
+fn fond_pets_leave_gifts_in_the_morning() {
+    let (_, mut w) = world();
+    // Not fond enough: never.
+    for _ in 0..15 {
+        w.weather_tomorrow = Weather::Sun;
+        w.end_day(false);
+    }
+    let gifts = |w: &World| w.locations["Farm"].state.objects.values().filter(|o| matches!(o.kind, valley_sim::objects::ObjKind::Forage) && (o.item_id == "388" || o.item_id == "Dev_Quartz")).count();
+    let before = gifts(&w);
+    w.pet.as_mut().unwrap().friendship = 1000;
+    let mut found = 0;
+    for _ in 0..40 {
+        w.weather_tomorrow = Weather::Sun;
+        w.end_day(false);
+        let pet = w.pet.as_ref().unwrap();
+        let near = w.locations["Farm"].state.objects.iter().filter(|(t, o)| {
+            let pt = TilePos::from_world(pet.pos + engine::Vec2::new(32.0, 48.0));
+            (t.x - pt.x).abs() <= 1 && (t.y - pt.y).abs() <= 1 && (o.item_id == "388" || o.item_id == "Dev_Quartz")
+        });
+        found += near.count();
+    }
+    assert!(found > 0 && gifts(&w) > before, "a gift turned up over 40 mornings");
+}

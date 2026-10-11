@@ -20,6 +20,7 @@ pub mod equipment;
 pub mod evaluation;
 pub mod machines;
 pub mod mines;
+pub mod monster_goals;
 pub mod monster_kinds;
 pub mod dialogue;
 pub mod events;
@@ -65,6 +66,7 @@ pub mod cart;
 pub mod special_orders;
 pub mod children;
 pub mod fish_ponds;
+pub mod seats;
 pub mod secret_notes;
 pub mod slime_hutch;
 pub mod horse;
@@ -111,6 +113,15 @@ impl Dir {
             Dir::Right => (1, 0),
             Dir::Down => (0, 1),
             Dir::Left => (-1, 0),
+        }
+    }
+
+    pub fn opposite(self) -> Dir {
+        match self {
+            Dir::Up => Dir::Down,
+            Dir::Right => Dir::Left,
+            Dir::Down => Dir::Up,
+            Dir::Left => Dir::Right,
         }
     }
 

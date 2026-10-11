@@ -527,6 +527,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "rug", "ItemId": "(F)Dev_Rug" },
                 { "Id": "bookcase", "ItemId": "(F)Dev_Bookcase" },
                 { "Id": "lamp", "ItemId": "(F)Dev_Lamp" },
+                { "Id": "couch", "ItemId": "(F)Dev_Couch" },
+                { "Id": "fireplace", "ItemId": "(F)Dev_Fireplace" },
+                { "Id": "lantern", "ItemId": "(F)Dev_Lantern" },
                 { "Id": "wp0", "ItemId": "(WP)0" }, { "Id": "wp1", "ItemId": "(WP)1" }, { "Id": "wp2", "ItemId": "(WP)2" }, { "Id": "wp3", "ItemId": "(WP)3" },
                 { "Id": "fl0", "ItemId": "(FL)0" }, { "Id": "fl1", "ItemId": "(FL)1" }, { "Id": "fl2", "ItemId": "(FL)2" }, { "Id": "fl3", "ItemId": "(FL)3" }
             ]
@@ -689,9 +692,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })),
         ("Data/Pets", json!({
             "Dog": { "DisplayName": "Dog", "BarkSound": "dog_bark", "ContentSound": "dog_pant",
-                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Dog" }, { "Id": "1", "Texture": "Animals\\Dev_Dog2" }] },
+                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Dog" }, { "Id": "1", "Texture": "Animals\\Dev_Dog2" }],
+                     "GiftChance": 0.2,
+                     "Gifts": [{ "Id": "stick", "QualifiedItemID": "(O)388", "Stack": 3, "MinimumFriendshipThreshold": 800, "Weight": 3 },
+                               { "Id": "quartz", "QualifiedItemID": "(O)Dev_Quartz", "Stack": 1, "MinimumFriendshipThreshold": 1000, "Weight": 1 }] },
             "Cat": { "DisplayName": "Cat", "BarkSound": "cat", "ContentSound": "purr",
-                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Cat" }] }
+                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Cat" }],
+                     "Gifts": [{ "Id": "feather", "QualifiedItemID": "(O)Dev_Dust", "Stack": 1, "MinimumFriendshipThreshold": 1000, "Weight": 1 }] }
         })),
         ("Data/Concessions", json!([
             { "Id": "Dev_KettleCorn", "Name": "Kettle Corn", "DisplayName": "Kettle Corn", "Price": 40, "ItemTags": ["Salty", "Sweet", "Popcorn"] },
@@ -723,10 +730,13 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })),
         ("Data/Furniture", json!({
             "Dev_Chair": "Wooden Chair/chair/1 2/1 1/4/150/-1/Wooden Chair/0",
-            "Dev_Table": "Small Table/table/2 2/2 1/1/300/-1/Small Table/2",
-            "Dev_Rug": "Woven Rug/rug/3 2/3 2/1/250/-1/Woven Rug/4",
-            "Dev_Bookcase": "Bookcase/bookcase/2 3/2 1/1/450/-1/Bookcase/8",
-            "Dev_Lamp": "Floor Lamp/lamp/1 2/1 1/1/200/-1/Floor Lamp/11"
+            "Dev_Table": "Small Table/table/2 2/2 1/2/300/-1/Small Table/3",
+            "Dev_Rug": "Woven Rug/rug/3 2/3 2/1/250/-1/Woven Rug/6",
+            "Dev_Bookcase": "Bookcase/bookcase/2 3/2 1/1/450/-1/Bookcase/9",
+            "Dev_Lamp": "Floor Lamp/lamp/1 2/1 1/1/200/-1/Floor Lamp/11",
+            "Dev_Couch": "Plush Couch/couch/3 2/3 1/4/700/-1/Plush Couch/12",
+            "Dev_Fireplace": "Brick Fireplace/fireplace/2 3/2 1/1/800/-1/Brick Fireplace/19",
+            "Dev_Lantern": "Garden Lantern/lamp/1 2/1 1/1/300/2/Garden Lantern/23"
         })),
         ("Data/Boots", json!({
             "Dev_WorkBoots": "Work Boots/Sturdy and comfortable./300/2/0/0/Work Boots/0/55/Maps\\springobjects"
@@ -776,7 +786,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })),
         ("Data/mail", json!({
             "spring_2": "Hi @,^The general store has fresh seeds every season, and I set aside a few for you.^- Tobin%item object Dev_TurnipSeeds 10 %%[#]Seeds for a new farmer",
-            "spring_5": "@,^The caves north of town are full of ore, and of things that bite. Come prepared!^- Mara[#]A warning"
+            "spring_5": "@,^The caves north of town are full of ore, and of things that bite. Come prepared!^- Mara[#]A warning",
+            "Dev_GuildThanks": "@,^Word at the guild is that the crawlers have thinned out. Good work down there.^- The Guild[#]From the guild"
         })),
         ("Data/Quests", json!({
             "Dev_Q1": "ItemHarvest/Getting Started/Plant your first crop and see it through to harvest./Harvest a turnip from your farm./Dev_Turnip/Dev_Q2/50//false/",
@@ -1051,6 +1062,18 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/MuseumRewards", json!({
             "first_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 1 }], "RewardItemId": "(O)Dev_SpeedGro", "RewardItemCount": 5 },
             "two_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 2 }], "RewardItemId": "(BC)Dev_Furnace", "RewardItemCount": 1 }
+        })),
+        ("Data/ChairTiles", json!({
+            "dev_outdoors/7/4": "1/1/down/bench/-1/-1/true/"
+        })),
+        ("Data/MonsterSlayerQuests", json!({
+            "Dev_Blobs": { "DisplayName": "Mud Blobs", "Targets": ["Dev_Blob"], "Count": 10,
+                           "RewardItemId": "(O)Dev_GuardRing", "RewardItemPrice": 1500,
+                           "RewardDialogue": "Ten blobs flattened. Here's a ring to keep the next ones off you." },
+            "Dev_Crawlers": { "DisplayName": "Crawlers", "Targets": ["Dev_Larva", "Dev_Moth"], "Count": 15,
+                              "RewardItemId": "(O)Dev_MagnetRing", "RewardItemPrice": -1, "RewardMail": "Dev_GuildThanks" },
+            "Dev_Undead": { "DisplayName": "Restless Dead", "Targets": ["Dev_Skeleton", "Dev_Mummy"], "Count": 20,
+                            "RewardItemId": "(O)Dev_Bomb", "RewardItemPrice": 300, "RewardFlag": "Dev_UndeadCleared" }
         })),
         ("Data/Monsters", json!({
             "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1 Dev_SlimeEgg .03/0/.01/6/2/.0/true/3/Mud Blob",
