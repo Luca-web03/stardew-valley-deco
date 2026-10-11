@@ -967,7 +967,7 @@ impl World {
 
         // Machines keep working through the night until 6am.
         let overnight = Clock::minutes_between(self.clock.time, 2600) + 240;
-        self.advance_machines(overnight);
+        self.advance_machines_at(overnight, true);
         self.casks_overnight();
 
         let old_season = self.clock.season;

@@ -77,6 +77,44 @@ fn apply_modifiers(value: f32, mods: &[QuantityModifier]) -> f32 {
     v
 }
 
+impl World {
+    /// Apply quantity modifiers whose conditions pass (input item context).
+    pub(crate) fn apply_modifiers_for(&self, value: f32, mods: &[QuantityModifier], input: Option<&Item>) -> f32 {
+        let mut rng = self.day_rng(77);
+        let ok: Vec<QuantityModifier> = mods.iter().filter(|m| self.check_query(m.condition.as_deref(), None, input, &mut rng)).cloned().collect();
+        apply_modifiers(value, &ok)
+    }
+
+    /// Minutes a machine rule takes, with the machine's ready-time
+    /// modifiers.
+    pub(crate) fn machine_minutes(&self, data: &valley_content::data::MachineData, base: i32, input: Option<&Item>) -> i32 {
+        match &data.ready_time_modifiers {
+            Some(m) => self.apply_modifiers_for(base as f32, m, input).round().max(1.0) as i32,
+            None => base,
+        }
+    }
+
+    /// Experience for collecting a machine's output.
+    pub(crate) fn machine_harvest_xp(&mut self, machine_qid: &str) {
+        let Some(spec) = self.items.machines.get(machine_qid).and_then(|d| d.experience_gain_on_harvest.clone()) else { return };
+        let toks: Vec<&str> = spec.split_whitespace().collect();
+        for c in toks.chunks(2) {
+            let skill = match c[0].to_ascii_lowercase().as_str() {
+                "farming" => crate::farmer::Skill::Farming,
+                "fishing" => crate::farmer::Skill::Fishing,
+                "foraging" => crate::farmer::Skill::Foraging,
+                "mining" => crate::farmer::Skill::Mining,
+                "combat" => crate::farmer::Skill::Combat,
+                _ => continue,
+            };
+            let n: i32 = c.get(1).and_then(|v| v.parse().ok()).unwrap_or(0);
+            if let Some(l) = self.farmer.skills.gain(skill, n) {
+                self.emit(WorldEvent::LevelUp(skill, l));
+            }
+        }
+    }
+}
+
 /// Well-known flavored item ids and their price formulas (documented
 /// ones; the newer kinds are approximations).
 fn flavored(kind: &str) -> Option<(&'static str, fn(i32) -> i32)> {
@@ -196,6 +234,7 @@ impl World {
     /// Interact with a placed object (open chest, load/collect machine).
     pub fn interact_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
+        let machine_qid = o.qualified_id();
         if matches!(o.kind, ObjKind::Cask { .. }) {
             return self.cask_action(t);
         }
@@ -228,6 +267,7 @@ impl World {
                 }
                 self.sound("coin");
                 self.emit(WorldEvent::Pickup(out.clone()));
+                self.machine_harvest_xp(&machine_qid);
                 self.machine_auto_trigger(&here, t, "OutputCollected", Some(&out));
                 true
             }
@@ -284,13 +324,27 @@ impl World {
                 // Ready at the start of the Nth day.
                 crate::time::Clock::minutes_between(self.clock.time, 2600) + 240 + (rule.days_until_ready - 1) * 1440
             } else {
-                rule.minutes_until_ready.max(10)
+                self.machine_minutes(&data, rule.minutes_until_ready.max(10), Some(&input))
             };
             if let Some(o) = self.location_mut().state.objects.get_mut(&t) {
                 o.kind = ObjKind::Machine { output: Some(output), minutes_left: minutes, ready: false };
                 o.shake = 12;
             }
             self.sound("Ship");
+            return true;
+        }
+        // The right item, just not enough of it.
+        let short = data.output_rules.iter().find_map(|rule| {
+            rule.triggers.iter().find(|tr| {
+                (tr.trigger.is_empty() || tr.trigger.contains("ItemPlacedInMachine"))
+                    && tr.required_item_id.as_ref().map_or(true, |r| r == &input_qid || crate::item::split_qualified(r).1 == input.object_id().unwrap_or(""))
+                    && tr.required_tags.as_ref().map_or(true, |tags| self.items.matches_tags(&input, tags))
+                    && input.stack() < tr.required_count
+            }).map(|tr| (rule.invalid_count_message.clone(), tr.required_count))
+        });
+        if let Some((msg, n)) = short {
+            let msg = msg.or(data.invalid_count_message.clone()).map(|m| self.items.expand_text(&m).replace("{0}", &n.to_string())).unwrap_or_else(|| format!("You need {n} of those."));
+            self.hud(msg);
             return true;
         }
         if input.tool().is_none() {
@@ -343,13 +397,21 @@ impl World {
         };
         let min = def.min_stack.max(1);
         let max = def.max_stack.max(min);
-        item.set_stack(if max > min { min + (self.clock.time as i32 % (max - min + 1)) } else { min });
+        let mut stack = if max > min { min + (self.clock.time as i32 % (max - min + 1)) } else { min };
+        if let Some(mods) = &def.stack_modifiers {
+            stack = self.apply_modifiers_for(stack as f32, mods, Some(input)).round().max(1.0) as i32;
+        }
+        item.set_stack(stack);
         if let Item::Object { quality, extra, .. } = &mut item {
             if def.copy_quality {
                 *quality = input.quality();
             }
             if let Some(q) = def.quality {
                 *quality = crate::item::Quality::from_level(q);
+            }
+            if let Some(mods) = &def.quality_modifiers {
+                let q = self.apply_modifiers_for(*quality as i32 as f32, mods, Some(input)).round() as i32;
+                *quality = crate::item::Quality::from_level(q.clamp(0, 4));
             }
             let mut ex = extra.take().map(|b| *b).unwrap_or_default();
             if def.copy_price || def.price_modifiers.is_some() {
@@ -408,8 +470,8 @@ impl World {
         item
     }
 
-    /// Code-defined outputs (`OutputMethod`) this engine knows: the seed
-    /// maker. Others produce nothing.
+    /// Code-defined outputs (`OutputMethod`) this engine knows: seed maker,
+    /// geode crusher, deconstructor, mushroom log. Others produce nothing.
     fn machine_output_method(&self, method: &str, input: &Item) -> Option<Item> {
         let name = method.rsplit(':').next().unwrap_or(method).trim();
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, self.clock.time as i64, 223]));
@@ -425,6 +487,27 @@ impl World {
                 }
                 let seed = self.items.crops.iter().find(|(_, c)| crate::item::split_qualified(&c.harvest_item_id).1 == id).map(|(k, _)| k.clone())?;
                 Some(Item::object(&seed, rng.range(1, 4)))
+            }
+            // Geode crusher: the geode's contents.
+            n if n.contains("GeodeCrusher") || n.contains("Geode") => {
+                let id = input.object_id()?;
+                if !self.is_geode(id) {
+                    return None;
+                }
+                Some(Item::object(&self.geode_contents(&mut rng)?, 1))
+            }
+            // Deconstructor: a crafted item back into its main ingredient.
+            n if n.contains("Deconstructor") => {
+                let id = input.object_id().or(input.big_id())?;
+                let recipe = self.recipes.values().find(|r| r.output().object_id().or(r.output().big_id()) == Some(id))?;
+                let (ing, count) = recipe.ingredients.iter().max_by_key(|(_, n)| *n)?;
+                let (_, ing) = crate::item::split_qualified(ing);
+                self.items.objects.contains_key(ing).then(|| Item::object(ing, (*count).max(1)))
+            }
+            // Mushroom log: a mushroom (approx. pool).
+            n if n.contains("MushroomLog") => {
+                let pool: Vec<&str> = ["404", "420", "422", "257", "281", "Dev_Mushroom"].into_iter().filter(|id| self.items.objects.contains_key(*id)).collect();
+                Some(Item::object(rng.pick(&pool)?, rng.range(1, 3)))
             }
             _ => None,
         }
@@ -466,7 +549,7 @@ impl World {
             let minutes = if rule.days_until_ready > 0 {
                 crate::time::Clock::minutes_between(self.clock.time, 2600) + 240 + (rule.days_until_ready - 1) * 1440
             } else {
-                rule.minutes_until_ready.max(10)
+                self.machine_minutes(&data, rule.minutes_until_ready.max(10), Some(&input))
             };
             if let Some(obj) = self.locations.get_mut(loc_name).and_then(|l| l.state.objects.get_mut(&t)) {
                 obj.kind = ObjKind::Machine { output: Some(output), minutes_left: minutes, ready: false };
@@ -490,13 +573,33 @@ impl World {
 
     /// Advance all machines by game minutes.
     pub fn advance_machines(&mut self, minutes: i32) {
+        self.advance_machines_at(minutes, false);
+    }
+
+    /// Advance machines; `overnight` lets overnight-only machines finish.
+    pub(crate) fn advance_machines_at(&mut self, minutes: i32, overnight: bool) {
         let mut ready_here = false;
+        let machines = self.items.machines.clone();
+        let (season, raining) = (self.clock.season, self.weather.is_raining());
         for (name, loc) in self.locations.iter_mut() {
+            let outdoors = loc.outdoors;
             for o in loc.state.objects.values_mut() {
+                let data = machines.get(&o.qualified_id());
+                let paused = data.and_then(|d| d.prevent_time_pass.as_ref()).is_some_and(|rules| {
+                    rules.iter().any(|r| match r.to_ascii_lowercase().as_str() {
+                        "always" => true,
+                        "outside" => outdoors,
+                        "inside" => !outdoors,
+                        "rain" => raining,
+                        "sun" => !raining,
+                        s => crate::time::Season::parse(s) == Some(season),
+                    })
+                });
+                let only_overnight = data.is_some_and(|d| d.only_complete_overnight);
                 if let ObjKind::Machine { output: Some(_), minutes_left, ready } = &mut o.kind {
-                    if !*ready {
+                    if !*ready && !paused {
                         *minutes_left -= minutes;
-                        if *minutes_left <= 0 {
+                        if *minutes_left <= 0 && (!only_overnight || overnight) {
                             *ready = true;
                             if *name == self.current {
                                 ready_here = true;

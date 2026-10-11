@@ -287,26 +287,30 @@ impl World {
         }
     }
 
+    /// What a geode holds: a random gem, mineral or resource (approx.
+    /// pool: objects in the gem, mineral and resource categories).
+    pub fn geode_contents(&self, rng: &mut engine::Rng) -> Option<String> {
+        let pool: Vec<String> = self.items.objects.iter().filter(|(_, o)| matches!(o.data.category, -2 | -12 | -15) && o.data.price > 0).map(|(k, _)| k.clone()).collect();
+        rng.pick(&pool).cloned()
+    }
+
+    pub fn is_geode(&self, id: &str) -> bool {
+        self.items.object(id).is_some_and(|o| o.data.name.to_ascii_lowercase().contains("geode")) || matches!(id, "535" | "536" | "537" | "749" | "Dev_Geode")
+    }
+
     /// Crack the held geode: returns the item found.
     pub fn crack_geode(&mut self, slot: usize) -> Result<Item, String> {
         let Some(id) = self.farmer.inventory.get(slot).and_then(|i| i.object_id()).map(String::from) else { return Err("Hold a geode.".into()) };
         let info = self.items.object(&id).cloned().ok_or("Hold a geode.")?;
-        let is_geode = info.data.name.to_ascii_lowercase().contains("geode") || matches!(id.as_str(), "535" | "536" | "537" | "749" | "Dev_Geode");
-        if !is_geode {
+        let _ = info;
+        if !self.is_geode(&id) {
             return Err("That isn't a geode.".into());
         }
         if self.farmer.money < 25 {
             return Err("Not enough money.".into());
         }
         let mut rng = engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, self.game_ms as i64, slot as i64, 9]));
-        let pool: Vec<String> = self
-            .items
-            .objects
-            .iter()
-            .filter(|(_, o)| matches!(o.data.category, -2 | -12 | -15) && o.data.price > 0)
-            .map(|(k, _)| k.clone())
-            .collect();
-        let found = rng.pick(&pool).cloned().ok_or("This geode is empty.")?;
+        let found = self.geode_contents(&mut rng).ok_or("This geode is empty.")?;
         self.farmer.money -= 25;
         self.farmer.inventory.reduce(slot, 1);
         let item = Item::object(&found, 1);

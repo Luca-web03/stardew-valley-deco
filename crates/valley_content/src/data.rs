@@ -404,6 +404,8 @@ pub struct MachineOutputItem {
     pub object_internal_name: Option<String>,
     pub object_display_name: Option<String>,
     pub price_modifiers: Option<Vec<QuantityModifier>>,
+    pub stack_modifiers: Option<Vec<QuantityModifier>>,
+    pub quality_modifiers: Option<Vec<QuantityModifier>>,
     /// Code-defined output ("<type>, <assembly>: <method>").
     pub output_method: Option<String>,
     pub random_item_id: Option<Vec<String>>,
@@ -419,6 +421,7 @@ pub struct MachineOutputRule {
     pub minutes_until_ready: i32,
     #[serde(default = "neg1")]
     pub days_until_ready: i32,
+    pub invalid_count_message: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -435,8 +438,17 @@ pub struct MachineData {
     pub output_rules: Vec<MachineOutputRule>,
     pub additional_consumed_items: Vec<MachineItemAdditionalConsumed>,
     pub invalid_item_message: Option<String>,
+    pub invalid_count_message: Option<String>,
     pub load_effects: Option<serde_json::Value>,
     pub working_effects: Option<serde_json::Value>,
+    /// "farming 5 foraging 2": experience when collecting the output.
+    pub experience_gain_on_harvest: Option<String>,
+    pub ready_time_modifiers: Option<Vec<QuantityModifier>>,
+    /// Conditions that pause the machine ("Outside", "Inside", seasons,
+    /// "Sun", "Rain", "Always").
+    pub prevent_time_pass: Option<Vec<String>>,
+    /// Output only becomes ready at the start of a day.
+    pub only_complete_overnight: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
