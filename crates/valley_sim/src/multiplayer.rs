@@ -98,14 +98,56 @@ impl World {
         Some(r)
     }
 
-    /// Add a farmhand who wakes up in the farmhouse; returns their index.
+    /// Add a farmhand; they move into a free cabin if there is one, else
+    /// they share the farmhouse. Returns their index.
     pub fn add_farmhand(&mut self, name: &str) -> usize {
         let mut farmer = Farmer::new(name, &self.farmer.farm_name);
-        let wake = self.wake_tile();
-        farmer.set_tile(TilePos::new(wake.x - 1, wake.y));
+        farmer.home_location = self.claim_cabin(name);
+        let i = self.farmhands.len();
+        let (home, tile) = self.home_wake(&farmer, i);
+        farmer.set_tile(tile);
         farmer.facing = Dir::Down;
-        self.farmhands.push(PlayerState::new(farmer, "FarmHouse"));
-        self.farmhands.len() - 1
+        self.farmhands.push(PlayerState::new(farmer, &home));
+        i
+    }
+
+    /// The farmhand with this name, if one has played here before.
+    pub fn farmhand_index(&self, name: &str) -> Option<usize> {
+        self.farmhands.iter().position(|p| p.farmer.name == name)
+    }
+
+    pub fn is_cabin_kind(&self, kind: &str) -> bool {
+        kind == "Cabin" || self.buildings_data.get(kind).and_then(|d| d.custom_fields.as_ref()).is_some_and(|f| f.contains_key("Port.Cabin"))
+    }
+
+    /// Give `name` a finished cabin nobody else owns; its interior name.
+    pub fn claim_cabin(&mut self, name: &str) -> Option<String> {
+        let i = self.buildings.iter().position(|b| self.is_cabin_kind(&b.kind) && b.interior.is_some() && b.owner.as_deref() == Some(name)).or_else(|| {
+            self.buildings.iter().position(|b| self.is_cabin_kind(&b.kind) && b.interior.is_some() && b.owner.is_none())
+        })?;
+        self.buildings[i].owner = Some(name.to_string());
+        self.buildings[i].interior.clone()
+    }
+
+    /// Where a player wakes: beside the bed of their home, or the farmhouse.
+    fn home_wake(&self, f: &Farmer, i: usize) -> (String, TilePos) {
+        if let Some(home) = f.home_location.as_ref().filter(|h| self.locations.contains_key(*h)) {
+            let loc = &self.locations[home];
+            let bed = (0..loc.height()).flat_map(|y| (0..loc.width()).map(move |x| TilePos::new(x, y))).find(|p| loc.tile_prop("Back", *p, "Bed").is_some());
+            if let Some(bed) = bed {
+                for d in [Dir::Left, Dir::Down, Dir::Right, Dir::Up] {
+                    let p = bed.offset(d);
+                    if crate::collision::tile_passable(loc, p) && loc.tile_prop("Back", p, "Bed").is_none() {
+                        return (home.clone(), p);
+                    }
+                }
+            }
+            if let Some(p) = self.arrival_tile(home) {
+                return (home.clone(), p);
+            }
+        }
+        let wake = self.wake_tile();
+        ("FarmHouse".into(), TilePos::new(wake.x - 1 - i as i32, wake.y + 1))
     }
 
     /// One tick of a farmhand's own actions (the shared world is advanced
@@ -122,12 +164,17 @@ impl World {
 
     /// Night: farmhands rest too and wake up indoors.
     pub(crate) fn farmhands_overnight(&mut self, passed_out: bool) {
-        let wake = self.wake_tile();
         for i in 0..self.farmhands.len() {
+            // A cabin finished today becomes the home of a farmhand without one.
+            if self.farmhands[i].farmer.home_location.is_none() {
+                let name = self.farmhands[i].farmer.name.clone();
+                self.farmhands[i].farmer.home_location = self.claim_cabin(&name);
+            }
+            let (home, tile) = self.home_wake(&self.farmhands[i].farmer, i);
             self.as_farmhand(i, |w| {
                 w.farmer_night_reset(passed_out);
-                w.current = "FarmHouse".into();
-                w.farmer.set_tile(TilePos::new(wake.x - 1 - i as i32, wake.y + 1));
+                w.current = home;
+                w.farmer.set_tile(tile);
                 w.farmer.facing = Dir::Down;
                 w.weapon_swing = None;
                 w.special = None;

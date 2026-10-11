@@ -2783,6 +2783,7 @@ impl ValleyGame {
         let Some(mut host) = self.net.take() else { return };
         host.accept();
         let send_frame = ctx.tick % 2 == 0;
+        let taken: Vec<usize> = host.remotes.iter().filter_map(|r| r.farmhand).collect();
         for r in host.remotes.iter_mut() {
             for (kind, payload) in r.conn.recv() {
                 match kind {
@@ -2790,7 +2791,7 @@ impl ValleyGame {
                         if r.farmhand.is_none() {
                             let name = serde_json::from_slice::<net::Hello>(&payload).map(|h| h.name).unwrap_or_else(|_| "Farmhand".into());
                             if let Some(w) = self.world.as_mut() {
-                                let i = w.add_farmhand(&name);
+                                let i = w.farmhand_index(&name).filter(|i| !taken.contains(i)).unwrap_or_else(|| w.add_farmhand(&name));
                                 r.farmhand = Some(i);
                                 r.name = Some(name);
                                 r.conn.send_json(net::KIND_WELCOME, &i);

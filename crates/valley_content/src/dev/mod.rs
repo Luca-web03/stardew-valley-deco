@@ -50,6 +50,8 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/Dev_Trinkets.png", art::trinkets().encode_png());
     m.insert("TileSheets/Dev_Clothes.png", art::clothes().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
+    m.insert("Buildings/Dev_SlimeHutch.png", art::shed(5, 3, Color::rgb(150, 170, 150), Color::rgb(90, 140, 80)).encode_png());
+    m.insert("Buildings/Dev_Cabin.png", art::shed(3, 3, Color::rgb(180, 140, 100), Color::rgb(120, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
 
     let farmer = art::Look {
@@ -158,6 +160,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_CorkFloat": { "Name": "Cork Float", "DisplayName": "Cork Float", "Description": "Makes the catch bar a little taller. Attach to an upgraded rod.", "Type": "Basic", "Category": -22, "Price": 250,
                            "SpriteIndex": ICON_CORK_FLOAT, "CustomFields": { "Port.Tackle": "bar_size" } },
         "Dev_Crawler": obj("Pond Crawler", "Fish", -4, 60, ICON_CRAWLER, 5),
+        "Dev_SlimeEgg": { "Name": "Blob Egg", "DisplayName": "Blob Egg", "Description": "Warm and squishy. Hatches in an incubator.", "Type": "Basic", "Category": 0, "Price": 500,
+                          "SpriteIndex": ICON_SLIME_EGG, "CustomFields": { "Port.SlimeType": "Dev_Blob" } },
         "Dev_Battery": obj("Storm Cell", "Basic", 0, 500, ICON_BATTERY, -300),
         "Dev_PlumSapling": obj("Plum Sapling", "Basic", -74, 300, ICON_PLUM_SAPLING, -300),
         "Dev_Plum": obj("Plum", "Basic", -79, 70, ICON_PLUM, 15),
@@ -223,6 +227,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "Price": 50, "SpriteIndex": 5, "CustomFields": { "Port.Cask": "true" } },
         "Dev_SewingMachine": { "Name": "Sewing Machine", "DisplayName": "Sewing Machine", "Description": "Turns cloth into clothing.",
                                "Price": 50, "SpriteIndex": 6, "CustomFields": { "Port.SewingMachine": "true" } },
+        "Dev_Incubator": { "Name": "Blob Incubator", "DisplayName": "Blob Incubator", "Description": "Hatches blob eggs. Only works in a slime hutch.",
+                           "Price": 50, "SpriteIndex": 8, "CustomFields": { "Port.SlimeIncubator": "true" } },
+        "Dev_SlimeBall": { "Name": "Goo Ball", "DisplayName": "Goo Ball", "Description": "Squish it for goo.",
+                           "Price": 0, "SpriteIndex": 9, "CustomFields": { "Port.SlimeBallDrop": "Dev_Goo" } },
         "Dev_Scarecrow": { "Name": "Straw Scarecrow", "DisplayName": "Straw Scarecrow", "Description": "Keeps crows off the crops within 8 tiles.",
                            "Price": 50, "SpriteIndex": 7, "ContextTags": ["crow_scare", "crow_scare_radius_9"] },
     });
@@ -264,6 +272,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Crab Pot": "388 40 Dev_IronBar 1/Home/Dev_CrabPot/false/default/",
         "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
         "Straw Scarecrow": "388 50 771 20 Dev_Coal 1/Home/Dev_Scarecrow/true/default/",
+        "Blob Incubator": "Dev_IronBar 2 Dev_Goo 20/Home/Dev_Incubator/true/default/",
         "Rain Totem": "388 1 92 5 Dev_Berry 1/Home/Dev_RainTotem/false/default/",
     });
     let strings = json!({
@@ -723,6 +732,20 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
                 "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"]
             },
+            "Dev_SlimeHutch": {
+                "Name": "Blob Hutch", "Description": "Raise blobs. Fill the troughs and they leave goo balls overnight.", "Texture": "Buildings\\Dev_SlimeHutch",
+                "Size": { "X": 5, "Y": 3 }, "BuildCost": 8000, "BuildDays": 2,
+                "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 300 }, { "ItemId": "(O)Dev_IronBar", "Amount": 1 }],
+                "HumanDoor": { "X": 2, "Y": 2 }, "IndoorMap": "Dev_SlimeHutch",
+                "CustomFields": { "Port.SlimeHutch": "true", "Port.SlimeBall": "Dev_SlimeBall" }
+            },
+            "Dev_Cabin": {
+                "Name": "Cabin", "Description": "A home for a farmhand.", "Texture": "Buildings\\Dev_Cabin",
+                "Size": { "X": 3, "Y": 3 }, "BuildCost": 100, "BuildDays": 0,
+                "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 10 }],
+                "HumanDoor": { "X": 1, "Y": 2 }, "IndoorMap": "Dev_Cabin",
+                "CustomFields": { "Port.Cabin": "true" }
+            },
             "Silo": {
                 "Name": "Silo", "Description": "Stores hay cut from grass with the scythe.", "Texture": "Buildings\\Dev_Silo",
                 "Size": { "X": 2, "Y": 2 }, "BuildCost": 100, "BuildDays": 1,
@@ -796,7 +819,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             "two_minerals": { "TargetContextTags": [{ "Tag": "item_type_minerals", "Count": 2 }], "RewardItemId": "(BC)Dev_Furnace", "RewardItemCount": 1 }
         })),
         ("Data/Monsters", json!({
-            "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1/0/.01/6/2/.0/true/3/Mud Blob",
+            "Dev_Blob": "24/5/0/0/false/1000/Dev_Goo .6 Dev_CopperOre .1 Dev_SlimeEgg .03/0/.01/6/2/.0/true/3/Mud Blob",
             "Dev_Moth": "14/4/0/0/true/1000/Dev_Dust .5/0/.01/8/3/.1/true/4/Cave Moth"
         })),
         ("Data/Weapons", json!({

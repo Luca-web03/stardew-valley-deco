@@ -149,6 +149,9 @@ impl World {
     }
 
     pub fn apply_tool(&mut self, kind: ToolKind, slot: usize, t: TilePos) {
+        if kind != ToolKind::WateringCan && self.break_slime_ball(t) {
+            return;
+        }
         // Any tool clears weeds.
         if let Some(o) = self.location().object(t) {
             if matches!(o.kind, ObjKind::Debris { debris: DebrisKind::Weeds, .. }) && kind != ToolKind::WateringCan {
@@ -207,6 +210,10 @@ impl World {
         }
         if let Some(tool) = self.farmer.inventory.get_mut(slot).and_then(|i| i.tool_mut()) {
             tool.water -= 1;
+        }
+        if self.water_trough(t) {
+            self.sound("slosh");
+            return;
         }
         if let Some(TerrainFeature::HoeDirt(d)) = self.location_mut().terrain_mut(t) {
             d.watered = true;

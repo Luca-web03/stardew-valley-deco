@@ -35,6 +35,14 @@ pub struct Building {
     /// Building storage (harvest huts).
     #[serde(default)]
     pub storage: Option<crate::inventory::Inventory>,
+    /// Slime hutch: watered trough tiles and resident slimes (monster names).
+    #[serde(default)]
+    pub watered_troughs: Vec<TilePos>,
+    #[serde(default)]
+    pub slimes: Vec<String>,
+    /// Cabin: the farmhand who lives here.
+    #[serde(default)]
+    pub owner: Option<String>,
 }
 
 impl Building {
@@ -139,7 +147,7 @@ impl World {
             self.farmer.inventory.remove_object(id, m.amount);
         }
         self.next_building_id += 1;
-        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: data.build_days.max(0), animal_door_open: true, pond: None, horse: None, storage: None };
+        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: data.build_days.max(0), animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None };
         let done = b.days_left == 0;
         self.buildings.push(b);
         self.rebuild_location_edges();

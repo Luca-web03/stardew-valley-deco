@@ -52,7 +52,8 @@ were not available; such values are isolated constants that can be tuned.
       flag-cleared tiles) and a generated volcano dungeon with lava and a
       weapon forge; placeholder isle
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
-      friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts
+      friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts,
+      slime hutches (troughs, slime balls, incubators), cabins for farmhands
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
       gifts, friendship, dating, marriage, spouse, children (approx. timings),
       divorce, jealousy
@@ -75,8 +76,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Co-op: host/join over TCP, farmhands with their own farmer, location,
       tools and menus (swapped into the shared world for their turn),
       render streaming (lz4 draw lists, textures, sounds) so clients need no
-      content, farmhands saved with the host's game (no cabins or
-      split-screen; the host's sleep ends the day)
+      content, farmhands saved with the host's game and living in cabins
+      (no split-screen; the host's sleep ends the day)
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
       debug overlay (F3)

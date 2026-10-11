@@ -283,6 +283,14 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), sort_depth(bottom - 2.0, map_h)));
     }
 
+    // Filled slime hutch troughs.
+    if let Some(bi) = w.hutch_of(loc_name) {
+        for t in &w.buildings[bi].watered_troughs {
+            let p = cam.to_screen(Vec2::new((t.x * TILE) as f32, (t.y * TILE) as f32));
+            out.fill(FRect::new(p.x + 8.0, p.y + 16.0, TILE_F - 16.0, TILE_F - 28.0), Color::rgba(60, 130, 220, 200), DEPTH_BUILDINGS + 0.001);
+        }
+    }
+
     // Candles lit on grandpa's shrine.
     if loc_name == "Farm" && w.farmer.grandpa_candles > 0 {
         if let Some(s) = w.compat.shrine {

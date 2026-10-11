@@ -432,6 +432,7 @@ pub const ICON_RAIN_TOTEM: i32 = 71;
 pub const ICON_HARDWOOD: i32 = 72;
 pub const ICON_IRIDIUM_ORE: i32 = 73;
 pub const ICON_DIAMOND: i32 = 74;
+pub const ICON_SLIME_EGG: i32 = 75;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -930,6 +931,13 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_SLIME_EGG, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 5.0, 6.0, Color::rgb(120, 200, 90));
+        c.ellipse(6.5, 7.0, 1.6, 2.0, Color::rgb(190, 240, 160));
+        c.px(10, 11, Color::rgb(70, 140, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Rain totem: a carved post with a cloud.
         let mut c = Cell::at(&mut img, ICON_RAIN_TOTEM, OBJ_COLS, 16, 16);
         c.rect(6, 5, 4, 10, Color::rgb(150, 100, 60));
@@ -954,7 +962,7 @@ pub fn objects() -> Image {
 
 /// Big craftables: 16x32 cells, 8 columns. 0 = storage box, 1 = juicer, 2 = furnace.
 pub fn craftables() -> Image {
-    let mut img = Image::new(128, 32);
+    let mut img = Image::new(128, 64);
     let wood = Color::rgb(160, 104, 56);
     {
         let mut c = Cell::at(&mut img, 0, 8, 16, 32);
@@ -1005,6 +1013,23 @@ pub fn craftables() -> Image {
         c.rect(1, 25, 14, 1, Color::rgb(90, 90, 100));
         c.ellipse(8.0, 22.0, 2.0, 2.0, Color::rgb(110, 70, 40));
         c.rect(2, 29, 12, 2, Color::rgb(100, 65, 35));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Slime incubator: a glass dome on a warm base.
+        let mut c = Cell::at(&mut img, 8, 8, 16, 32);
+        c.rect(2, 22, 12, 8, Color::rgb(150, 120, 90));
+        c.rect(3, 24, 10, 1, Color::rgb(230, 120, 60));
+        c.ellipse(8.0, 17.0, 6.0, 7.0, Color::rgba(170, 220, 230, 200));
+        c.ellipse(6.0, 14.0, 1.5, 2.5, Color::rgb(235, 250, 255));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Slime ball: a wobbly green blob.
+        let mut c = Cell::at(&mut img, 9, 8, 16, 32);
+        c.ellipse(8.0, 23.0, 7.0, 7.0, Color::rgb(110, 190, 80));
+        c.ellipse(6.0, 20.0, 2.5, 2.0, Color::rgb(180, 235, 150));
+        c.ellipse(10.0, 26.0, 2.0, 1.5, Color::rgb(80, 150, 60));
         c.auto_outline(OUTLINE);
     }
     {

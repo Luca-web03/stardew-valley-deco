@@ -52,6 +52,7 @@ pub mod special_orders;
 pub mod children;
 pub mod fish_ponds;
 pub mod secret_notes;
+pub mod slime_hutch;
 pub mod horse;
 pub mod minecarts;
 pub mod casks;

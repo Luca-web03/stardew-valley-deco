@@ -361,6 +361,56 @@ pub fn animal_house(id: &str, w: i32, h: i32) -> Map {
     b.map
 }
 
+/// Slime hutch interior: an open floor with four troughs on the right.
+pub fn slime_hutch() -> Map {
+    let (w, h) = (12, 9);
+    let mut b = B::new("Dev_SlimeHutch", w, h, indoor_sheet());
+    b.fill("Back", 0, 0, w, h, VOID);
+    b.fill("Back", 1, 2, w - 2, h - 3, FLOOR);
+    for x in 0..w {
+        b.set("Buildings", x, 0, IWALL_TOP);
+        b.set("Buildings", x, 1, IWALL);
+        if x != w / 2 {
+            b.set("Buildings", x, h - 1, IWALL_TOP);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, IWALL_TOP);
+        b.set("Buildings", w - 1, y, IWALL_TOP);
+    }
+    for y in 2..6 {
+        b.set_props("Buildings", w - 2, y, COUNTER, &[("Port.Trough", "T")]);
+    }
+    b.set("Back", w / 2, h - 1, MAT);
+    b.prop("Warp", &format!("{} {} Farm 0 0", w / 2, h - 1));
+    b.map
+}
+
+/// A one-room cabin with a bed.
+pub fn cabin() -> Map {
+    let (w, h) = (8, 8);
+    let mut b = B::new("Dev_Cabin", w, h, indoor_sheet());
+    b.fill("Back", 0, 0, w, h, VOID);
+    b.fill("Back", 1, 2, w - 2, h - 3, FLOOR);
+    for x in 0..w {
+        b.set("Buildings", x, 0, IWALL_TOP);
+        b.set("Buildings", x, 1, IWALL);
+        if x != 3 {
+            b.set("Buildings", x, h - 1, IWALL_TOP);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, IWALL_TOP);
+        b.set("Buildings", w - 1, y, IWALL_TOP);
+    }
+    b.set_props("Back", 5, 2, BED_TOP, &[("Bed", "T")]);
+    b.set_props("Back", 5, 3, BED_BOTTOM, &[("Bed", "T")]);
+    b.set("Back", 2, 4, RUG);
+    b.set("Back", 3, h - 1, MAT);
+    b.prop("Warp", &format!("3 {} Farm 0 0", h - 1));
+    b.map
+}
+
 pub fn greenhouse() -> Map {
     let (w, h) = (10, 9);
     let mut b = B::new("Greenhouse", w, h, outdoor_sheet());
@@ -479,5 +529,5 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
 }

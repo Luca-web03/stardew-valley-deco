@@ -224,6 +224,8 @@ pub struct World {
     pub casino_plays: u64,
     /// Community development projects (Joja route).
     pub joja_projects: Vec<crate::evaluation::JojaProject>,
+    /// Hutches whose slimes have been brought out this session.
+    pub spawned_hutches: std::collections::BTreeSet<String>,
     /// Crows on the farm this morning.
     pub crows: Vec<crate::farm_events::Crow>,
     /// Data/GiantCrops.
@@ -391,6 +393,7 @@ impl World {
             powers: crate::mastery::load_powers(cm),
             giant_crops: crate::clumps::load_giant_crops(cm),
             crows: Vec::new(),
+            spawned_hutches: Default::default(),
             joja_projects: crate::evaluation::load_joja_projects(cm),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
@@ -882,6 +885,7 @@ impl World {
         self.crows_overnight();
         let night_event = self.night_event_overnight();
         self.animals_overnight();
+        self.hutches_overnight();
         self.horses_overnight();
         self.huts_overnight();
         self.orchard_overnight();
@@ -1008,6 +1012,7 @@ impl World {
         self.update_projectiles(dt);
         self.update_bombs(dt);
         self.update_animals(dt);
+        self.sync_hutch_slimes();
         self.update_crows(dt);
         self.update_pet(dt);
         self.update_children(dt);
@@ -1353,6 +1358,9 @@ impl World {
 
         // Placed objects (chests, machines, ladders).
         if self.use_ladder(target) {
+            return true;
+        }
+        if self.break_slime_ball(target) || self.load_incubator(target) {
             return true;
         }
         if self.interact_object(target) {

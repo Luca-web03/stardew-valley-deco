@@ -232,6 +232,10 @@ pub struct Farmer {
     /// Candles lit by grandpa's evaluation (0 = not evaluated).
     #[serde(default)]
     pub grandpa_candles: i32,
+    /// Where this player sleeps and wakes (a cabin for farmhands; None =
+    /// the farmhouse).
+    #[serde(default)]
+    pub home_location: Option<String>,
     /// Movies watched (ids) and villagers taken along.
     #[serde(default)]
     pub movies_seen: Vec<String>,
@@ -353,6 +357,7 @@ impl Farmer {
             qi_coins: 0,
             qi_gems: 0,
             grandpa_candles: 0,
+            home_location: None,
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),
             mastery_perks: Vec::new(),

@@ -344,6 +344,7 @@ impl World {
         if ready_here {
             self.sound("dwop");
         }
+        self.hatch_incubators();
     }
 
     /// Morning: sprinklers water nearby soil.
