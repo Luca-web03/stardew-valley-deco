@@ -193,6 +193,17 @@ pub struct CharacterData {
     pub unlock_conditions: Option<String>,
     pub flower_dance_can_dance: Option<bool>,
     pub winter_star_participant: Option<String>,
+    /// `UnknownUntilMet` (default), `AlwaysShown`, `HiddenUntilMet`, `HiddenAlways`.
+    pub social_tab: Option<String>,
+    /// `AlwaysShown` (default), `HiddenUntilMet`, `HiddenAlways`.
+    pub calendar: Option<String>,
+    pub dumpster_dive_emote: Option<i32>,
+    pub dumpster_dive_friendship_effect: Option<i32>,
+    pub item_delivery_quests: Option<String>,
+    pub perfection_score: Option<bool>,
+    pub spouse_gift_jealousy: Option<String>,
+    pub spouse_gift_jealousy_friendship_change: Option<i32>,
+    pub spouse_wants_children: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -236,6 +247,15 @@ impl Default for CharacterData {
             unlock_conditions: None,
             flower_dance_can_dance: None,
             winter_star_participant: None,
+            social_tab: None,
+            calendar: None,
+            dumpster_dive_emote: None,
+            dumpster_dive_friendship_effect: None,
+            item_delivery_quests: None,
+            perfection_score: None,
+            spouse_gift_jealousy: None,
+            spouse_gift_jealousy_friendship_change: None,
+            spouse_wants_children: None,
         }
     }
 }

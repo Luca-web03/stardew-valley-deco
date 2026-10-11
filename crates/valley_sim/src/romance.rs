@@ -138,17 +138,16 @@ impl World {
         }
         let me = self.farmer.tile();
         let nearby = self.npcs.iter().any(|n| n.name == spouse && n.location == self.current && n.tile().manhattan(me) <= JEALOUSY_RANGE);
-        if !nearby {
+        let (jealous, change) = self.spouse_jealousy(&spouse);
+        if !nearby || !jealous {
             return;
         }
         let f = self.farmer.friendship(&spouse);
-        f.points = (f.points - JEALOUSY_POINTS).max(0);
+        f.points = (f.points + change).max(0);
         self.say(&spouse, "...I saw that.", Emotion::Angry);
     }
 }
 
 /// Filing fee for a divorce (approx.).
 pub const DIVORCE_COST: i32 = 50_000;
-/// Friendship the spouse loses when they see a gift to a rival (approx.).
-pub const JEALOUSY_POINTS: i32 = 30;
 pub const JEALOUSY_RANGE: i32 = 10;

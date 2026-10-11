@@ -17,8 +17,8 @@ impl World {
         let fish_caught = self.fish.iter().filter(|(k, x)| x.difficulty > 0 && f.fish_caught.contains_key(*k)).count();
         let cooked = self.cooking.keys().filter(|k| f.cooking_recipes.get(*k).is_some_and(|n| *n > 0)).count();
         let crafted = self.recipes.keys().filter(|k| f.crafting_recipes.get(*k).is_some_and(|n| *n > 0)).count();
-        let villagers = self.npcs.len();
-        let close = self.npcs.iter().filter(|n| f.friendships.get(&n.name).is_some_and(|x| x.hearts() >= 8)).count();
+        let villagers = self.npcs.iter().filter(|n| self.counts_for_perfection(n)).count();
+        let close = self.npcs.iter().filter(|n| self.counts_for_perfection(n) && f.friendships.get(&n.name).is_some_and(|x| x.hearts() >= 8)).count();
         let skills = [Skill::Farming, Skill::Mining, Skill::Foraging, Skill::Fishing, Skill::Combat];
         let levels: i32 = skills.iter().map(|s| f.skills.level(*s).min(10)).sum();
         let areas: std::collections::BTreeSet<&String> = self.bundles.iter().map(|b| &b.area).collect();

@@ -343,6 +343,7 @@ impl World {
         }
         self.garbage_searched.push(key);
         self.sound("trashcan");
+        self.dumpster_witnesses();
         let Some(data) = self.garbage.clone() else { return true };
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, can.len() as i64, 66]));
         let entry = data.garbage_cans.get(can).cloned().unwrap_or_default();

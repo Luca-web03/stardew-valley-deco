@@ -81,7 +81,8 @@ impl World {
             .filter(|id| self.items.object(id).is_some_and(|o| matches!(o.data.category, category::VEGETABLE | category::FRUIT)))
             .collect();
         let Some(item) = rng.pick(&candidates).cloned() else { return };
-        let npc = rng.pick(&self.npcs).map(|n| (n.name.clone(), n.display_name.clone())).unwrap();
+        let givers: Vec<(String, String)> = self.npcs.iter().filter(|n| self.takes_item_delivery_quests(n)).map(|n| (n.name.clone(), n.display_name.clone())).collect();
+        let Some(npc) = rng.pick(&givers).cloned() else { return };
         let name = self.items.object(&item).map(|o| o.display_name.clone()).unwrap_or_default();
         let price = self.items.object(&item).map(|o| o.data.price).unwrap_or(10);
         self.daily_quest = Some(Quest {

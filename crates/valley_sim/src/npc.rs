@@ -51,6 +51,8 @@ pub struct Npc {
     pub walk_ms: u32,
     /// Text shown in a speech bubble above the head, with remaining ms.
     pub bubble: Option<(String, u32)>,
+    /// An emote over the head: (emote id, ms shown so far).
+    pub emote: Option<(i32, u32)>,
     /// Pause after being talked to (ms) during which the NPC stands still.
     pub pause_ms: u32,
     /// Outfit choices from `Appearance`, the default sprite/portrait, and
@@ -61,6 +63,8 @@ pub struct Npc {
     pub look_outdoors: (String, String),
     /// `UnlockConditions`: the NPC is only around while this passes.
     pub unlock: Option<String>,
+    /// The rest of the NPC's `Data/Characters` entry (social settings).
+    pub data: std::sync::Arc<valley_content::data::CharacterData>,
 }
 
 impl Npc {
@@ -87,6 +91,12 @@ impl Npc {
             *ms = ms.saturating_sub(dt_ms);
             if *ms == 0 {
                 self.bubble = None;
+            }
+        }
+        if let Some((_, ms)) = &mut self.emote {
+            *ms += dt_ms;
+            if *ms > 1600 {
+                self.emote = None;
             }
         }
         if self.pause_ms > 0 {

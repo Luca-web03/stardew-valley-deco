@@ -128,7 +128,7 @@ impl World {
     pub(crate) fn festival_villager_talk(&mut self, name: &str) -> bool {
         match self.festival_activity() {
             Some(Activity::Dance) if self.activity.partner.is_none() => {
-                let romanceable = self.npcs.iter().any(|n| n.name == name && n.can_romance);
+                let romanceable = self.npcs.iter().any(|n| n.name == name && self.can_flower_dance(n));
                 if romanceable {
                     let display = self.npc_display(name);
                     self.emit(WorldEvent::Choice { text: format!("Ask {display} to dance?"), options: vec![(format!("festival:dance:{name}"), "Ask".into())] });
@@ -373,7 +373,8 @@ impl World {
             return;
         }
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.year as i64, 223]));
-        let Some(name) = self.npcs.get(rng.range(0, self.npcs.len().max(1) as i32) as usize).map(|n| n.name.clone()) else { return };
+        let pool: Vec<String> = self.npcs.iter().filter(|n| self.winter_star_participant(n)).map(|n| n.name.clone()).collect();
+        let Some(name) = rng.pick(&pool).cloned() else { return };
         self.farmer.secret_friend = Some(name.clone());
         let key = format!("Port_SecretFriend_{}", self.clock.year);
         let display = self.npc_display(&name);

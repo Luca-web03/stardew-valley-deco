@@ -2260,9 +2260,10 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 InvTab::Social => {
                     let mut y = f.y + 48.0;
                     for npc in &w.npcs {
+                        let Some(shown) = w.social_tab_name(npc) else { continue };
                         let pts = w.farmer.friendships.get(&npc.name).map(|f| f.points).unwrap_or(0);
                         let hearts = pts / 250;
-                        ui.text(&npc.display_name, Vec2::new(f.x + 48.0, y + 12.0), 3.0, ui::TEXT);
+                        ui.text(&shown, Vec2::new(f.x + 48.0, y + 12.0), 3.0, ui::TEXT);
                         for k in 0..10 {
                             let r = FRect::new(f.x + 320.0 + k as f32 * 40.0, y + 6.0, 30.0, 30.0);
                             ui.fill(r, if k < hearts { Color::rgb(230, 50, 80) } else { Color::rgb(200, 170, 130) });
@@ -2739,7 +2740,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                 let cell = FRect::new(f.x + 32.0 + (d % 7) as f32 * 68.0, f.y + 70.0 + (d / 7) as f32 * 62.0, 64.0, 58.0);
                 ui.slot(cell, d + 1 == w.clock.day);
                 ui.text(&(d + 1).to_string(), Vec2::new(cell.x + 4.0, cell.y + 4.0), 2.0, ui::TEXT);
-                for npc in &w.npcs {
+                for npc in w.npcs.iter().filter(|n| w.calendar_shows(n)) {
                     if let Some((season, day)) = &npc.birthday {
                         if valley_sim::time::Season::parse(season) == Some(w.clock.season) && *day == d + 1 {
                             let initial: String = npc.display_name.chars().take(3).collect();

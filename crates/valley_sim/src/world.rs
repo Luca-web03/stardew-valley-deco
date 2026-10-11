@@ -803,6 +803,7 @@ impl World {
                 look_outdoors: base_look.clone(),
                 base_look,
                 unlock: data.unlock_conditions.clone(),
+                data: std::sync::Arc::new(data.clone()),
                 location: home.location.clone(),
                 pos: Vec2::ZERO,
                 facing,
@@ -818,6 +819,7 @@ impl World {
                 moving: false,
                 walk_ms: 0,
                 bubble: None,
+                emote: None,
                 pause_ms: 0,
             };
             npc.set_tile(npc.home.tile);
@@ -2175,14 +2177,19 @@ impl World {
         self.npcs[i].facing = Dir::toward(me.x - nt.x, me.y - nt.y);
         self.npcs[i].pause_ms = 3000;
 
+        // Some villagers can't be talked to (`CanSocialize`).
+        if !self.can_socialize(&self.npcs[i]) {
+            return;
+        }
         // Holding an object gives it (once a day); otherwise talk.
         let held = self.farmer.current_item().cloned();
         let f = self.farmer.friendship(&name).clone();
+        let takes_gifts = self.can_receive_gifts(&self.npcs[i]);
         if let Some(Item::Object { id, .. }) = &held {
-            if self.try_romance_item(i, id) {
+            if takes_gifts && self.try_romance_item(i, id) {
                 return;
             }
-            if !f.gifted_today {
+            if takes_gifts && !f.gifted_today {
                 self.give_gift(i, id.clone());
                 return;
             }

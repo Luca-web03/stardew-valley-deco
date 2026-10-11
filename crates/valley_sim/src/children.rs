@@ -97,6 +97,7 @@ impl World {
         let points = self.farmer.friendships.get(spouse).map(|f| f.points).unwrap_or(0);
         let today = self.clock.days_played();
         self.farmer.house_level >= self.nursery_level()
+            && self.spouse_wants_children(spouse)
             && points >= ASK_FRIENDSHIP
             && self.farmer.children.len() < MAX_CHILDREN
             && self.farmer.baby_due.is_none()

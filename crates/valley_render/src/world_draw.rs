@@ -747,6 +747,9 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         let src = character_src_with(&lay.character, npc.facing, frame);
         let h = src.h as f32 * ZOOM;
         out.draw(tex, src, Vec2::new(p.x + TILE_F / 2.0 - src.w as f32 * ZOOM / 2.0, p.y + TILE_F - h), ZOOM, depth);
+        if let Some((id, ms)) = npc.emote {
+            draw_emote(rc, out, id, ms, Vec2::new(p.x, p.y + TILE_F - h - TILE_F));
+        }
     }
 
     // Monsters.

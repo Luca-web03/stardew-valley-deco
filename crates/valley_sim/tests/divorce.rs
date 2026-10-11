@@ -69,5 +69,5 @@ fn gifts_to_a_rival_in_front_of_the_spouse_cost_friendship() {
     w.npcs[tobin].pause_ms = 0;
     w.do_action(Some(TilePos::new(10, 14)));
     assert_eq!(w.farmer.inventory.count("Dev_Berry"), 0, "the gift was given");
-    assert_eq!(w.farmer.friendships["Mara"].points, before - valley_sim::romance::JEALOUSY_POINTS);
+    assert_eq!(w.farmer.friendships["Mara"].points, before - 30);
 }
