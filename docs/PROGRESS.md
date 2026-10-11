@@ -128,6 +128,10 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
+- [ ] 1.6 content tied to the original maps and code: house renovations
+      (farmhouse map patches), the raccoon family, the bookseller's
+      visits, the desert festival, trout derby / squid fest rewards
+      (passive festival map swaps and shops already work)
 - [ ] The original's island/volcano/desert specifics that are game code
       (golden walnut locations, parrots, volcano layouts, desert
       festival); generic counterparts exist:
