@@ -58,6 +58,8 @@ were not available; such values are isolated constants that can be tuned.
       divorce, jealousy
 - [x] Special orders board (weekly offers, one active order; Data/SpecialOrders
       subset)
+- [x] Grandpa's evaluation (year 3, candles, diamond re-evaluation),
+      Joja membership and community development projects
 - [x] Mail, quests, help-wanted board, journal, bundles, museum,
       collections, achievements (engine-defined milestones), secret notes,
       perfection score (engine-defined)

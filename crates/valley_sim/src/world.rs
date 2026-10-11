@@ -74,6 +74,9 @@ pub enum WorldEvent {
     Flash,
     /// Confirm a divorce.
     DivorcePrompt,
+    /// Pick one of `options` (id, label) or cancel; the answer goes to
+    /// [`World::choose`].
+    Choice { text: String, options: Vec<(String, String)> },
     /// Pick a minecart destination.
     MinecartMenu { network: String, prompt: String, choices: Vec<crate::minecarts::MinecartChoice> },
     /// Pick a TV channel.
@@ -219,6 +222,8 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// Community development projects (Joja route).
+    pub joja_projects: Vec<crate::evaluation::JojaProject>,
     /// Crows on the farm this morning.
     pub crows: Vec<crate::farm_events::Crow>,
     /// Data/GiantCrops.
@@ -290,6 +295,8 @@ pub struct Compat {
     pub farmhouse_entry: Option<TilePos>,
     /// No "Bed" tile in the farmhouse map: sleep from the wake spot.
     pub bed_fallback: bool,
+    /// Grandpa's shrine (`Port.Shrine` action tile on the farm).
+    pub shrine: Option<TilePos>,
 }
 
 impl World {
@@ -384,6 +391,7 @@ impl World {
             powers: crate::mastery::load_powers(cm),
             giant_crops: crate::clumps::load_giant_crops(cm),
             crows: Vec::new(),
+            joja_projects: crate::evaluation::load_joja_projects(cm),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -563,6 +571,9 @@ impl World {
         });
         self.compat.bed_fallback = !has_bed;
         let Some(farm) = self.locations.get("Farm") else { return };
+        self.compat.shrine = (0..farm.height())
+            .flat_map(|y| (0..farm.width()).map(move |x| TilePos::new(x, y)))
+            .find(|p| farm.action_at(*p).is_some_and(|a| a.starts_with("Port.Shrine")));
         let has_door = door_warps(farm).iter().any(|(_, t, _)| t == "FarmHouse");
         let big = farm.width() >= 60;
         if farm.map_prop_tile("ShippingBinTile").is_none() && big {
@@ -749,6 +760,7 @@ impl World {
         self.orders_morning();
         self.passive_festivals_morning();
         self.apply_cleared_tiles();
+        self.grandpa_morning();
     }
 
     /// The active player's overnight rest: energy, health and friendship
@@ -1435,7 +1447,9 @@ impl World {
         true
     }
 
-    pub(crate) fn run_action_pub(&mut self, action: &str) -> bool {
+    /// Run a map tile action string (e.g. "OpenShop SeedShop") as if the
+    /// farmer had checked such a tile.
+    pub fn run_action_pub(&mut self, action: &str) -> bool {
         self.run_action(action)
     }
 
@@ -1446,6 +1460,9 @@ impl World {
             "Tailoring" => self.open_tailoring(),
             "Theater" | "Port.Theater" => self.watch_movie(),
             "Port.Mastery" => self.open_mastery(),
+            "Port.Shrine" => self.shrine_action(),
+            "Port.JojaMembership" => self.joja_membership_action(),
+            "Port.JojaForm" => self.joja_form_action(),
             "Port.Unlock" => self.unlock_action(&toks),
             "Port.Volcano" => self.enter_volcano_from_here(),
             "Port.Forge" => self.forge_action(),

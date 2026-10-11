@@ -97,6 +97,9 @@ impl World {
     /// Fill requirement `i` of bundle `key` from the inventory (or money).
     pub fn donate_to_bundle(&mut self, key: &str, i: usize) -> Result<(), String> {
         let b = self.bundles.iter().find(|b| b.key == key).cloned().ok_or("No such bundle")?;
+        if self.joja_member() {
+            return Err("The community center has closed its doors.".into());
+        }
         if self.farmer.bundles.completed.contains(&b.key) {
             return Err("Already complete.".into());
         }
@@ -130,8 +133,7 @@ impl World {
             self.emit(WorldEvent::Hud(format!("{} bundle complete!", b.name)));
             let area_done = self.bundles.iter().filter(|x| x.area == b.area).all(|x| self.farmer.bundles.completed.contains(&x.key));
             if area_done && !self.farmer.bundles.areas_completed.contains(&b.area) {
-                self.farmer.bundles.areas_completed.push(b.area.clone());
-                self.farmer.mail_received.push(format!("ccDone_{}", b.area));
+                self.complete_area(&b.area);
                 self.emit(WorldEvent::Message(format!("The {} has been restored!", b.area)));
             }
         }

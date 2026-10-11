@@ -27,6 +27,8 @@ pub enum QuestionKind {
     Tv { channels: Vec<valley_sim::minecarts::Channel> },
     /// Claim the mastery perk of `skills[i]` (last option = cancel).
     Mastery { skills: Vec<valley_sim::farmer::Skill> },
+    /// A sim choice: option i answers `ids[i]` (last option = cancel).
+    Choice { ids: Vec<String> },
 }
 
 #[derive(Clone, Debug, PartialEq)]

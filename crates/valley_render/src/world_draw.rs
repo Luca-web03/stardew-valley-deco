@@ -283,6 +283,21 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
         out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y, src.w as f32 * ZOOM, src.h as f32 * ZOOM), sort_depth(bottom - 2.0, map_h)));
     }
 
+    // Candles lit on grandpa's shrine.
+    if loc_name == "Farm" && w.farmer.grandpa_candles > 0 {
+        if let Some(s) = w.compat.shrine {
+            let base = cam.to_screen(Vec2::new((s.x * TILE) as f32, (s.y * TILE) as f32));
+            let depth = sort_depth((s.y * TILE + TILE) as f32, map_h) + 0.001;
+            let flicker = ((w.game_ms / 90) % 3) as f32;
+            for i in 0..w.farmer.grandpa_candles.min(4) {
+                let x = base.x + 4.0 + i as f32 * 16.0;
+                out.fill(FRect::new(x, base.y + 4.0, 6.0, 14.0), Color::rgb(240, 235, 210), depth);
+                out.fill(FRect::new(x, base.y - 6.0 - flicker, 6.0, 9.0 + flicker), Color::rgb(255, 190, 60), depth + 0.0001);
+                out.fill(FRect::new(x + 2.0, base.y - 2.0, 2.0, 4.0), Color::rgb(255, 250, 200), depth + 0.0002);
+            }
+        }
+    }
+
     // Crows pecking (or flying off) in the morning.
     if w.crows.iter().any(|c| c.location == loc_name) {
         let tex = rc.assets.tex(rc.cm, rc.textures, "LooseSprites/Port_Crow");

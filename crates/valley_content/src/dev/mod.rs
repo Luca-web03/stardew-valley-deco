@@ -104,6 +104,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "771": obj("Fiber", "Basic", -16, 1, ICON_FIBER, -300),
         "92": obj("Sap", "Basic", -81, 2, ICON_SAP, -300),
         "709": obj("Hardwood", "Basic", -16, 15, ICON_HARDWOOD, -300),
+        "72": obj("Diamond", "Minerals", -2, 750, ICON_DIAMOND, -300),
         "386": obj("Iridium Ore", "Basic", -15, 100, ICON_IRIDIUM_ORE, -300),
         "Dev_Bread": obj("Bread", "Cooking", -7, 60, ICON_BREAD, 20),
         "Dev_BerryTart": obj("Berry Tart", "Cooking", -7, 180, ICON_BERRY_TART, 40),
@@ -531,6 +532,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Objects", objects),
         ("Data/BigCraftables", bigs),
         ("Data/Machines", machines),
+        ("Port/JojaProjects", json!([
+            { "Id": "Garden", "Area": "Garden", "DisplayName": "Garden Renewal", "Description": "Replant the town garden.", "Price": 8000, "Flag": "jojaGarden" },
+            { "Id": "Workshop", "Area": "Workshop", "DisplayName": "Workshop Overhaul", "Description": "Re-equip the old workshop.", "Price": 12000, "Flag": "jojaWorkshop" }
+        ])),
         ("Data/GiantCrops", json!({
             "Dev_Pumpkin": {
                 "FromItemId": "(O)Dev_Pumpkin",

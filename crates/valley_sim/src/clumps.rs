@@ -278,13 +278,27 @@ impl World {
     /// New farm: a few stumps, logs and boulders (approx. counts).
     pub(crate) fn place_farm_clumps(&mut self) {
         let mut rng = engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, 79]));
+        // Keep clear of arrival spots: warps into the farm, minecart stops.
+        let mut protected: Vec<TilePos> = self.locations.values().flat_map(|l| l.warps.iter().filter(|w| w.target == "Farm").map(|w| w.to)).collect();
+        for net in self.minecarts.values() {
+            protected.extend(net.destinations.iter().filter(|d| d.target_location == "Farm").map(|d| TilePos::new(d.target_tile.x, d.target_tile.y)));
+        }
         let Some(farm) = self.locations.get_mut("Farm") else { return };
         if farm.map.prop("Port.NoClumps").is_some() {
             return;
         }
         let area = farm.width() * farm.height();
         let n = (area / 600).clamp(2, 14);
-        let protected: Vec<TilePos> = ["FarmHouseEntry", "ShippingBinTile"].iter().filter_map(|k| farm.map_prop_tile(k)).collect();
+        protected.extend(["FarmHouseEntry", "ShippingBinTile"].iter().filter_map(|k| farm.map_prop_tile(k)));
+        protected.extend(farm.warps.iter().map(|w| w.from));
+        for y in 0..farm.height() {
+            for x in 0..farm.width() {
+                let p = TilePos::new(x, y);
+                if farm.action_at(p).is_some() {
+                    protected.push(p);
+                }
+            }
+        }
         for i in 0..n {
             let kind = match i % 4 {
                 0 | 2 => ClumpKind::Stump,

@@ -35,6 +35,7 @@ pub const PET_BOWL: i32 = 34;
 pub const BOULDER: i32 = 35;
 pub const SANDSTONE: i32 = 36;
 pub const MINECART: i32 = 37;
+pub const SHRINE: i32 = 38;
 
 // Indoor sheet tile indices.
 pub const FLOOR: i32 = 0;
@@ -253,6 +254,18 @@ pub fn outdoors(season: &str) -> Image {
         c.rect(5, 12, 6, 1, Color::rgb(140, 92, 60));
     }
     {
+        // Shrine: a small stone altar with four candle holders.
+        let mut c = Cell::at(&mut img, SHRINE, OUT_COLS, 16, 16);
+        c.noise(g, 6, 2);
+        c.rect(1, 5, 14, 10, Color::rgb(150, 145, 150));
+        c.rect(1, 5, 14, 2, Color::rgb(185, 180, 185));
+        c.rect(3, 9, 10, 4, Color::rgb(120, 115, 125));
+        for x in [1, 5, 9, 13] {
+            c.rect(x, 3, 2, 2, Color::rgb(110, 90, 60));
+        }
+        c.rect(6, 10, 4, 2, Color::rgb(200, 180, 110));
+    }
+    {
         let mut c = Cell::at(&mut img, PET_BOWL, OUT_COLS, 16, 16);
         c.noise(g, 6, 1);
         c.ellipse(8.0, 11.0, 7.0, 4.0, OUTLINE);
@@ -418,6 +431,7 @@ pub const ICON_EMBER_SHARD: i32 = 70;
 pub const ICON_RAIN_TOTEM: i32 = 71;
 pub const ICON_HARDWOOD: i32 = 72;
 pub const ICON_IRIDIUM_ORE: i32 = 73;
+pub const ICON_DIAMOND: i32 = 74;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -904,6 +918,15 @@ pub fn objects() -> Image {
         c.ellipse(8.0, 9.0, 6.0, 5.0, Color::rgb(90, 85, 95));
         c.ellipse(6.0, 8.0, 2.0, 1.5, Color::rgb(200, 90, 220));
         c.ellipse(10.0, 11.0, 1.5, 1.5, Color::rgb(170, 70, 200));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_DIAMOND, OBJ_COLS, 16, 16);
+        c.rect(4, 5, 8, 2, Color::rgb(200, 240, 255));
+        for i in 0..6 {
+            c.rect(4 + i / 2 + 1, 7 + i, 8 - i - 2, 1, Color::rgb(150, 220, 250));
+        }
+        c.px(6, 5, Color::WHITE);
         c.auto_outline(OUTLINE);
     }
     {

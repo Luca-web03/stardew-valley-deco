@@ -607,6 +607,12 @@ impl ValleyGame {
                 }
                 WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
+                WorldEvent::Choice { text, options } => {
+                    let ids: Vec<String> = options.iter().map(|(id, _)| id.clone()).collect();
+                    let mut labels: Vec<String> = options.into_iter().map(|(_, l)| l).collect();
+                    labels.push("Cancel".into());
+                    self.menus.push(Menu::Question { text, options: labels, selected: 0, kind: QuestionKind::Choice { ids } });
+                }
                 WorldEvent::DivorcePrompt => self.menus.push(Menu::Question {
                     text: format!("File for divorce? The fee is {}g.", valley_sim::romance::DIVORCE_COST),
                     options: vec!["File".into(), "Never mind".into()],
@@ -738,6 +744,14 @@ impl ValleyGame {
                                 }
                             }));
                         }
+                    } else if let QuestionKind::Choice { ids } = &kind {
+                        if let Some(id) = ids.get(i).cloned() {
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(w) = g.world.as_mut() {
+                                    w.choose(&id);
+                                }
+                            }));
+                        }
                     } else if let QuestionKind::Mastery { skills } = &kind {
                         if let Some(&s) = skills.get(i) {
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
@@ -785,7 +799,7 @@ impl ValleyGame {
                                 g.menus.clear();
                                 g.screen = Screen::Title { hovered: None };
                             }
-                            QuestionKind::Elevator { .. } => {}
+                            QuestionKind::Elevator { .. } | QuestionKind::Choice { .. } => {}
                             QuestionKind::FestivalMain => {
                                 if let Some(w) = g.world.as_mut() {
                                     w.festival_begin_main();
