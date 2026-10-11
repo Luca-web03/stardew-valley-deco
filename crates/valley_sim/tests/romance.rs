@@ -208,3 +208,29 @@ fn spouses_follow_marriage_schedules_on_dry_days() {
     w.end_day(false);
     assert!(w.npcs.iter().find(|n| n.name == "Mara").unwrap().schedule.is_empty());
 }
+
+#[test]
+fn gift_reactions_come_from_dialogue_keys() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    face_mara(&mut w);
+    let i = w.npcs.iter().position(|n| n.name == "Mara").unwrap();
+    w.npcs[i].dialogue.insert("AcceptGift_(O)Dev_Turnip".into(), "A turnip! My favorite root.".into());
+    w.npcs[i].dialogue.insert("AcceptBirthdayGift_Neutral".into(), "You remembered my birthday!".into());
+    hold(&mut w, "Dev_Turnip");
+    w.drain_events();
+    w.do_action(None);
+    let text = |w: &mut World| {
+        w.drain_events().into_iter().find_map(|e| match e {
+            WorldEvent::Dialogue { pages, .. } => Some(pages[0].text.clone()),
+            _ => None,
+        })
+    };
+    assert_eq!(text(&mut w).as_deref(), Some("A turnip! My favorite root."));
+    w.end_day(false);
+    face_mara(&mut w);
+    w.clock.day = 9;
+    hold(&mut w, "Dev_Bean");
+    w.do_action(None);
+    assert_eq!(text(&mut w).as_deref(), Some("You remembered my birthday!"));
+}

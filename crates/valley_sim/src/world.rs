@@ -2423,6 +2423,23 @@ impl World {
             _ => 8,
         };
         let raw = self.gift_tastes.get(&name).and_then(|e| e.split('/').nth(text_idx).map(|s| s.trim().to_string())).filter(|s| !s.is_empty());
+        // Dialogue keys override the taste reaction: birthday lines by taste,
+        // then lines for this item (`AcceptGift_<qualified id>` or a context tag).
+        let special = {
+            let npc = &self.npcs[i];
+            let taste_name = ["Loved", "Liked", "Disliked", "Hated", "Neutral"][taste.min(4) as usize];
+            let mut keys = Vec::new();
+            if birthday {
+                keys.push(format!("AcceptBirthdayGift_{taste_name}"));
+                keys.push(if taste <= 1 || taste == 4 { "AcceptBirthdayGift_Positive".to_string() } else { "AcceptBirthdayGift_Negative".to_string() });
+                keys.push("AcceptBirthdayGift".to_string());
+            }
+            let gift = Item::object(&item_id, 1);
+            keys.push(format!("AcceptGift_{}", gift.qualified_id()));
+            keys.extend(self.items.context_tags(&gift).into_iter().map(|t| format!("AcceptGift_{t}")));
+            keys.into_iter().find_map(|k| npc.dialogue.get(&k).cloned())
+        };
+        let raw = special.or(raw);
         self.sound("give_gift");
         let pages = match raw {
             Some(r) => {
