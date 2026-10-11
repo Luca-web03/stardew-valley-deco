@@ -123,6 +123,12 @@ impl World {
         true
     }
 
+    /// Object id of the bait on the held rod.
+    pub fn current_bait_id(&self) -> Option<String> {
+        let Some(Item::Tool(rod)) = self.farmer.current_item() else { return None };
+        rod.attachments.first()?.as_ref()?.object_id().map(String::from)
+    }
+
     /// Gear on the held rod.
     pub fn current_gear(&self) -> Gear {
         let Some(Item::Tool(rod)) = self.farmer.current_item() else { return Gear::default() };

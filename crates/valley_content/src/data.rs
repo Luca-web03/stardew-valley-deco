@@ -259,6 +259,7 @@ pub struct LocationData {
     pub min_daily_forage_spawn: i32,
     pub max_daily_forage_spawn: i32,
     pub fish: Vec<SpawnFishData>,
+    pub fish_areas: BTreeMap<String, FishAreaData>,
     pub artifact_spots: Vec<ArtifactSpotDrop>,
 }
 
@@ -402,10 +403,40 @@ pub struct SpawnForageData {
 pub struct SpawnFishData {
     pub id: Option<String>,
     pub item_id: Option<String>,
+    pub random_item_id: Option<Vec<String>>,
     pub season: Option<String>,
     pub chance: Option<f64>,
     pub condition: Option<String>,
     pub fish_area_id: Option<String>,
+    pub bobber_position: Option<Rect>,
+    pub player_position: Option<Rect>,
+    pub min_fishing_level: i32,
+    pub min_distance_from_shore: i32,
+    /// -1: no limit.
+    #[serde(default = "neg1")]
+    pub max_distance_from_shore: i32,
+    pub apply_daily_luck: bool,
+    pub chance_boost_per_luck_level: f64,
+    /// Times this can be caught (-1: no limit).
+    #[serde(default = "neg1")]
+    pub catch_limit: i32,
+    pub is_boss_fish: bool,
+    pub set_flag_on_catch: Option<String>,
+    pub require_magic_bait: bool,
+    pub precedence: i32,
+    pub ignore_fish_data_requirements: bool,
+    #[serde(default = "yes")]
+    pub can_be_inherited: bool,
+}
+
+/// A named fishing area of a location (`FishAreas`).
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct FishAreaData {
+    pub display_name: Option<String>,
+    pub position: Option<Rect>,
+    pub crab_pot_fish_types: Vec<String>,
+    pub crab_pot_junk_chance: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

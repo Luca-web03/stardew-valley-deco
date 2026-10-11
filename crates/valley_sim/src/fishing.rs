@@ -9,7 +9,6 @@ use engine::{Rng, Vec2};
 use serde::{Deserialize, Serialize};
 
 use crate::farmer::Skill;
-use crate::gsq::{self, QueryCtx};
 use crate::item::{Item, Quality};
 use crate::world::{World, WorldEvent};
 use crate::{TilePos, TILE_F};
@@ -235,56 +234,123 @@ impl World {
         &self.fish
     }
 
-    /// Choose what bites at `tile` in the current location right now.
+    /// Choose what bites, with the bobber where the farmer faces.
     pub fn choose_fish(&self, rng: &mut Rng) -> Option<FishInfo> {
-        let data = self.location_data_for(&self.current)?;
+        self.choose_fish_at(rng, self.farmer.facing_tile())
+    }
+
+    /// Tiles from `t` to the nearest land tile (0 on land).
+    pub fn distance_from_shore(&self, t: TilePos) -> i32 {
+        let loc = self.location();
+        for r in 0..12i32 {
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx.abs().max(dy.abs()) != r {
+                        continue;
+                    }
+                    let p = TilePos::new(t.x + dx, t.y + dy);
+                    if loc.in_bounds(p) && !loc.is_water(p) {
+                        return r;
+                    }
+                }
+            }
+        }
+        12
+    }
+
+    /// Choose what bites at the bobber tile in the current location: the
+    /// location's fish entries plus the inheritable `Default` ones, by
+    /// precedence, each passing its area, position, level, distance, catch
+    /// limit, bait and condition checks and then its chance.
+    pub fn choose_fish_at(&self, rng: &mut Rng, bobber: TilePos) -> Option<FishInfo> {
+        let data = self.location_data_for(&self.current);
+        let defaults = self.location_data.get("Default").filter(|_| self.current != "Default");
         let level = self.rod_fishing_level();
         let raining = self.weather.is_raining();
         let season = self.clock.season.key();
-        let mail = self.farmer.mail_received.clone();
-        let mut entries = data.fish.clone();
-        // Shuffle so each entry gets a fair chance roll.
+        let me = self.farmer.tile();
+        let area = data.and_then(|d| {
+            d.fish_areas.iter().find(|(_, a)| a.position.as_ref().is_some_and(|r| bobber.x >= r.x && bobber.y >= r.y && bobber.x < r.x + r.width && bobber.y < r.y + r.height)).map(|(k, _)| k.clone())
+        });
+        let shore = self.distance_from_shore(bobber);
+        let magic_bait = self.current_bait_id().is_some_and(|b| b == "908" || b.contains("MagicBait"));
+        let mut entries: Vec<valley_content::data::SpawnFishData> = data.map(|d| d.fish.clone()).unwrap_or_default();
+        if let Some(d) = defaults {
+            entries.extend(d.fish.iter().filter(|e| e.can_be_inherited).cloned());
+        }
+        // Shuffle so entries of equal precedence get a fair chance roll.
         for i in (1..entries.len()).rev() {
             let j = rng.range(0, i as i32 + 1) as usize;
             entries.swap(i, j);
         }
+        entries.sort_by_key(|e| e.precedence);
+        let inside = |r: &valley_content::data::Rect, p: TilePos| p.x >= r.x && p.y >= r.y && p.x < r.x + r.width && p.y < r.y + r.height;
         for e in entries {
-            let Some(id) = e.item_id.as_deref() else { continue };
-            let (_, id) = crate::item::split_qualified(id);
-            if let Some(s) = &e.season {
-                if !s.eq_ignore_ascii_case(season) {
-                    continue;
-                }
+            let raw_id = match (&e.item_id, &e.random_item_id) {
+                (_, Some(ids)) if !ids.is_empty() => rng.pick(ids).cloned(),
+                (Some(id), _) => Some(id.clone()),
+                _ => None,
+            };
+            let Some(raw_id) = raw_id else { continue };
+            let (_, id) = crate::item::split_qualified(&raw_id);
+            if e.season.as_ref().is_some_and(|s| !s.eq_ignore_ascii_case(season)) {
+                continue;
+            }
+            if e.fish_area_id.is_some() && e.fish_area_id != area {
+                continue;
+            }
+            if e.bobber_position.as_ref().is_some_and(|r| !inside(r, bobber)) || e.player_position.as_ref().is_some_and(|r| !inside(r, me)) {
+                continue;
+            }
+            if level < e.min_fishing_level || shore < e.min_distance_from_shore || (e.max_distance_from_shore >= 0 && shore > e.max_distance_from_shore) {
+                continue;
+            }
+            if e.catch_limit >= 0 && self.farmer.fish_caught.get(id).map(|c| c.0).unwrap_or(0) >= e.catch_limit {
+                continue;
+            }
+            if e.require_magic_bait && !magic_bait {
+                continue;
             }
             let mut rng2 = rng.clone();
-            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &[], location: &self.current, rng: &mut rng2, world: Some(self) };
-            if !gsq::check(e.condition.as_deref(), &mut ctx) {
+            if !self.check_query(e.condition.as_deref(), None, None, &mut rng2) {
                 continue;
+            }
+            let mut chance = e.chance.unwrap_or(1.0);
+            if e.apply_daily_luck {
+                chance += self.daily_luck;
             }
             let Some(info) = self.fish.get(id) else {
                 // Non-fish catches (trash etc.) are handled as fixed-difficulty.
-                if self.items.objects.contains_key(id) && rng.chance(e.chance.unwrap_or(1.0)) {
+                if self.items.objects.contains_key(id) && rng.chance(chance) {
                     return Some(FishInfo { id: id.into(), difficulty: 0, behavior: Behavior::Floater, min_size: 0, max_size: 0, times: vec![], seasons: vec![], weather: "both".into(), min_level: 0 });
                 }
                 continue;
             };
-            if level < info.min_level {
-                continue;
+            if !e.ignore_fish_data_requirements && !magic_bait {
+                if level < info.min_level {
+                    continue;
+                }
+                if !info.seasons.is_empty() && !info.seasons.iter().any(|s| s == season) {
+                    continue;
+                }
+                if (info.weather == "sunny" && raining) || (info.weather == "rainy" && !raining) {
+                    continue;
+                }
+                if !info.times.is_empty() && !info.times.iter().any(|(a, b)| self.clock.time >= *a && self.clock.time < *b) {
+                    continue;
+                }
             }
-            if !info.seasons.is_empty() && !info.seasons.iter().any(|s| s == season) {
-                continue;
-            }
-            if (info.weather == "sunny" && raining) || (info.weather == "rainy" && !raining) {
-                continue;
-            }
-            if !info.times.is_empty() && !info.times.iter().any(|(a, b)| self.clock.time >= *a && self.clock.time < *b) {
-                continue;
-            }
-            if rng.chance(e.chance.unwrap_or(1.0)) {
+            if rng.chance(chance) {
                 return Some(info.clone());
             }
         }
         None
+    }
+
+    /// Flag set when a fish with `SetFlagOnCatch` is caught.
+    fn catch_flag(&self, id: &str) -> Option<String> {
+        let data = self.location_data_for(&self.current)?;
+        data.fish.iter().find(|e| e.item_id.as_deref().map(|i| crate::item::split_qualified(i).1) == Some(id)).and_then(|e| e.set_flag_on_catch.clone())
     }
 
     /// Fishing level, plus one with a master rod.
@@ -366,7 +432,7 @@ impl World {
             FishingState::Nibble { bobber, ms } => {
                 if use_pressed || self.rod_has("AutoHook") {
                     let mut rng = self.fishing_rng();
-                    match self.choose_fish(&mut rng) {
+                    match self.choose_fish_at(&mut rng, bobber) {
                         Some(f) if f.difficulty > 0 => {
                             let level = self.rod_fishing_level();
                             let gear = self.current_gear();
@@ -417,6 +483,11 @@ impl World {
                         e.0 += 1;
                         e.1 = e.1.max(size);
                         let caught = Item::object_q(&f.id, 1, quality);
+                        if let Some(flag) = self.catch_flag(&caught.object_id().unwrap_or("").to_string()) {
+                            if !self.farmer.mail_received.contains(&flag) {
+                                self.farmer.mail_received.push(flag);
+                            }
+                        }
                         self.order_fish(&caught);
                         if game.treasure_caught {
                             let loot = self.fishing_treasure(&mut rng);
