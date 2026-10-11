@@ -282,6 +282,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                          "Price": 0, "SpriteIndex": 15 },
         "Dev_Workbench": { "Name": "Workbench", "DisplayName": "Workbench", "Description": "Crafting here also uses the chests next to it.",
                            "Price": 0, "SpriteIndex": 16 },
+        "Dev_Telephone": { "Name": "Telephone", "DisplayName": "Telephone", "Description": "Call the shops around town.",
+                           "Price": 0, "SpriteIndex": 17 },
         "Dev_BeeHouse": { "Name": "Bee House", "DisplayName": "Bee House", "Description": "Bees make honey, flavored by flowers growing nearby.",
                           "Price": 50, "SpriteIndex": 12 },
         "Dev_Scarecrow": { "Name": "Straw Scarecrow", "DisplayName": "Straw Scarecrow", "Description": "Keeps crows off the crops within 8 tiles.",
@@ -576,6 +578,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_Isle": { "DisplayName": "Breezy Isle", "DefaultArrivalTile": { "X": 4, "Y": 14 },
                       "CreateOnLoad": { "MapPath": "Maps\\Dev_Isle" },
                       "Forage": [{ "Id": "shell", "ItemId": "(O)Dev_SunShell", "Chance": 0.9 }] },
+        "Dev_Spa": { "DisplayName": "Bath House", "DefaultArrivalTile": { "X": 2, "Y": 9 },
+                     "CreateOnLoad": { "MapPath": "Maps\\Dev_Spa" } },
         "Dev_Parlor": { "DisplayName": "Dune Parlor", "DefaultArrivalTile": { "X": 6, "Y": 8 },
                         "CreateOnLoad": { "MapPath": "Maps\\Dev_Parlor" } },
         "Town": { "DisplayName": "Town", "DefaultArrivalTile": { "X": 2, "Y": 15 },
@@ -961,6 +965,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Port/PathsLayer", json!({
             "paths": { "9": "Tree 1", "10": "Tree 2", "11": "Tree 3" },
             "dev_paths": { "0": "Bush 0", "1": "Bush 1", "2": "Bush 2", "3": "Tree 1" }
+        })),
+        ("Port/PhoneContacts", json!({
+            "Blacksmith": { "Name": "Blacksmith", "Kind": "ToolUpgrade" },
+            "Carpenter": { "Name": "Carpenter", "Kind": "Construction" },
+            "SeedShop": { "Name": "General Store", "Kind": "DishOfTheDay" },
+            "Weather": { "Name": "Weather Line", "Kind": "Text", "Message": "Tomorrow's forecast is posted on the TV every morning." }
         })),
         ("Data/Fences", json!({
             "Dev_WoodFence": { "Health": 28, "RepairHealthAdjustmentMinimum": 0, "RepairHealthAdjustmentMaximum": 4, "Texture": "LooseSprites\\Dev_Fence_Wood",

@@ -1230,6 +1230,17 @@ pub fn craftables() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        // Telephone: a desk phone on a small stand.
+        let mut c = Cell::at(&mut img, 17, 8, 16, 32);
+        c.rect(3, 22, 10, 2, Color::rgb(140, 100, 60));
+        c.rect(4, 24, 2, 7, Color::rgb(110, 80, 50));
+        c.rect(10, 24, 2, 7, Color::rgb(110, 80, 50));
+        c.rect(4, 17, 8, 5, Color::rgb(200, 60, 60));
+        c.rect(3, 15, 10, 2, Color::rgb(160, 40, 40));
+        c.px(8, 19, Color::rgb(240, 230, 200));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Seed maker: a hopper on a box with a little chute.
         let mut c = Cell::at(&mut img, 11, 8, 16, 32);
         c.rect(2, 16, 12, 14, Color::rgb(110, 140, 90));

@@ -33,7 +33,7 @@ impl World {
     /// Left-click / use. Starts a tool swing or places seeds. Returns true if
     /// the input was consumed.
     pub fn begin_use(&mut self, cursor: Option<TilePos>) -> bool {
-        if self.farmer.mounted.is_some() {
+        if self.farmer.mounted.is_some() || self.farmer.swimming {
             return false;
         }
         let slot = self.farmer.current_slot;

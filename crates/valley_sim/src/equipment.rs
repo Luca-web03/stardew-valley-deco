@@ -14,6 +14,8 @@ use crate::world::{World, WorldEvent};
 use crate::{TilePos, TILE_F};
 
 const CRAB_POTS: &[&str] = &["710", "Dev_CrabPot"];
+/// Swimsuit colour (shirt and pants).
+const SWIMSUIT: [u8; 3] = [50, 90, 170];
 const BAITS: &[&str] = &["685", "Dev_Bait"];
 
 #[derive(Clone, Debug, PartialEq)]
@@ -129,6 +131,10 @@ impl World {
         }
         if let Some(c) = color(&self.farmer.pants_item) {
             a.pants = c;
+        }
+        if self.farmer.swimsuit {
+            a.shirt = SWIMSUIT;
+            a.pants = SWIMSUIT;
         }
         a
     }

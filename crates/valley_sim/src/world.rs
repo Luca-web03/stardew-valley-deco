@@ -270,6 +270,12 @@ pub struct World {
     pub fences: BTreeMap<String, crate::fences::FenceData>,
     /// Workbench the farmer last crafted at (location, tile).
     pub crafting_station: Option<(String, TilePos)>,
+    /// Tile whose touch action last fired (fires again after leaving it).
+    pub last_touch: Option<TilePos>,
+    /// Spa regeneration timer.
+    pub spa_ms: u32,
+    /// Telephone numbers (`phone`).
+    pub phone_contacts: BTreeMap<String, crate::phone::PhoneContact>,
     pub floors: BTreeMap<String, crate::fences::FloorPathData>,
     /// Data/Powers (book powers).
     pub powers: BTreeMap<String, crate::mastery::PowerData>,
@@ -437,6 +443,9 @@ impl World {
             giant_crops: crate::clumps::load_giant_crops(cm),
             fences: crate::fences::load_fences(cm),
             crafting_station: None,
+            last_touch: None,
+            spa_ms: 0,
+            phone_contacts: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -561,6 +570,11 @@ impl World {
         w.achievement_data = crate::achievements::parse(&cm.load_string_dict("Data/Achievements").into_iter().collect());
         let paths: crate::bushes::PathsTable = cm.load_json("Port/PathsLayer").unwrap_or_else(crate::bushes::default_paths_table);
         w.spawn_paths_layers(&paths);
+        w.phone_contacts = {
+            let c: BTreeMap<String, crate::phone::PhoneContact> = cm.load_dict("Port/PhoneContacts");
+            if c.is_empty() { crate::phone::default_contacts() } else { c }
+        };
+        w.place_start_objects();
         w.place_farm_clumps();
         w.populate_new_farm();
         w.farm_type_start();
@@ -759,6 +773,22 @@ impl World {
     }
 
     /// Initial clutter on a new farm: weeds, stones, twigs and trees.
+    /// New game: big craftables listed in a map's `Port.StartObjects`
+    /// property ("id x y ...").
+    fn place_start_objects(&mut self) {
+        for loc in self.locations.values_mut() {
+            let Some(spec) = loc.map.prop("Port.StartObjects") else { continue };
+            let toks: Vec<String> = spec.split_whitespace().map(String::from).collect();
+            for c in toks.chunks(3) {
+                let [id, x, y] = c else { continue };
+                let (Ok(x), Ok(y)) = (x.parse(), y.parse()) else { continue };
+                if self.items.bigs.contains_key(id.as_str()) {
+                    loc.state.objects.insert(TilePos::new(x, y), PlacedObject::new(id, true, ObjKind::Placed));
+                }
+            }
+        }
+    }
+
     fn populate_new_farm(&mut self) {
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, 77]));
         let items = self.items.clone();
@@ -1271,6 +1301,7 @@ impl World {
         }
 
         self.check_warps();
+        self.update_swimming(dt);
         self.check_bed();
         self.update_horse();
         self.lava_check();
@@ -1293,6 +1324,9 @@ impl World {
     }
 
     fn blocked_for_farmer(&self, bb: IRect) -> bool {
+        if self.farmer.swimming {
+            return self.swim_blocked(bb);
+        }
         let loc = self.location();
         // Allow walking into warp tiles even when they're off-map.
         let warp_hit = loc.warps.iter().any(|w| warp_rect(w.from).intersects(&bb));
@@ -1331,7 +1365,12 @@ impl World {
                 if let (Ok(x), Ok(y)) = (toks[2].parse(), toks[3].parse()) {
                     self.warp_farmer(toks[1], TilePos::new(x, y), None);
                 }
+            } else if self.last_touch != Some(feet) {
+                self.last_touch = Some(feet);
+                self.touch_action(&action, feet);
             }
+        } else {
+            self.last_touch = None;
         }
     }
 
@@ -1355,6 +1394,8 @@ impl World {
             return;
         }
         let from_pos = self.farmer.pos;
+        self.farmer.swimming = false;
+        self.last_touch = None;
         let from = std::mem::replace(&mut self.current, target.to_string());
         let loc = self.location();
         // Clamp onto the map and step off the edge so we don't re-trigger warps.
@@ -1468,7 +1509,7 @@ impl World {
         if self.break_slime_ball(target) || self.load_incubator(target) {
             return true;
         }
-        if self.attach_to_sprinkler(target) || self.use_automation(target) {
+        if self.attach_to_sprinkler(target) || self.use_automation(target) || self.use_phone(target) {
             return true;
         }
         if self.interact_object(target) {

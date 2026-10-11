@@ -37,6 +37,7 @@ were not available; such values are isolated constants that can be tuned.
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
 - [x] Wallpaper and flooring for the rooms of your home
+- [x] Swimming (swimsuit, pool entrances) and the spa; telephone calls
 - [x] Bushes (berry seasons, tea bushes, cutting), `Paths` layer spawns
 - [x] Automation: auto-grabber, auto-petter, mini shipping bin, workbench
       crafting from nearby chests, pressure nozzle, enricher

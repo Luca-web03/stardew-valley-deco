@@ -831,6 +831,19 @@ fn draw_farmer(rc: &mut RenderCtx, out: &mut DrawList, w: &World, cam: &Camera, 
     if let Some(u) = &f.tool_use {
         frame = if u.elapsed_ms < 150 { 1 } else { 3 };
     }
+    if f.swimming {
+        // In the water: head and shoulders above a ripple.
+        let src = character_src(f.facing, 0);
+        let bob = ((w.game_ms as f32) / 300.0).sin() * 2.0;
+        let shown = IRect::new(src.x, src.y, src.w, 18);
+        out.draw(tex, shown, Vec2::new(p.x, p.y - TILE_F + 24.0 + bob), ZOOM, depth);
+        let white = rc.assets.white(rc.textures);
+        let ripple = FRect::new(p.x - 6.0, p.y + 34.0 + bob, TILE_F + 12.0, 8.0);
+        let mut r = Sprite::new(white, IRect::new(0, 0, 1, 1), ripple, depth + 0.0001);
+        r.tint = Color::rgba(220, 240, 255, 150);
+        out.sprite(r);
+        return;
+    }
     out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
     let blink = f.invincible_ms > 0 && (f.invincible_ms / 80) % 2 == 0;
     if !blink {

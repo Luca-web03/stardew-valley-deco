@@ -223,6 +223,8 @@ impl World {
             self.choose_cave(c);
         } else if let Some(f) = id.strip_prefix("festival:") {
             self.choose_festival(f);
+        } else if let Some(c) = id.strip_prefix("phone:") {
+            self.call(c);
         }
     }
 

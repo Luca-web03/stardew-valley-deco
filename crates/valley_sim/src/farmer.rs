@@ -222,6 +222,11 @@ pub struct Farmer {
     /// Riding the horse of this stable (building id).
     #[serde(default)]
     pub mounted: Option<u32>,
+    /// Wearing the swimsuit / in the water (`swimming`).
+    #[serde(default)]
+    pub swimsuit: bool,
+    #[serde(default)]
+    pub swimming: bool,
     /// Other currencies: festival star tokens, casino coins, Qi gems.
     #[serde(default)]
     pub star_tokens: i32,
@@ -372,6 +377,8 @@ impl Farmer {
             fridge: fridge_inventory(),
             notes_read: Vec::new(),
             mounted: None,
+            swimsuit: false,
+            swimming: false,
             star_tokens: 0,
             qi_coins: 0,
             qi_gems: 0,

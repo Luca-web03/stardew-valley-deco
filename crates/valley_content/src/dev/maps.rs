@@ -229,6 +229,7 @@ pub fn farmhouse() -> Map {
 
     b.set_props("Buildings", 3, 4, TABLE, &[]);
     b.fill("Back", 3, 6, 3, 2, RUG);
+    b.prop("Port.StartObjects", "Dev_Telephone 1 3");
     b.prop("Warp", "5 10 Farm 21 10");
     b.map
 }
@@ -310,6 +311,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 8, 11, SIGN, &[("Action", "WizardBook")]);
     b.set_props("Buildings", 18, 25, SIGN, &[("Action", "Port.Travel Dev_Isle 4 14 500 0600-1800")]);
     b.set_props("Buildings", 4, 11, LAMP, &[("Action", "Port.Mastery")]);
+    b.set_props("Buildings", 37, 21, DOOR, &[("Action", "Warp 2 9 Dev_Spa")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
     }
@@ -584,6 +586,33 @@ pub fn parlor() -> Map {
 }
 
 /// The dunes dressed up for the (invented) Lantern Market festival.
+/// A bath house: lockers on the left, a warm pool on the right.
+pub fn spa() -> Map {
+    let (w, h) = (16, 11);
+    let mut b = B::new("Dev_Spa", w, h, outdoor_sheet());
+    b.fill("Back", 0, 0, w, h, PATH);
+    for x in 0..w {
+        b.set("Buildings", x, 0, FENCE);
+        if x != 2 {
+            b.set("Buildings", x, h - 1, FENCE);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, FENCE);
+        b.set("Buildings", w - 1, y, FENCE);
+    }
+    b.water(7, 2, 7, 7);
+    b.set_props("Back", 3, 3, SAND, &[("TouchAction", "ChangeIntoSwimsuit")]);
+    b.set_props("Back", 3, 7, SAND, &[("TouchAction", "ChangeOutOfSwimsuit")]);
+    for y in [4, 6] {
+        b.set_props("Back", 6, y, BRIDGE, &[("TouchAction", "PoolEntrance")]);
+    }
+    b.set_props("Buildings", 1, 3, SIGN, &[("Action", "Message \"Change into your swimsuit here.\"")]);
+    b.prop("Port.Spa", "T");
+    b.prop("Warp", &format!("2 {h} Town 37 22"));
+    b.map
+}
+
 pub fn dunes_market() -> Map {
     let mut map = dunes();
     map.id = "Dev_Dunes_Market".into();
@@ -597,7 +626,7 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    let mut v = vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle()];
+    let mut v = vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle(), spa()];
     v.extend(farm_variants());
     v
 }
