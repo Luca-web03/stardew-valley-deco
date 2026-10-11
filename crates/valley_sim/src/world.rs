@@ -274,6 +274,8 @@ pub struct World {
     pub last_touch: Option<TilePos>,
     /// Spa regeneration timer.
     pub spa_ms: u32,
+    /// `Port/MineChests` overrides (level -> qualified item id).
+    pub mine_chest_overrides: BTreeMap<String, String>,
     /// `Data/LocationContexts`.
     pub location_contexts: BTreeMap<String, crate::location_contexts::LocationContextData>,
     /// `Data/TriggerActions`.
@@ -452,6 +454,7 @@ impl World {
             phone_contacts: BTreeMap::new(),
             trigger_actions: Vec::new(),
             location_contexts: BTreeMap::new(),
+            mine_chest_overrides: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -582,6 +585,7 @@ impl World {
         };
         w.trigger_actions = crate::trigger_actions::load(cm);
         w.location_contexts = crate::location_contexts::load(cm);
+        w.mine_chest_overrides = cm.load_dict("Port/MineChests");
         w.place_start_objects();
         w.place_farm_clumps();
         w.populate_new_farm();
@@ -1537,7 +1541,7 @@ impl World {
         if self.break_slime_ball(target) || self.load_incubator(target) {
             return true;
         }
-        if self.attach_to_sprinkler(target) || self.use_automation(target) || self.use_phone(target) {
+        if self.attach_to_sprinkler(target) || self.use_automation(target) || self.use_phone(target) || self.open_treasure(target) {
             return true;
         }
         if self.interact_object(target) {

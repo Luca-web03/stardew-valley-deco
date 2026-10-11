@@ -40,6 +40,23 @@ pub enum RockKind {
     Gem(u8),
 }
 
+/// Treasure on every tenth mine floor (public reward list): candidate
+/// qualified ids, first known wins; `Port/MineChests` ({ level: id })
+/// overrides. "SkullKey" grants the skull key flag.
+pub const MINE_CHESTS: &[(i32, &[&str])] = &[
+    (10, &["(B)506", "(B)Dev_WorkBoots"]),
+    (20, &["(W)11", "(W)Dev_Sword"]),
+    (40, &["(W)32", "(W)Dev_Slingshot"]),
+    (50, &["(B)509", "(B)Dev_WorkBoots"]),
+    (60, &["(W)22", "(W)Dev_Dagger"]),
+    (70, &["(W)33", "(W)Dev_Slingshot"]),
+    (80, &["(B)511", "(B)Dev_WorkBoots"]),
+    (90, &["(W)8", "(W)Dev_Club"]),
+    (100, &["(O)434", "(O)Dev_Pendant"]),
+    (110, &["(B)512", "(B)Dev_WorkBoots"]),
+    (120, &["SkullKey"]),
+];
+
 /// Gem nodes: (node object id, gem object id, placeholder gem id, first
 /// mine level). Depth bands follow the public mine guides (approx.).
 pub const GEM_NODES: &[(&str, &str, &str, i32)] = &[
@@ -303,6 +320,18 @@ impl World {
             }
         }
         self.mine_stones_left = stones;
+
+        // A treasure chest on reward floors, until it's been opened.
+        if !self.farmer.mail_received.contains(&format!("Port.MineChest.{level}")) {
+            if let Some(reward) = self.mine_chest_reward(level) {
+                let (w, h) = (loc.width(), loc.height());
+                let mut spots: Vec<TilePos> = (0..h).flat_map(|y| (0..w).map(move |x| TilePos::new(x, y))).filter(|p| p.manhattan(entry) >= 3 && loc.is_clear(*p) && tile_passable(&loc, *p)).collect();
+                spots.sort_by_key(|p| (p.manhattan(entry) - 4).abs());
+                if let Some(p) = spots.first() {
+                    loc.state.objects.insert(*p, PlacedObject::new("Port_Treasure", true, ObjKind::Treasure { items: reward }));
+                }
+            }
+        }
         self.mine_ladder_spawned = false;
 
         // Monsters (none on every 5th floor, which acts as a rest stop).
@@ -346,6 +375,44 @@ impl World {
     }
 
     /// Break a mine rock at `t` with pickaxe power `power`.
+    /// The reward in this floor's treasure chest, if it has one.
+    pub fn mine_chest_reward(&self, level: i32) -> Option<Vec<Item>> {
+        let custom: std::collections::BTreeMap<String, String> = self.mine_chest_overrides.clone();
+        let ids: Vec<String> = match custom.get(&level.to_string()) {
+            Some(id) => vec![id.clone()],
+            None => MINE_CHESTS.iter().find(|(l, _)| *l == level)?.1.iter().map(|s| s.to_string()).collect(),
+        };
+        for id in ids {
+            if id == "SkullKey" {
+                return Some(Vec::new());
+            }
+            if let Some(item) = self.items.create(&id, 1) {
+                return Some(vec![item]);
+            }
+        }
+        None
+    }
+
+    /// Open a treasure chest.
+    pub(crate) fn open_treasure(&mut self, t: TilePos) -> bool {
+        let Some(ObjKind::Treasure { items }) = self.location().object(t).map(|o| o.kind.clone()) else { return false };
+        self.location_mut().state.objects.remove(&t);
+        self.sound("openChest");
+        if let Some(level) = self.mine_level() {
+            self.farmer.mail_received.push(format!("Port.MineChest.{level}"));
+            if items.is_empty() && !self.farmer.mail_received.iter().any(|m| m == "HasSkullKey") {
+                self.farmer.mail_received.push("HasSkullKey".into());
+                self.emit(crate::world::WorldEvent::Message("You found a skull-shaped key! It must open something...".into()));
+            }
+        }
+        for item in items {
+            let name = self.items.display_name(&item);
+            self.give_item(item);
+            self.hud(format!("Found: {name}"));
+        }
+        true
+    }
+
     /// Hit a mine rock as the pickaxe would (for tools and tests).
     pub fn hit_mine_rock_pub(&mut self, t: TilePos, power: i32) -> bool {
         self.hit_mine_rock(t, power)

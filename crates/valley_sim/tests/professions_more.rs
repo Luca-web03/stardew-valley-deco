@@ -45,3 +45,18 @@ fn blacksmiths_sell_bars_for_more() {
     w.farmer.professions.push("blacksmith".into());
     assert_eq!(w.sell_value(&bar), (before as f32 * 1.5) as i32);
 }
+
+#[test]
+fn every_tenth_floor_has_a_treasure_chest_once() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    w.enter_mine_level(10);
+    let (t, _) = w.location().state.objects.iter().find(|(_, o)| matches!(o.kind, ObjKind::Treasure { .. })).map(|(p, o)| (*p, o.clone())).expect("a chest on floor 10");
+    w.farmer.set_tile(TilePos::new(t.x, t.y + 1));
+    assert!(w.do_action(Some(t)));
+    assert!(w.farmer.inventory.slots.iter().flatten().any(|i| matches!(i, Item::Boots { id } if id == "Dev_WorkBoots")));
+    w.enter_mine_level(10);
+    assert!(!w.location().state.objects.values().any(|o| matches!(o.kind, ObjKind::Treasure { .. })), "only once");
+    w.enter_mine_level(11);
+    assert!(!w.location().state.objects.values().any(|o| matches!(o.kind, ObjKind::Treasure { .. })));
+}

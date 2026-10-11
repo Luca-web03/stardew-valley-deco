@@ -164,7 +164,7 @@ impl World {
     pub fn pickup_object(&mut self, t: TilePos) -> bool {
         let Some(o) = self.location().object(t).cloned() else { return false };
         match &o.kind {
-            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::Shaft | ObjKind::ArtifactSpot | ObjKind::Fence { .. } => return false,
+            ObjKind::Debris { .. } | ObjKind::Forage | ObjKind::MineRock { .. } | ObjKind::Ladder { .. } | ObjKind::Shaft | ObjKind::ArtifactSpot | ObjKind::Fence { .. } | ObjKind::Treasure { .. } => return false,
             ObjKind::CrabPot { catch: Some(_), .. } => return false,
             ObjKind::Tapper { .. } => {
                 if let Some(TerrainFeature::Tree(tr)) = self.location_mut().terrain_mut(t) {

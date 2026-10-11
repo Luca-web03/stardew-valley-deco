@@ -36,6 +36,8 @@ pub enum ObjKind {
     CrabPot { bait: bool, catch: Option<Item> },
     /// Cask aging `item`; `aged` is in base days.
     Cask { item: Option<Item>, aged: f32 },
+    /// A treasure chest that hands over its items when opened.
+    Treasure { items: Vec<Item> },
     /// Fence or gate (`fences`): days of health left, gate open.
     Fence { health: i32, open: bool },
     /// Any other placed item.
