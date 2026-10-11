@@ -1058,12 +1058,13 @@ impl World {
     fn spawn_daily_debris(&mut self) {
         let mut rng = self.day_rng(2);
         let items = self.items.clone();
+        let weeds = self.location_data_for("Farm").map(|d| (d.min_daily_weeds, d.max_daily_weeds)).filter(|(lo, hi)| *hi > 0 && hi >= lo).unwrap_or((2, 5));
         let Some(farm) = self.locations.get_mut("Farm") else { return };
         if farm.map.prop("SpawnDebris").is_none() && farm.map.width < 60 {
             // Placeholder farms opt in explicitly; large real farms always spawn.
         }
         let (w, h) = (farm.width(), farm.height());
-        let count = rng.range(2, 6);
+        let count = rng.range(weeds.0, weeds.1 + 1);
         for _ in 0..count {
             for _attempt in 0..20 {
                 let p = TilePos::new(rng.range(0, w), rng.range(0, h));
@@ -2275,8 +2276,20 @@ impl World {
         self.sound(if info.data.is_drink { "gulp" } else { "eat" });
     }
 
+    /// Can crops be planted in the current location (`CanPlantHere`;
+    /// default: the farm and greenhouses)?
+    pub fn can_plant_here(&self) -> bool {
+        let loc = self.location();
+        let default = loc.is_farm || self.current.contains("Greenhouse") || self.current.starts_with("Farm");
+        self.location_data_for(&self.current).and_then(|d| d.can_plant_here).unwrap_or(default)
+    }
+
     pub fn plant(&mut self, t: TilePos, seed_id: &str) -> bool {
         let Some(data) = self.items.crops.get(seed_id).cloned() else { return false };
+        if !self.can_plant_here() {
+            self.hud("Can't plant here.");
+            return true;
+        }
         let outdoors = self.location().outdoors;
         let season = self.clock.season;
         let items = self.items.clone();

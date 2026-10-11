@@ -261,6 +261,26 @@ pub struct LocationData {
     pub fish: Vec<SpawnFishData>,
     pub fish_areas: BTreeMap<String, FishAreaData>,
     pub artifact_spots: Vec<ArtifactSpotDrop>,
+    /// Crops and trees can be planted here (default: farm and greenhouse).
+    pub can_plant_here: Option<bool>,
+    #[serde(default = "default_min_weeds")]
+    pub min_daily_weeds: i32,
+    #[serde(default = "default_max_weeds")]
+    pub max_daily_weeds: i32,
+    #[serde(default = "default_clay")]
+    pub chance_for_clay: f64,
+}
+
+fn default_min_weeds() -> i32 {
+    2
+}
+
+fn default_max_weeds() -> i32 {
+    5
+}
+
+fn default_clay() -> f64 {
+    0.03
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -393,6 +413,7 @@ pub struct MachineData {
 pub struct SpawnForageData {
     pub id: Option<String>,
     pub item_id: Option<String>,
+    pub random_item_id: Option<Vec<String>>,
     pub season: Option<String>,
     pub chance: Option<f64>,
     pub condition: Option<String>,
@@ -651,10 +672,16 @@ impl Default for WildTreeData {
 pub struct ArtifactSpotDrop {
     pub id: Option<String>,
     pub item_id: String,
+    pub random_item_id: Option<Vec<String>>,
     pub chance: Option<f64>,
     pub condition: Option<String>,
     pub min_stack: i32,
     pub max_stack: i32,
+    pub precedence: i32,
+    /// Keep rolling the next drops after this one drops.
+    pub continue_on_drop: bool,
+    #[serde(default = "yes")]
+    pub apply_generous_enchantment: bool,
 }
 
 /// One drop from a giant crop (`Data/GiantCrops` `HarvestItems`).

@@ -203,6 +203,15 @@ impl World {
         if loc.is_clear(t) && loc.is_diggable(t) {
             self.location_mut().state.terrain.insert(t, TerrainFeature::HoeDirt(HoeDirt::new()));
             self.sound("hoeHit");
+            // Now and then the hoe turns up some clay.
+            let clay_chance = self.location_data_for(&self.current).map(|d| d.chance_for_clay).unwrap_or(0.03);
+            let clay = ["330", "Dev_Clay"].into_iter().find(|id| self.items.objects.contains_key(*id));
+            if let Some(clay) = clay {
+                let mut rng = engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, self.game_ms as i64, t.x as i64, t.y as i64, 330]));
+                if rng.chance(clay_chance) {
+                    self.spawn_drop(Item::object(clay, 1), t.world_center());
+                }
+            }
         } else {
             self.sound("clank");
         }

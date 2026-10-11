@@ -589,10 +589,12 @@ impl World {
                 continue;
             }
             let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, name.len() as i64, 11]));
+            let mut qrng = self.day_rng(12);
             let candidates: Vec<_> = data
                 .forage
                 .iter()
                 .filter(|f| f.season.as_deref().map_or(true, |s| crate::time::Season::parse(s) == Some(season)))
+                .filter(|f| self.check_query(f.condition.as_deref(), None, None, &mut qrng))
                 .cloned()
                 .collect();
             if candidates.is_empty() {
@@ -619,8 +621,12 @@ impl World {
                 if !rng.chance(f.chance.unwrap_or(1.0)) {
                     continue;
                 }
-                let Some(id) = f.item_id.as_deref() else { continue };
-                let (_, id) = crate::item::split_qualified(id);
+                let picked = match &f.random_item_id {
+                    Some(ids) if !ids.is_empty() => rng.pick(ids).cloned(),
+                    _ => f.item_id.clone(),
+                };
+                let Some(picked) = picked else { continue };
+                let (_, id) = crate::item::split_qualified(&picked);
                 if !self.items.objects.contains_key(id) {
                     continue;
                 }
