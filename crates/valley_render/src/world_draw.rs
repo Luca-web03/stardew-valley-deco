@@ -488,7 +488,8 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     if loc_name == "Farm" {
         for b in &w.buildings {
             let Some(data) = w.buildings_data.get(&b.kind) else { continue };
-            let tex = rc.assets.tex(rc.cm, rc.textures, &data.texture.replace('\\', "/"));
+            let texture = w.building_texture(b).unwrap_or_else(|| data.texture.clone());
+            let tex = rc.assets.tex(rc.cm, rc.textures, &texture.replace('\\', "/"));
             let (tw, th) = rc.textures.size(tex);
             let src = data.source_rect.as_ref().map(|r| IRect::new(r.x, r.y, r.width, r.height)).unwrap_or(IRect::new(0, 0, tw as i32, th as i32));
             let bottom = ((b.tile.y + b.size.1) * TILE) as f32;

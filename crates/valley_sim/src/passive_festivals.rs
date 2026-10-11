@@ -96,3 +96,44 @@ pub fn load(cm: &mut valley_content::ContentManager) -> (BTreeMap<String, Passiv
     }
     (data, maps)
 }
+
+/// A fish that earns a reward while a passive festival runs
+/// (`Port/FestivalCatches`: [{ "Festival", "Fish", "Reward", "Location"? }]);
+/// without the asset the trout derby's golden tag for each rainbow trout.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct FestivalCatch {
+    pub festival: String,
+    pub fish: String,
+    pub reward: String,
+    pub location: Option<String>,
+}
+
+pub fn default_festival_catches() -> Vec<FestivalCatch> {
+    vec![FestivalCatch { festival: "TroutDerby".into(), fish: "(O)138".into(), reward: "(O)TroutDerbyTag".into(), location: None }]
+}
+
+impl World {
+    /// A fish was caught: festival rewards for it.
+    pub fn festival_catch_rewards(&mut self, fish_id: &str) {
+        let today: Vec<String> = self.passive_festivals_today().into_iter().map(|(k, _)| k).collect();
+        if today.is_empty() {
+            return;
+        }
+        let rules: Vec<FestivalCatch> = self
+            .festival_catches
+            .iter()
+            .filter(|c| today.contains(&c.festival) && crate::item::split_qualified(&c.fish).1 == fish_id)
+            .filter(|c| c.location.as_deref().map_or(true, |l| l == self.current))
+            .cloned()
+            .collect();
+        for c in rules {
+            if let Some(item) = self.items.create(&c.reward, 1) {
+                let name = self.items.display_name(&item);
+                self.give_item(item);
+                self.hud(format!("You got a {name}!"));
+            }
+        }
+    }
+}
+

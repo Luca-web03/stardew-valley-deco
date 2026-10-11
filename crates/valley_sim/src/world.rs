@@ -285,6 +285,8 @@ pub struct World {
     /// `Data/IncomingPhoneCalls` and today's call.
     pub incoming_calls: BTreeMap<String, crate::phone_calls::IncomingCall>,
     pub pending_call: Option<crate::phone_calls::PendingCall>,
+    /// Festival fish rewards (`Port/FestivalCatches`).
+    pub festival_catches: Vec<crate::passive_festivals::FestivalCatch>,
     /// `Data/AquariumFish`: fish id -> (sprite index, swim type).
     pub aquarium_fish: std::collections::HashMap<String, (i32, String)>,
     /// `Data/JukeboxTracks`.
@@ -475,6 +477,7 @@ impl World {
             jukebox_tracks: BTreeMap::new(),
             incoming_calls: BTreeMap::new(),
             aquarium_fish: std::collections::HashMap::new(),
+            festival_catches: Vec::new(),
             pending_call: None,
             mine_chest_overrides: BTreeMap::new(),
             buff_defs: BTreeMap::new(),
@@ -613,6 +616,7 @@ impl World {
         w.weddings = crate::weddings::load(cm);
         w.jukebox_tracks = crate::jukebox::load(cm);
         w.incoming_calls = crate::phone_calls::load(cm);
+        w.festival_catches = cm.load_json("Port/FestivalCatches").unwrap_or_else(crate::passive_festivals::default_festival_catches);
         w.aquarium_fish = cm
             .load_string_dict("Data/AquariumFish")
             .into_iter()
@@ -1871,6 +1875,11 @@ impl World {
                     .filter(|(_, c)| self.gsq_ok(c.as_deref()))
                     .map(|(k, _)| k)
                     .filter(|k| self.buildings_data.get(k).and_then(|d| d.building_to_upgrade.as_ref()).is_none() || !self.upgradable(k).is_empty())
+                    .flat_map(|k| {
+                        let mut v = vec![k.clone()];
+                        v.extend(self.skin_entries(&k));
+                        v
+                    })
                     .collect();
                 if builder == "Robin" && self.house_upgrade_cost().is_some() {
                     list.insert(0, crate::world::HOUSE_UPGRADE_ENTRY.to_string());

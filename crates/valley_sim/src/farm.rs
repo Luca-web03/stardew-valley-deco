@@ -46,6 +46,9 @@ pub struct Building {
     /// Kind this building is being upgraded to.
     #[serde(default)]
     pub upgrade_to: Option<String>,
+    /// Chosen look (`Skins` id).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skin: Option<String>,
     /// Building chests (`Data/Buildings` `Chests`).
     #[serde(default)]
     pub chests: std::collections::BTreeMap<String, crate::inventory::Inventory>,
@@ -123,8 +126,14 @@ impl World {
     }
 
     /// Validate and pay for a new building at `tile`. Returns an error message on failure.
-    pub fn place_building(&mut self, kind: &str, tile: TilePos) -> Result<(), String> {
-        let data = self.buildings_data.get(kind).cloned().ok_or("Unknown building")?;
+    /// Place a building from a construction entry (`<kind>` or
+    /// `<kind>|<skin>`), paying for it.
+    pub fn place_building(&mut self, entry: &str, tile: TilePos) -> Result<(), String> {
+        let data = self.construction_entry(entry).ok_or("Unknown building")?;
+        let (kind, skin) = match entry.split_once('|') {
+            Some((k, s)) => (k, Some(s.to_string())),
+            None => (entry, None),
+        };
         let size = (data.size.x.max(1), data.size.y.max(1));
         let farm = self.locations.get("Farm").ok_or("No farm")?;
         for dy in 0..size.1 {
@@ -154,7 +163,7 @@ impl World {
         }
         self.next_building_id += 1;
         let days = if data.magical_construction { 0 } else { data.build_days.max(0) };
-        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: days, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default() };
+        let b = Building { id: self.next_building_id, kind: kind.to_string(), tile, size, interior: None, days_left: days, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default(), skin };
         let done = b.days_left == 0;
         self.buildings.push(b);
         self.rebuild_location_edges();
@@ -172,7 +181,7 @@ impl World {
         let size = (data.size.x.max(1), data.size.y.max(1));
         self.next_building_id += 1;
         let id = self.next_building_id;
-        self.buildings.push(Building { id, kind: kind.to_string(), tile, size, interior: None, days_left: 0, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default() });
+        self.buildings.push(Building { id, kind: kind.to_string(), tile, size, interior: None, days_left: 0, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None, upgrade_to: None, chests: Default::default(), skin: None });
         self.finish_building(id);
         self.rebuild_location_edges();
         Ok(id)

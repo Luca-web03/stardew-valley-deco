@@ -79,3 +79,17 @@ fn friends_call_the_telephone_once_and_it_stops_ringing() {
     w.end_day(false);
     assert!(w.pending_call.as_ref().map_or(true, |p| p.id != "Dev_MaraCall"));
 }
+
+#[test]
+fn festival_catches_earn_rewards_while_the_festival_runs() {
+    let mut w = world();
+    w.clock.season = valley_sim::time::Season::Summer;
+    w.clock.day = 5;
+    w.festival_catch_rewards("Dev_Darter");
+    assert_eq!(w.farmer.inventory.count("Dev_Quartz"), 0, "no festival today");
+    w.clock.day = 11;
+    w.festival_catch_rewards("Dev_Perch");
+    assert_eq!(w.farmer.inventory.count("Dev_Quartz"), 0, "wrong fish");
+    w.festival_catch_rewards("Dev_Darter");
+    assert_eq!(w.farmer.inventory.count("Dev_Quartz"), 1);
+}

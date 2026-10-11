@@ -3,7 +3,10 @@
 //! its interior contents and animals), `HayCapacity`, building chests with
 //! overnight `ItemConversions` (e.g. a mill), `ActionTiles` (including
 //! `BuildingChest <id>` to load or collect), `IndoorItems` placed when
-//! built, `CollisionMap` footprints and `MagicalConstruction`.
+//! built, `CollisionMap` footprints, `MagicalConstruction` and `Skins`
+//! (alternative looks: chosen when building through entries
+//! `<kind>|<skin>` for skins with `ShowAsSeparateConstructionEntry`, which
+//! may override cost, materials and days, or changed later).
 
 use std::collections::{BTreeMap, HashSet};
 
@@ -268,5 +271,71 @@ impl World {
             return true;
         }
         self.run_action_pub(&action)
+    }
+
+    /// Effective data of a construction entry (`kind` or `kind|skin`).
+    pub fn construction_entry(&self, entry: &str) -> Option<valley_content::data::BuildingData> {
+        let (kind, skin) = match entry.split_once('|') {
+            Some((k, s)) => (k, Some(s)),
+            None => (entry, None),
+        };
+        let mut d = self.buildings_data.get(kind)?.clone();
+        if let Some(skin) = skin {
+            let sk = d.skins.iter().find(|s| s.id == skin)?.clone();
+            d.texture = sk.texture.clone();
+            if let Some(n) = sk.name {
+                d.name = self.items.expand_text(&n);
+            }
+            if let Some(t) = sk.description {
+                d.description = self.items.expand_text(&t);
+            }
+            if let Some(c) = sk.build_cost {
+                d.build_cost = c;
+            }
+            if let Some(m) = sk.build_materials {
+                d.build_materials = m;
+            }
+            if let Some(days) = sk.build_days {
+                d.build_days = days;
+            }
+        }
+        Some(d)
+    }
+
+    /// Skins available for a building kind: (id, name).
+    pub fn building_skins(&self, kind: &str) -> Vec<(String, String)> {
+        let Some(d) = self.buildings_data.get(kind) else { return Vec::new() };
+        d.skins
+            .iter()
+            .filter(|s| self.gsq_ok(s.condition.as_deref()))
+            .map(|s| (s.id.clone(), s.name.as_deref().map(|n| self.items.expand_text(n)).unwrap_or_else(|| s.id.clone())))
+            .collect()
+    }
+
+    /// Extra carpenter entries for skins listed on their own.
+    pub(crate) fn skin_entries(&self, kind: &str) -> Vec<String> {
+        let Some(d) = self.buildings_data.get(kind) else { return Vec::new() };
+        d.skins.iter().filter(|s| s.show_as_separate_construction_entry && self.gsq_ok(s.condition.as_deref())).map(|s| format!("{kind}|{}", s.id)).collect()
+    }
+
+    /// Change a building's look (`None` = the default).
+    pub fn set_building_skin(&mut self, id: u32, skin: Option<&str>) -> Result<(), String> {
+        let kind = self.buildings.iter().find(|b| b.id == id).map(|b| b.kind.clone()).ok_or("No such building")?;
+        if let Some(s) = skin {
+            if !self.building_skins(&kind).iter().any(|(k, _)| k == s) {
+                return Err("That look isn't available.".into());
+            }
+        }
+        if let Some(b) = self.buildings.iter_mut().find(|b| b.id == id) {
+            b.skin = skin.map(str::to_string);
+        }
+        Ok(())
+    }
+
+    /// The texture a building is drawn with.
+    pub fn building_texture(&self, b: &crate::farm::Building) -> Option<String> {
+        let d = self.buildings_data.get(&b.kind)?;
+        let skin = b.skin.as_ref().and_then(|s| d.skins.iter().find(|k| &k.id == s));
+        Some(skin.map(|s| s.texture.clone()).unwrap_or_else(|| d.texture.clone()))
     }
 }

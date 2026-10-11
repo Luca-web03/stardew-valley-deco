@@ -1634,7 +1634,7 @@ impl ValleyGame {
         let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
         valley_render::world_draw::draw_location_view(&mut rc, out, w, "Farm", &cam);
         let tile = TilePos::from_world(p.cam + ctx.input.mouse);
-        let size = w.buildings_data.get(&p.kind).map(|d| (d.size.x.max(1), d.size.y.max(1))).unwrap_or((1, 1));
+        let size = w.construction_entry(&p.kind).map(|d| (d.size.x.max(1), d.size.y.max(1))).unwrap_or((1, 1));
         let origin = TilePos::new(tile.x - size.0 / 2, tile.y - size.1 / 2);
         let farm = &w.locations["Farm"];
         for dy in 0..size.1 {
@@ -1649,7 +1649,7 @@ impl ValleyGame {
         let font = self.font.as_ref().unwrap();
         let white = rc.assets.white(rc.textures);
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
-        let name = w.buildings_data.get(&p.kind).map(|d| d.name.clone()).unwrap_or_default();
+        let name = w.construction_entry(&p.kind).map(|d| d.name.clone()).unwrap_or_default();
         let r = FRect::new(16.0, 16.0, 720.0, 72.0);
         ui.panel(r);
         ui.text(&format!("Place: {name}   (WASD: move view, click: build, Esc: cancel)"), Vec2::new(r.x + 20.0, r.y + 28.0), 2.0, ui::TEXT);
@@ -2413,7 +2413,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                     continue;
                 }
-                let Some(d) = w.buildings_data.get(kind) else { continue };
+                let Some(d) = w.construction_entry(kind) else { continue };
                 if let Some(tex) = rc.assets.try_tex(rc.cm, rc.textures, &d.texture.replace('\\', "/")) {
                     let (tw, th) = rc.textures.size(tex);
                     let src = d.source_rect.as_ref().map(|s| IRect::new(s.x, s.y, s.width, s.height)).unwrap_or(IRect::new(0, 0, tw as i32, th as i32));
@@ -2995,6 +2995,17 @@ impl ValleyGame {
             Some("forge") => {
                 w.emit(valley_sim::world::WorldEvent::OpenForge);
                 "opening the forge".into()
+            }
+            Some("skin") => {
+                // skin <building id> [skin id]: change a building's look.
+                let Some(id) = num(1) else {
+                    let list: Vec<String> = w.buildings.iter().map(|b| format!("{} {} ({})", b.id, b.kind, w.building_skins(&b.kind).iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>().join(", "))).collect();
+                    return list.join("; ");
+                };
+                match w.set_building_skin(id as u32, t.get(2).copied()) {
+                    Ok(()) => format!("building {id} look changed"),
+                    Err(e) => e,
+                }
             }
             Some("arcade") => {
                 w.emit(valley_sim::world::WorldEvent::OpenArcade(t.get(1).copied().unwrap_or("ranger").to_string()));

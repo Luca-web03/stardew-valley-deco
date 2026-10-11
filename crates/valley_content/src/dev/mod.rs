@@ -67,6 +67,8 @@ pub fn build() -> MemSource {
     m.insert("TileSheets/Dev_Mannequins.png", art::mannequin().encode_png());
     m.insert("Buildings/Dev_Coop.png", art::shed(4, 3, Color::rgb(200, 170, 120), Color::rgb(170, 70, 50)).encode_png());
     m.insert("Buildings/Dev_SlimeHutch.png", art::shed(5, 3, Color::rgb(150, 170, 150), Color::rgb(90, 140, 80)).encode_png());
+    m.insert("Buildings/Dev_Coop_Blue.png", art::shed(4, 3, Color::rgb(170, 190, 220), Color::rgb(60, 90, 150)).encode_png());
+    m.insert("Buildings/Dev_Coop_Stone.png", art::shed(4, 3, Color::rgb(170, 165, 160), Color::rgb(100, 95, 90)).encode_png());
     m.insert("Buildings/Dev_Mill.png", art::shed(4, 2, Color::rgb(190, 170, 130), Color::rgb(140, 80, 60)).encode_png());
     m.insert("Buildings/Dev_Cabin.png", art::shed(3, 3, Color::rgb(180, 140, 100), Color::rgb(120, 70, 50)).encode_png());
     m.insert("Buildings/Dev_Barn.png", art::shed(6, 4, Color::rgb(170, 90, 70), Color::rgb(110, 80, 60)).encode_png());
@@ -818,6 +820,9 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 ]
             }
         })),
+        ("Port/FestivalCatches", json!([
+            { "Festival": "Dev_LanternMarket", "Fish": "(O)Dev_Darter", "Reward": "(O)Dev_Quartz" }
+        ])),
         ("Data/PassiveFestivals", json!({
             "Dev_LanternMarket": {
                 "DisplayName": "Lantern Market", "ShowOnCalendar": true, "Season": "Summer", "StartDay": 10, "EndDay": 12,
@@ -917,7 +922,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "Size": { "X": 4, "Y": 3 }, "BuildCost": 1000, "BuildDays": 1,
                 "BuildMaterials": [{ "ItemId": "(O)388", "Amount": 100 }, { "ItemId": "(O)390", "Amount": 50 }],
                 "HumanDoor": { "X": 2, "Y": 2 }, "AnimalDoor": { "X": 0, "Y": 2, "Width": 1, "Height": 1 },
-                "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"]
+                "IndoorMap": "Coop", "MaxOccupants": 4, "ValidOccupantTypes": ["Coop"],
+                "Skins": [
+                    { "Id": "Dev_BlueCoop", "Name": "Blue Henhouse", "Texture": "Buildings\\Dev_Coop_Blue",
+                      "ShowAsSeparateConstructionEntry": true, "BuildCost": 1500 },
+                    { "Id": "Dev_StoneCoop", "Name": "Stone Henhouse", "Texture": "Buildings\\Dev_Coop_Stone", "Condition": "FALSE" }
+                ]
             },
             "Dev_BigCoop": {
                 "Name": "Big Henhouse", "Description": "Room for eight hens, and an incubator.", "Texture": "Buildings\\Dev_Coop",

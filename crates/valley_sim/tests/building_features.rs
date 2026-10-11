@@ -92,3 +92,22 @@ fn silos_store_hay_from_data_and_indoor_items_appear() {
     assert_eq!(inc.item_id, "Dev_Incubator");
     assert!(matches!(inc.kind, ObjKind::Machine { .. } | ObjKind::Placed));
 }
+
+#[test]
+fn skins_change_a_buildings_look_and_can_be_built_directly() {
+    let mut w = world();
+    let skins = w.building_skins("Coop");
+    assert_eq!(skins, vec![("Dev_BlueCoop".to_string(), "Blue Henhouse".to_string())], "conditions filter skins");
+    let d = w.construction_entry("Coop|Dev_BlueCoop").unwrap();
+    assert_eq!((d.name.as_str(), d.build_cost), ("Blue Henhouse", 1500));
+    let money = w.farmer.money;
+    w.place_building("Coop|Dev_BlueCoop", TilePos::new(10, 18)).unwrap();
+    assert_eq!(w.farmer.money, money - 1500);
+    let b = w.buildings[0].clone();
+    assert_eq!((b.kind.as_str(), b.skin.as_deref()), ("Coop", Some("Dev_BlueCoop")));
+    assert_eq!(w.building_texture(&b).as_deref(), Some("Buildings\\Dev_Coop_Blue"));
+    // Back to the default look; unavailable looks are refused.
+    w.set_building_skin(b.id, None).unwrap();
+    assert_eq!(w.building_texture(&w.buildings[0]).as_deref(), Some("Buildings\\Dev_Coop"));
+    assert!(w.set_building_skin(b.id, Some("Dev_StoneCoop")).is_err());
+}

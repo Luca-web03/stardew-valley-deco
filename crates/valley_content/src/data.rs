@@ -674,6 +674,22 @@ pub struct BuildingData {
     pub collision_map: Option<String>,
     /// Built at once, without a builder's days.
     pub magical_construction: bool,
+    /// Alternative looks (`Skins`).
+    pub skins: Vec<BuildingSkin>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct BuildingSkin {
+    pub id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub texture: String,
+    pub condition: Option<String>,
+    pub build_days: Option<i32>,
+    pub build_cost: Option<i32>,
+    pub build_materials: Option<Vec<BuildingMaterial>>,
+    pub show_as_separate_construction_entry: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -761,6 +777,7 @@ impl Default for BuildingData {
             indoor_items: Vec::new(),
             collision_map: None,
             magical_construction: false,
+            skins: Vec::new(),
         }
     }
 }

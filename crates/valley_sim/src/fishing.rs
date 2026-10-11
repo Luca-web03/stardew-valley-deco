@@ -490,6 +490,7 @@ impl World {
                             }
                         }
                         self.order_fish(&caught);
+                        self.festival_catch_rewards(&f.id);
                         if game.treasure_caught {
                             let loot = self.fishing_treasure(&mut rng);
                             self.sound("openChest");
