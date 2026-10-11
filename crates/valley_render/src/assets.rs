@@ -117,6 +117,22 @@ impl Assets {
     }
 
     /// Like [`Assets::tex`] but returns None if the asset doesn't exist.
+    /// The menu skin from the game's menu sheet, if the content has it.
+    pub fn ui_skin(&mut self, cm: &mut ContentManager, store: &mut TextureStore) -> Option<crate::ui::UiSkin> {
+        let lay = self.layouts(cm).ui;
+        let tex = self.try_tex(cm, store, &lay.texture)?;
+        let (tw, _) = store.size(tex);
+        let ts = lay.tile_size.max(1);
+        let cols = (tw as i32 / ts).max(1);
+        let [x, y, w, h] = lay.box_rect;
+        Some(crate::ui::UiSkin {
+            tex,
+            box_src: engine::IRect::new(x, y, w, h),
+            slot_src: engine::IRect::new((lay.slot_tile % cols) * ts, (lay.slot_tile / cols) * ts, ts, ts),
+            scale: lay.scale,
+        })
+    }
+
     pub fn try_tex(&mut self, cm: &mut ContentManager, store: &mut TextureStore, asset: &str) -> Option<TexId> {
         let t = self.tex(cm, store, asset);
         (Some(t) != self.missing).then_some(t)

@@ -12,10 +12,21 @@ pub const TEXT: Color = Color::rgb(70, 36, 20);
 pub const TEXT_LIGHT: Color = Color::rgb(255, 250, 235);
 pub const HIGHLIGHT: Color = Color::rgb(255, 80, 60);
 
+/// Menu frame sprites from the game's menu sheet (see `UiLayout`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct UiSkin {
+    pub tex: TexId,
+    pub box_src: IRect,
+    pub slot_src: IRect,
+    pub scale: f32,
+}
+
 pub struct Ui<'a> {
     pub out: &'a mut DrawList,
     pub font: &'a Font,
     pub white: TexId,
+    /// The game's menu frames when available; flat colors otherwise.
+    pub skin: Option<UiSkin>,
     pub depth: f32,
 }
 
@@ -24,10 +35,35 @@ impl<'a> Ui<'a> {
         self.out.fill(r, c, self.depth);
     }
 
+    /// A 9-slice box: corners kept, edges and middle stretched.
+    fn nine_slice(&mut self, skin: UiSkin, r: FRect, depth: f32) {
+        let s = skin.box_src;
+        let c = s.w / 3;
+        let cs = c as f32 * skin.scale;
+        let (cw, ch) = (cs.min(r.w / 2.0), cs.min(r.h / 2.0));
+        let xs = [r.x, r.x + cw, r.x + r.w - cw];
+        let ws = [cw, (r.w - 2.0 * cw).max(0.0), cw];
+        let ys = [r.y, r.y + ch, r.y + r.h - ch];
+        let hs = [ch, (r.h - 2.0 * ch).max(0.0), ch];
+        for row in 0..3 {
+            for col in 0..3 {
+                let src = IRect::new(s.x + col as i32 * c, s.y + row as i32 * c, c, c);
+                let dst = FRect::new(xs[col], ys[row], ws[col], hs[row]);
+                if dst.w > 0.0 && dst.h > 0.0 {
+                    self.out.sprite(Sprite::new(skin.tex, src, dst, depth));
+                }
+            }
+        }
+    }
+
     /// Framed panel.
     pub fn panel(&mut self, r: FRect) {
         let d = self.depth;
         self.out.fill(FRect::new(r.x + 6.0, r.y + 6.0, r.w, r.h), Color::rgba(0, 0, 0, 70), d);
+        if let Some(skin) = self.skin {
+            self.nine_slice(skin, r, d + 0.00003);
+            return;
+        }
         self.out.fill(r, FRAME, d + 0.00001);
         self.out.fill(FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0), FRAME_LIGHT, d + 0.00002);
         self.out.fill(FRect::new(r.x + 8.0, r.y + 8.0, r.w - 16.0, r.h - 16.0), PANEL, d + 0.00003);
@@ -36,8 +72,12 @@ impl<'a> Ui<'a> {
     /// Inset slot (inventory cell).
     pub fn slot(&mut self, r: FRect, selected: bool) {
         let d = self.depth + 0.0001;
-        self.out.fill(r, PANEL_DARK, d);
-        self.out.fill(FRect::new(r.x + 2.0, r.y + 2.0, r.w - 4.0, r.h - 4.0), Color::rgb(232, 196, 140), d + 0.00001);
+        if let Some(skin) = self.skin {
+            self.out.sprite(Sprite::new(skin.tex, skin.slot_src, r, d));
+        } else {
+            self.out.fill(r, PANEL_DARK, d);
+            self.out.fill(FRect::new(r.x + 2.0, r.y + 2.0, r.w - 4.0, r.h - 4.0), Color::rgb(232, 196, 140), d + 0.00001);
+        }
         if selected {
             self.out.outline(r, 4.0, HIGHLIGHT, d + 0.0002);
         }
@@ -103,8 +143,18 @@ impl<'a> Ui<'a> {
     pub fn button(&mut self, r: FRect, label: &str, hover: bool) -> FRect {
         // Above a panel drawn at the same base depth.
         let d = self.depth + 0.0001;
-        self.out.fill(r, FRAME, d);
-        self.out.fill(FRect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0), if hover { Color::rgb(255, 236, 190) } else { PANEL_DARK }, d + 0.00001);
+        match self.skin {
+            Some(skin) => {
+                self.nine_slice(UiSkin { scale: skin.scale * 0.5, ..skin }, r, d);
+                if hover {
+                    self.out.fill(FRect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, r.h - 8.0), Color::rgba(255, 255, 255, 60), d + 0.00001);
+                }
+            }
+            None => {
+                self.out.fill(r, FRAME, d);
+                self.out.fill(FRect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0), if hover { Color::rgb(255, 236, 190) } else { PANEL_DARK }, d + 0.00001);
+            }
+        }
         let scale = 2.0;
         let m = self.font.measure(label, scale);
         self.text(label, Vec2::new(r.x + (r.w - m.x) / 2.0, r.y + (r.h - self.font.line_height(scale)) / 2.0), scale, TEXT);

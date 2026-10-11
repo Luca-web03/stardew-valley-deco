@@ -58,9 +58,15 @@ their defaults:
   "trees":     { "texture": "TerrainFeatures/tree{kind}_{season}", "canopy": [0, 0, 48, 96], "stump": [32, 96, 16, 32] },
   "farmer":    { "texture": "Characters/Farmer/my_simple_sheet" },
   "hats":      { "texture": "Characters/Farmer/hats", "cell_w": 20, "cell_h": 20, "facing_rows": [0, 1, 3, 2], "offset": [-2, -5] },
-  "clothing_icons": { "texture": "TileSheets/my_clothing_icons" }
+  "clothing_icons": { "texture": "TileSheets/my_clothing_icons" },
+  "ui":        { "texture": "Maps/MenuTiles", "box": [0, 256, 60, 60], "slot_tile": 10, "tile_size": 64, "scale": 1.0 }
 }
 ```
+
+* `ui`: menu frames are a 9-slice of `box` (corners a third of its width,
+  drawn at `scale`; buttons at half) and inventory slots are tile
+  `slot_tile` of a `tile_size` grid in `texture`. Without that texture the
+  menus use flat colours.
 
 * `farmer.layers`: compose the farmer from your own sheets, bottom first.
   Each layer copies, for every output frame (4 walk frames x 4 facings of

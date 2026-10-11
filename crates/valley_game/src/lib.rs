@@ -1538,7 +1538,8 @@ impl ValleyGame {
         out.fill(FRect::new(0.0, sh * 0.58, sw, sh * 0.04), Color::rgb(80, 150, 56), 0.011);
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
-        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let skin = self.assets.ui_skin(&mut self.cm, &mut ctx.textures);
+        let mut ui = Ui { out, font, white, skin, depth: DEPTH_HUD };
         let title_w = ui.measure("valley-rs", 8.0).x;
         ui.text_shadow("valley-rs", Vec2::new((sw - title_w) / 2.0, sh * 0.15), 8.0, ui::TEXT_LIGHT);
         let sub = if self.cm.has_game_content { "using your game content" } else { "placeholder content (no game folder set)" };
@@ -1562,7 +1563,8 @@ impl ValleyGame {
         };
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
-        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let skin = self.assets.ui_skin(&mut self.cm, &mut ctx.textures);
+        let mut ui = Ui { out, font, white, skin, depth: DEPTH_HUD };
         ui.panel(FRect::new(sw / 2.0 - 400.0, 40.0, 800.0, sh - 80.0));
         ui.text_centered("Load Game", sw / 2.0, 70.0, 3.0, ui::TEXT);
         if list.is_empty() {
@@ -1586,7 +1588,8 @@ impl ValleyGame {
         let farmer_tex = valley_render::world_draw::farmer_texture(&mut rc, &look);
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
-        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let skin = self.assets.ui_skin(&mut self.cm, &mut ctx.textures);
+        let mut ui = Ui { out, font, white, skin, depth: DEPTH_HUD };
         let cx = create_cx(sw);
         ui.panel(FRect::new(cx - 360.0, sh / 2.0 - 260.0, 720.0, 520.0));
         let lp = look_panel(sw, sh);
@@ -1649,7 +1652,8 @@ impl ValleyGame {
         }
         let font = self.font.as_ref().unwrap();
         let white = rc.assets.white(rc.textures);
-        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let skin = rc.assets.ui_skin(rc.cm, rc.textures);
+        let mut ui = Ui { out, font, white, skin, depth: DEPTH_HUD };
         let name = w.construction_entry(&p.kind).map(|d| d.name.clone()).unwrap_or_default();
         let r = FRect::new(16.0, 16.0, 720.0, 72.0);
         ui.panel(r);
@@ -1681,8 +1685,9 @@ impl ValleyGame {
         // NPC speech bubbles.
         let font = self.font.as_ref().unwrap();
         let white = rc.assets.white(rc.textures);
+        let skin = rc.assets.ui_skin(rc.cm, rc.textures);
         {
-            let mut ui = Ui { out, font, white, depth: valley_render::DEPTH_OVERLAY + 0.02 };
+            let mut ui = Ui { out, font, white, skin, depth: valley_render::DEPTH_OVERLAY + 0.02 };
             for npc in w.npcs_here() {
                 if let Some((text, _)) = &npc.bubble {
                     let p = cam.to_screen(npc.pos);
@@ -1710,7 +1715,7 @@ impl ValleyGame {
             }
         }
 
-        let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
+        let mut ui = Ui { out, font, white, skin, depth: DEPTH_HUD };
         // Cutscenes hide the HUD (festival roaming keeps it).
         if !w.in_event() || w.festival_roaming() {
             hud::draw_hud(&mut rc, &mut ui, w, sw, sh, &self.toasts);

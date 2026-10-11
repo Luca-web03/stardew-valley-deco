@@ -253,6 +253,28 @@ pub struct Layouts {
     pub decor: DecorLayout,
     pub trees: TreeLayout,
     pub farmer: FarmerLayout,
+    pub ui: UiLayout,
+}
+
+/// Menu frames: a 9-slice box (corners a third of the rect) and the
+/// inventory slot, from the game's menu sheet when present (assumed
+/// defaults: `Maps/MenuTiles`, box (0, 256, 60, 60), slot = 64x64 tile 10).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct UiLayout {
+    pub texture: String,
+    #[serde(rename = "box")]
+    pub box_rect: [i32; 4],
+    pub slot_tile: i32,
+    pub tile_size: i32,
+    /// Screen pixels per sheet pixel for corners and edges.
+    pub scale: f32,
+}
+
+impl Default for UiLayout {
+    fn default() -> Self {
+        Self { texture: "Maps/MenuTiles".into(), box_rect: [0, 256, 60, 60], slot_tile: 10, tile_size: 64, scale: 1.0 }
+    }
 }
 
 impl Layouts {
