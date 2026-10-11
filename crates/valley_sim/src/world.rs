@@ -90,6 +90,8 @@ pub enum WorldEvent {
     OpenTailoring,
     /// The forge menu (`forge`).
     OpenForge,
+    /// The crafting page (opened at a workbench).
+    OpenCrafting,
     /// Mastery pedestal: unspent points and skills that can be mastered.
     MasteryMenu { points: i32, skills: Vec<crate::farmer::Skill> },
     /// Casino games.
@@ -266,6 +268,8 @@ pub struct World {
     pub giant_crops: BTreeMap<String, valley_content::data::GiantCropData>,
     /// `Data/Fences` and `Data/FloorsAndPaths` (see `fences`).
     pub fences: BTreeMap<String, crate::fences::FenceData>,
+    /// Workbench the farmer last crafted at (location, tile).
+    pub crafting_station: Option<(String, TilePos)>,
     pub floors: BTreeMap<String, crate::fences::FloorPathData>,
     /// Data/Powers (book powers).
     pub powers: BTreeMap<String, crate::mastery::PowerData>,
@@ -432,6 +436,7 @@ impl World {
             powers: crate::mastery::load_powers(cm),
             giant_crops: crate::clumps::load_giant_crops(cm),
             fences: crate::fences::load_fences(cm),
+            crafting_station: None,
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -800,6 +805,7 @@ impl World {
         self.deliver_dated_mail();
         self.roll_daily_quest();
         self.animals_morning();
+        self.automation_morning();
         for loc in self.locations.values_mut() {
             if loc.outdoors && raining {
                 for t in loc.state.terrain.values_mut() {
@@ -1460,6 +1466,9 @@ impl World {
             return true;
         }
         if self.break_slime_ball(target) || self.load_incubator(target) {
+            return true;
+        }
+        if self.attach_to_sprinkler(target) || self.use_automation(target) {
             return true;
         }
         if self.interact_object(target) {
@@ -2520,13 +2529,11 @@ impl World {
         if !self.farmer.crafting_recipes.contains_key(name) {
             return false;
         }
-        let out = r.output();
-        if !self.farmer.inventory.can_fit(&out) {
+        if !self.farmer.inventory.can_fit(&r.output()) {
             self.hud("Inventory full");
             return false;
         }
-        let items = self.items.clone();
-        let Some(item) = r.craft(&items, &mut self.farmer) else {
+        let Some(item) = self.craft_with_station(name) else {
             self.sound("cancel");
             return false;
         };

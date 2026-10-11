@@ -625,6 +625,7 @@ impl ValleyGame {
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::OpenTailoring => self.menus.push(Menu::Tailoring { left: None, right: None }),
                 WorldEvent::OpenForge => self.menus.push(Menu::Forge { left: None, right: None }),
+                WorldEvent::OpenCrafting => self.menus.push(Menu::Inventory { tab: InvTab::Crafting, held: None, hovered: None }),
                 WorldEvent::OpenReels => self.menus.push(Menu::Reels { bet: 10, last: None }),
                 WorldEvent::MasteryMenu { points, skills } => {
                     let mut options: Vec<String> = skills.iter().map(|s| format!("{s:?}: {}", valley_sim::mastery::perk_text(*s))).collect();
@@ -2148,7 +2149,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     }
                     for (i, (r, name)) in recipe_rects(sw, sh).iter().zip(&names).enumerate() {
                         let recipe = &w.recipes[name];
-                        let can = recipe.can_craft(&w.items, &w.farmer);
+                        let can = w.can_craft_here(name);
                         ui.slot(*r, *hovered == Some(i));
                         let out = recipe.output();
                         let (tex, src) = item_sprite(rc, w, &out);

@@ -132,7 +132,7 @@ impl World {
                     ObjKind::Cask { item: None, aged: 0.0 }
                 } else if self.items.machines.contains_key(&qid) {
                     ObjKind::Machine { output: None, minutes_left: 0, ready: false }
-                } else if self.items.big(id).is_some_and(|b| b.data.name.contains("Chest") || b.data.context_tags.iter().flatten().any(|t| t == "chest_item" || t == "storage_item")) {
+                } else if self.is_auto_grabber(id) || self.items.big(id).is_some_and(|b| b.data.name.contains("Chest") || b.data.context_tags.iter().flatten().any(|t| t == "chest_item" || t == "storage_item")) {
                     ObjKind::Chest(Inventory::new(36))
                 } else {
                     ObjKind::Placed
@@ -143,7 +143,7 @@ impl World {
                 Some(fence) => fence,
                 None => {
                     let kind = match sprinkler_shape(&self.items, id) {
-                        Some(s) => ObjKind::Sprinkler { radius: s },
+                        Some(s) => ObjKind::Sprinkler { radius: s, attachment: None, fertilizer: None },
                         None => ObjKind::Placed,
                     };
                     PlacedObject::new(id, false, kind)
@@ -512,13 +512,15 @@ impl World {
 
     /// Morning: sprinklers water nearby soil.
     pub fn run_sprinklers(&mut self) {
+        self.enrich_soil();
+        let nozzles: Vec<String> = self.items.objects.keys().filter(|k| self.is_nozzle(k)).cloned().collect();
         for loc in self.locations.values_mut() {
             let sprinklers: Vec<(TilePos, SprinklerShape)> = loc
                 .state
                 .objects
                 .iter()
-                .filter_map(|(p, o)| match o.kind {
-                    ObjKind::Sprinkler { radius } => Some((*p, radius)),
+                .filter_map(|(p, o)| match &o.kind {
+                    ObjKind::Sprinkler { radius, attachment, .. } => Some((*p, crate::automation::sprinkler_area(*radius, attachment.as_ref().is_some_and(|a| nozzles.contains(a))))),
                     _ => None,
                 })
                 .collect();

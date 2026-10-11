@@ -243,8 +243,16 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
             s.flip_x = o.flip;
             out.sprite(s);
         }
-        // Finished machines show their product in a bobbing bubble.
-        if let ObjKind::Machine { output: Some(item), ready: true, .. } = &o.kind {
+        // Finished machines (and stocked auto-grabbers) show their product
+        // in a bobbing bubble.
+        let grabbed = match &o.kind {
+            ObjKind::Chest(inv) if o.big && w.is_auto_grabber(&o.item_id) => inv.slots.iter().flatten().next(),
+            _ => None,
+        };
+        if let Some(item) = grabbed.or(match &o.kind {
+            ObjKind::Machine { output: Some(item), ready: true, .. } => Some(item),
+            _ => None,
+        }) {
             let bob = ((w.game_ms as f32) / 250.0).sin() * 4.0;
             let white = rc.assets.white(rc.textures);
             let bubble = FRect::new(pos.x + 4.0, pos.y - TILE_F * 1.9 + bob, TILE_F - 8.0, TILE_F - 8.0);

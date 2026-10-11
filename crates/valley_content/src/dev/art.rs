@@ -450,6 +450,8 @@ pub const ICON_STONE_PATH: i32 = 92;
 pub const ICON_GRAVEL_PATH: i32 = 93;
 pub const ICON_TEA_SAPLING: i32 = 94;
 pub const ICON_TEA_LEAVES: i32 = 95;
+pub const ICON_NOZZLE: i32 = 96;
+pub const ICON_ENRICHER: i32 = 97;
 pub const GEM_COLORS: [(u8, u8, u8); 6] = [(60, 190, 100), (90, 200, 220), (220, 50, 70), (160, 90, 210), (240, 180, 50), (100, 170, 110)];
 
 fn seed_packet(c: &mut Cell, col: Color) {
@@ -1058,6 +1060,23 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        // Pressure nozzle: a brass cone.
+        let mut c = Cell::at(&mut img, ICON_NOZZLE, OBJ_COLS, 16, 16);
+        for i in 0..8 {
+            c.rect(4 + i / 2, 3 + i, 8 - i, 1, Color::rgb(210, 170, 70));
+        }
+        c.rect(7, 11, 2, 3, Color::rgb(150, 110, 40));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Enricher: a green canister with a funnel.
+        let mut c = Cell::at(&mut img, ICON_ENRICHER, OBJ_COLS, 16, 16);
+        c.rect(4, 6, 8, 8, Color::rgb(80, 150, 80));
+        c.rect(5, 3, 6, 3, Color::rgb(170, 170, 180));
+        c.rect(6, 9, 4, 2, Color::rgb(220, 200, 120));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Rain totem: a carved post with a cloud.
         let mut c = Cell::at(&mut img, ICON_RAIN_TOTEM, OBJ_COLS, 16, 16);
         c.rect(6, 5, 4, 10, Color::rgb(150, 100, 60));
@@ -1082,7 +1101,7 @@ pub fn objects() -> Image {
 
 /// Big craftables: 16x32 cells, 8 columns. 0 = storage box, 1 = juicer, 2 = furnace.
 pub fn craftables() -> Image {
-    let mut img = Image::new(128, 64);
+    let mut img = Image::new(128, 96);
     let wood = Color::rgb(160, 104, 56);
     {
         let mut c = Cell::at(&mut img, 0, 8, 16, 32);
@@ -1172,6 +1191,42 @@ pub fn craftables() -> Image {
         c.rect(6, 22, 4, 2, Color::rgb(50, 40, 30));
         c.px(4, 15, Color::rgb(240, 200, 60));
         c.px(11, 14, Color::rgb(240, 200, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Auto-grabber: a metal bin with a claw on top.
+        let mut c = Cell::at(&mut img, 13, 8, 16, 32);
+        c.rect(2, 16, 12, 14, Color::rgb(140, 145, 155));
+        c.rect(2, 16, 12, 2, Color::rgb(180, 185, 195));
+        c.rect(7, 8, 2, 8, Color::rgb(90, 90, 100));
+        c.rect(4, 7, 8, 2, Color::rgb(90, 90, 100));
+        c.rect(5, 22, 6, 3, Color::rgb(60, 60, 70));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Auto-petter: a box with a soft brush arm.
+        let mut c = Cell::at(&mut img, 14, 8, 16, 32);
+        c.rect(2, 18, 12, 12, Color::rgb(200, 120, 120));
+        c.rect(7, 10, 2, 8, Color::rgb(120, 120, 130));
+        c.ellipse(8.0, 9.0, 4.0, 2.5, Color::rgb(240, 220, 180));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Mini shipping bin.
+        let mut c = Cell::at(&mut img, 15, 8, 16, 32);
+        c.rect(1, 20, 14, 10, Color::rgb(150, 100, 60));
+        c.rect(0, 17, 16, 3, Color::rgb(120, 80, 45));
+        c.rect(6, 23, 4, 2, Color::rgb(230, 210, 140));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Workbench: a sturdy table with tools.
+        let mut c = Cell::at(&mut img, 16, 8, 16, 32);
+        c.rect(0, 18, 16, 4, Color::rgb(170, 120, 70));
+        c.rect(1, 22, 2, 9, Color::rgb(130, 90, 50));
+        c.rect(13, 22, 2, 9, Color::rgb(130, 90, 50));
+        c.rect(3, 15, 5, 3, Color::rgb(140, 140, 150));
+        c.rect(10, 14, 2, 4, Color::rgb(120, 80, 40));
         c.auto_outline(OUTLINE);
     }
     {

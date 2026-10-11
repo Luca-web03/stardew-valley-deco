@@ -13,7 +13,15 @@ pub enum ObjKind {
     /// A machine processing an input; `output` is ready when `minutes_left` <= 0.
     Machine { output: Option<Item>, minutes_left: i32, ready: bool },
     /// Waters nearby tilled soil each morning.
-    Sprinkler { radius: SprinklerShape },
+    Sprinkler {
+        radius: SprinklerShape,
+        /// Pressure nozzle or enricher (`automation`).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attachment: Option<String>,
+        /// Fertilizer held by an enricher.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fertilizer: Option<Item>,
+    },
     /// Breakable mine rock or ore node.
     MineRock { rock: crate::mines::RockKind, health: i32 },
     /// Mine ladder (down to the next level, or up to the entrance).
@@ -42,6 +50,8 @@ pub enum SprinklerShape {
     Square1,
     /// The 5x5 square around it.
     Square2,
+    /// The 7x7 square around it (with a pressure nozzle).
+    Square3,
 }
 
 impl SprinklerShape {
@@ -53,8 +63,12 @@ impl SprinklerShape {
                     v.push(crate::TilePos::new(c.x + dx, c.y + dy));
                 }
             }
-            SprinklerShape::Square1 | SprinklerShape::Square2 => {
-                let r = if self == SprinklerShape::Square1 { 1 } else { 2 };
+            SprinklerShape::Square1 | SprinklerShape::Square2 | SprinklerShape::Square3 => {
+                let r = match self {
+                    SprinklerShape::Square1 => 1,
+                    SprinklerShape::Square2 => 2,
+                    _ => 3,
+                };
                 for dy in -r..=r {
                     for dx in -r..=r {
                         if dx != 0 || dy != 0 {

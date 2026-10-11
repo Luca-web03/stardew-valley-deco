@@ -6,6 +6,7 @@
 //! behaviour; constants that are best-effort approximations are marked as such.
 
 pub mod buffs;
+pub mod automation;
 pub mod bundle_remix;
 pub mod bushes;
 pub mod bundles;
