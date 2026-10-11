@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 engine.workspace = true
+arcade.workspace = true
 valley_content.workspace = true
 valley_game.workspace = true
 valley_sim.workspace = true

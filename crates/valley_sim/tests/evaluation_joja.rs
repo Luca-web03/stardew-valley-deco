@@ -128,3 +128,18 @@ fn original_area_names_set_their_well_known_flags() {
     let projects = valley_sim::evaluation::default_joja_projects();
     assert_eq!(projects.iter().map(|p| p.price).sum::<i32>(), 135_000);
 }
+
+#[test]
+fn arcade_cabinets_open_games_and_record_scores() {
+    let mut w = world();
+    w.drain_events();
+    assert!(w.run_action_pub("Arcade_Prairie"));
+    assert!(w.drain_events().iter().any(|e| matches!(e, WorldEvent::OpenArcade(g) if g == "ranger")));
+    assert!(w.run_action_pub("Arcade_Minecart"));
+    assert!(w.drain_events().iter().any(|e| matches!(e, WorldEvent::OpenArcade(g) if g == "rails")));
+    w.arcade_finished("rails", 900, false);
+    w.arcade_finished("rails", 500, true);
+    assert_eq!(w.farmer.counters["Arcade.rails.Best"], 900);
+    assert_eq!(w.farmer.counters["Arcade.rails.Wins"], 1);
+    assert!(w.farmer.achievements.iter().any(|a| a == "arcade_rails"));
+}

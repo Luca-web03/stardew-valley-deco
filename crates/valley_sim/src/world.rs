@@ -74,6 +74,8 @@ pub enum WorldEvent {
     Flash,
     /// Confirm a divorce.
     DivorcePrompt,
+    /// Play an arcade cabinet ("ranger" or "rails").
+    OpenArcade(String),
     /// Pick one of `options` (id, label) or cancel; the answer goes to
     /// [`World::choose`].
     Choice { text: String, options: Vec<(String, String)> },
@@ -1469,6 +1471,9 @@ impl World {
             "Theater" | "Port.Theater" => self.watch_movie(),
             "Port.Mastery" => self.open_mastery(),
             "Port.Shrine" => self.shrine_action(),
+            "Arcade_Prairie" => self.open_arcade("ranger"),
+            "Arcade_Minecart" => self.open_arcade("rails"),
+            "Port.Arcade" => self.open_arcade(toks.get(1).copied().unwrap_or("ranger")),
             "Port.JojaMembership" => self.joja_membership_action(),
             "Port.JojaForm" => self.joja_form_action(),
             "Port.Unlock" => self.unlock_action(&toks),

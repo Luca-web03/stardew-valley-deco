@@ -1,0 +1,10 @@
+[package]
+name = "arcade"
+description = "Two original arcade minigames (an arena shooter and a cart runner), playable inside the valley game or as standalone engine modules."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+engine.workspace = true

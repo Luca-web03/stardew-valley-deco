@@ -4,6 +4,29 @@ use valley_sim::dialogue::DialoguePage;
 use valley_sim::shop::ShopStock;
 use valley_sim::world::DayReport;
 
+/// A running arcade game kept in a menu (shared handle so menus stay
+/// cloneable).
+#[derive(Clone)]
+pub struct ArcadeSlot(pub std::rc::Rc<std::cell::RefCell<Box<dyn arcade::ArcadeGame>>>);
+
+impl ArcadeSlot {
+    pub fn new(game: Box<dyn arcade::ArcadeGame>) -> Self {
+        Self(std::rc::Rc::new(std::cell::RefCell::new(game)))
+    }
+}
+
+impl std::fmt::Debug for ArcadeSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ArcadeSlot({})", self.0.borrow().id())
+    }
+}
+
+impl PartialEq for ArcadeSlot {
+    fn eq(&self, o: &Self) -> bool {
+        std::rc::Rc::ptr_eq(&self.0, &o.0)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum QuestionKind {
     Sleep,
@@ -77,6 +100,10 @@ pub enum Menu {
     DayEnd {
         report: DayReport,
         ms: u32,
+    },
+    /// An arcade cabinet.
+    Arcade {
+        game: ArcadeSlot,
     },
     /// What happened on the farm overnight (shown before the day report).
     NightEvent {

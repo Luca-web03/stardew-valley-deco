@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/engine",
+    "crates/arcade",
     "crates/valley_content",
     "crates/valley_sim",
     "crates/valley_render",
@@ -17,6 +18,7 @@ publish = false
 
 [workspace.dependencies]
 engine = { path = "crates/engine" }
+arcade = { path = "crates/arcade" }
 valley_content = { path = "crates/valley_content" }
 valley_sim = { path = "crates/valley_sim" }
 valley_render = { path = "crates/valley_render" }

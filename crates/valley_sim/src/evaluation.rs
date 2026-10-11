@@ -310,4 +310,25 @@ impl World {
         }
         self.apply_cleared_tiles();
     }
+
+    /// Start an arcade game.
+    pub(crate) fn open_arcade(&mut self, game: &str) -> bool {
+        self.sound("coin");
+        self.emit(WorldEvent::OpenArcade(game.to_string()));
+        true
+    }
+
+    /// An arcade game ended: keep the best score and count wins.
+    pub fn arcade_finished(&mut self, game: &str, score: i32, won: bool) {
+        let best = self.farmer.counters.entry(format!("Arcade.{game}.Best")).or_insert(0);
+        let record = score > *best;
+        *best = (*best).max(score);
+        if won {
+            *self.farmer.counters.entry(format!("Arcade.{game}.Wins")).or_insert(0) += 1;
+            self.check_achievements();
+        }
+        if record && score > 0 {
+            self.emit(WorldEvent::Hud(format!("New high score: {score}")));
+        }
+    }
 }

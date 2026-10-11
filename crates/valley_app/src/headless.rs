@@ -140,6 +140,7 @@ pub fn run_script(host: &mut ModuleHost, script: &str) -> Result<(), String> {
 pub fn run(args: &Args) -> i32 {
     let mut host = ModuleHost::new(args.width, args.height);
     host.add(Box::new(crate::build_game(args)));
+    crate::add_extra_modules(&mut host);
     host.tick();
     if let Err(e) = run_script(&mut host, &args.script) {
         eprintln!("script error: {e}");

@@ -54,6 +54,8 @@ pub const ACHIEVEMENTS: &[Achievement] = &[
     Achievement { id: "slay_100", name: "Monster Hunter", description: "Defeat 100 monsters." },
     Achievement { id: "friend_5", name: "Good Neighbor", description: "Reach 5 hearts with someone." },
     Achievement { id: "married", name: "Partner for Life", description: "Get married." },
+    Achievement { id: "arcade_ranger", name: "Sheriff of the Sands", description: "Beat Dust Ranger." },
+    Achievement { id: "arcade_rails", name: "End of the Line", description: "Finish every track of Rail Runner." },
 ];
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
@@ -233,7 +235,8 @@ impl World {
         let cooked: i32 = f.cooking_recipes.values().sum();
         let crafted: i32 = f.crafting_recipes.values().sum();
         let best_hearts = f.friendships.values().map(|x| x.hearts()).max().unwrap_or(0);
-        let checks: [(&str, bool); 10] = [
+        let won = |g: &str| f.counters.get(&format!("Arcade.{g}.Wins")).copied().unwrap_or(0) > 0;
+        let checks: [(&str, bool); 12] = [
             ("earn_15k", f.total_earned >= 15_000),
             ("earn_100k", f.total_earned >= 100_000),
             ("ship_100", shipped >= 100),
@@ -244,6 +247,8 @@ impl World {
             ("slay_100", self.monsters_killed >= 100),
             ("friend_5", best_hearts >= 5),
             ("married", f.spouse.is_some()),
+            ("arcade_ranger", won("ranger")),
+            ("arcade_rails", won("rails")),
         ];
         for (id, ok) in checks {
             if ok && !self.farmer.achievements.iter().any(|a| a == id) {

@@ -129,6 +129,13 @@ pub fn build_game(args: &Args) -> ValleyGame {
     game
 }
 
+/// Other games hosted next to the valley (Ctrl+Tab switches): the two
+/// arcade cabinets also run as standalone modules. Merged games go here.
+pub fn add_extra_modules(host: &mut engine::ModuleHost) {
+    host.add(Box::new(arcade::ArcadeModule::new("ranger")));
+    host.add(Box::new(arcade::ArcadeModule::new("rails")));
+}
+
 fn main() {
     let args = parse_args();
     if args.audio_info {

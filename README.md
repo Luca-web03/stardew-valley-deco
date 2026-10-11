@@ -45,7 +45,8 @@ cargo run -p valley_app -- --headless --new Robin \
 | Toolbar slot | 1–0, -, =, mouse wheel |
 | Menu (items, crafting, skills, social, options) | E / I / Esc |
 | Journal (quests) | F |
-| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `clump`, `night`, `host`) |
+| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `clump`, `night`, `arcade`, `host`) |
+| Arcade cabinets | WASD move, arrows shoot (Dust Ranger); Space / W / Up jump (Rail Runner); Esc leaves |
 | Weapon special move | X or right click with a weapon held (nothing else to interact with) |
 | Slingshot | hold C / left mouse to pull, release to fire (aims at the mouse) |
 | Debug overlay | F3 |
@@ -62,13 +63,14 @@ dialogue, gifts, dating, marriage and children, shops, a traveling cart,
 clothing, mail, quests, special orders, bundles, museum, secret notes,
 achievements, trash cans, cutscene events, festivals, skills and
 professions, warp totems, obelisks and paid travel, weather and seasons,
-day/night, saves, audio, content mods and online co-op. See `docs/PROGRESS.md` for the
+day/night, saves, audio, arcade cabinets, content mods and online co-op. See `docs/PROGRESS.md` for the
 detailed status.
 
 ## Workspace
 
 | crate | purpose |
 |---|---|
+| `arcade` | Two original arcade minigames (arena shooter, cart runner) playable at in-game cabinets and as standalone modules. |
 | `engine` | Game-agnostic core: textures, depth-sorted draw lists, input, RNG, audio queue + mixer + synth, `GameModule` trait and `ModuleHost` (multi-game hosting), software renderer. |
 | `valley_content` | Content pipeline: TMX/TBIN/XNB maps and textures, XACT audio banks, JSON data models, string tokens, layered sources, original placeholder pack. |
 | `valley_sim` | Headless, deterministic game simulation (everything gameplay). |
@@ -107,7 +109,9 @@ menus while farmhands are connected. Farmhands are saved with the host's game.
 Each game is an `engine::GameModule`. Add yours next to the valley module in
 `crates/valley_app/src/main.rs` (`host.add(Box::new(MyGame::new()))`); the
 player switches with Ctrl+Tab, or a module hands over with
-`ctx.switch_to = Some("other_id".into())`. Shared services (textures, input,
+`ctx.switch_to = Some("other_id".into())`. The two arcade games are
+registered this way as an example (`add_extra_modules` in `main.rs`), so
+Ctrl+Tab cycles valley -> Dust Ranger -> Rail Runner. Shared services (textures, input,
 audio) live in `EngineCtx`. Details in `docs/ARCHITECTURE.md`.
 
 ## Tests

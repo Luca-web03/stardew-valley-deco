@@ -183,6 +183,11 @@ impl World {
         if o.big && self.is_sewing_machine(&o.item_id) {
             return self.open_tailoring();
         }
+        if o.big {
+            if let Some(game) = self.items.big(&o.item_id).and_then(|b| b.data.custom_fields.as_ref()).and_then(|f| f.get("Port.Arcade")).cloned() {
+                return self.open_arcade(&game);
+            }
+        }
         match o.kind {
             ObjKind::Chest(_) => {
                 self.emit(WorldEvent::OpenChest(t));

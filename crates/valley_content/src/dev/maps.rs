@@ -330,6 +330,9 @@ pub fn seed_shop() -> Map {
     for x in 3..10 {
         b.set_props("Buildings", x, 5, COUNTER, &[("Action", "OpenShop SeedShop")]);
     }
+    // Two arcade cabinets in the corner.
+    b.set_props("Buildings", 10, 7, TV, &[("Action", "Arcade_Prairie")]);
+    b.set_props("Buildings", 10, 8, TV, &[("Action", "Arcade_Minecart")]);
     b.set("Back", 6, h - 1, MAT);
     b.prop("Warp", "6 10 Town 25 9");
     b.map

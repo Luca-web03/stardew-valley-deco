@@ -46,6 +46,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "arcade"
+version = "0.1.0"
+dependencies = [
+ "engine",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1164,6 +1171,7 @@ dependencies = [
 name = "valley_app"
 version = "0.1.0"
 dependencies = [
+ "arcade",
  "cpal",
  "engine",
  "gilrs",
@@ -1191,6 +1199,7 @@ dependencies = [
 name = "valley_game"
 version = "0.1.0"
 dependencies = [
+ "arcade",
  "engine",
  "lz4_flex",
  "serde",

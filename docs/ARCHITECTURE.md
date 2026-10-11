@@ -76,3 +76,11 @@ clients send `Hello` then `InputEvent`s; the host answers with `Welcome`,
 then textures (each sent once per generation), lz4-compressed draw lists and
 sound commands. `valley_app::client` replays them with the same renderer and
 mixer as the local game.
+
+## arcade
+
+Original minigames that only need an `ArcadeInput` per tick and a `Canvas`
+(a 256x224 virtual screen of filled rects and built-in font text). The
+valley game runs them inside a menu (`Menu::Arcade`, so co-op farmhands
+can play too); `ArcadeModule` wraps one as an `engine::GameModule`, which
+is how `valley_app` hosts them next to the valley as separate games.

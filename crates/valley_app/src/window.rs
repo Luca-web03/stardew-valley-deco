@@ -87,6 +87,7 @@ pub fn run(args: Args) {
         let library = valley_content::audio::AudioLibrary::open(&game.cm);
         let mut audio = if args.mute { AudioSystem::silent(library) } else { AudioSystem::start(library) };
         host.add(Box::new(game));
+        crate::add_extra_modules(&mut host);
         let mut gpu = GpuTextures::default();
         let mut list = DrawList::new(args.width, args.height);
         let mut pads = crate::gamepad::Gamepads::new();

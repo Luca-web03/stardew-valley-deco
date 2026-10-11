@@ -65,6 +65,8 @@ were not available; such values are isolated constants that can be tuned.
       collections, achievements (engine-defined milestones), secret notes,
       perfection score (engine-defined)
 - [x] Casino with original games (reels, high-low), Qi coins, prize shop
+- [x] Arcade cabinets with two original minigames (Dust Ranger arena
+      shooter, Rail Runner cart game), also hosted as standalone modules
 - [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
       trash cans (Data/GarbageCans)
 - [x] Cutscene events (core command subset), festivals, passive festivals

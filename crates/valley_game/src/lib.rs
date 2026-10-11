@@ -605,6 +605,12 @@ impl ValleyGame {
                     let text = format!("Mastery points: {points}. Choose a perk:");
                     self.menus.push(Menu::Question { text, options, selected: 0, kind: QuestionKind::Mastery { skills } });
                 }
+                WorldEvent::OpenArcade(id) => {
+                    let seed = self.world.as_ref().map(|w| w.seed as u64 ^ w.game_ms).unwrap_or(1);
+                    if let Some(g) = arcade::create(&id, seed) {
+                        self.menus.push(Menu::Arcade { game: menus::ArcadeSlot::new(g) });
+                    }
+                }
                 WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
                 WorldEvent::Choice { text, options } => {
@@ -1233,6 +1239,19 @@ impl ValleyGame {
                 }
                 if input_map::menu_pressed(&ctx.input) || input_map::journal_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
                     close = true;
+                }
+            }
+            Menu::Arcade { game } => {
+                let input = arcade::ArcadeInput::from_input(&ctx.input);
+                let status = game.0.borrow_mut().update(&input);
+                if status == arcade::ArcadeStatus::Exited {
+                    close = true;
+                    let (id, r) = { let g = game.0.borrow(); (g.id(), g.result()) };
+                    action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                        if let Some(w) = g.world.as_mut() {
+                            w.arcade_finished(id, r.score, r.won);
+                        }
+                    }));
                 }
             }
             Menu::NightEvent { ms, .. } => {
@@ -2552,6 +2571,14 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
         }
         Menu::NightEvent { kind, ms } => draw_night_event(ui, *kind, *ms, sw, sh),
+        Menu::Arcade { game } => {
+            ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(12, 10, 14));
+            let depth = ui.depth + 0.01;
+            let font = ui.font.tex;
+            let mut c = arcade::Canvas::fit(ui.out, FRect::new(0.0, 0.0, sw, sh - 24.0), depth, Some(font));
+            game.0.borrow().draw(&mut c);
+            ui.text_centered("Esc: leave the cabinet", sw / 2.0, sh - 20.0, 2.0, Color::rgb(170, 170, 180));
+        }
         Menu::DayEnd { report, .. } => {
             ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(30, 20, 40));
             let f = menu_frame(sw, sh);
@@ -2716,6 +2743,10 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenBundles);
                 "opening bundles".into()
             }
+            Some("arcade") => {
+                w.emit(valley_sim::world::WorldEvent::OpenArcade(t.get(1).copied().unwrap_or("ranger").to_string()));
+                "opening the arcade".into()
+            }
             Some("clump") => {
                 use valley_sim::clumps::{ClumpKind, ResourceClump};
                 let kind = match t.get(1).copied().unwrap_or("stump") {
@@ -2752,7 +2783,7 @@ impl ValleyGame {
                 self.menus.push(Menu::NightEvent { kind, ms: 0 });
                 format!("showing {kind:?}")
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event>".into(),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event> | arcade <ranger|rails>".into(),
         }
     }
 }
