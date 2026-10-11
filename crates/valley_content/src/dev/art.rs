@@ -413,6 +413,8 @@ pub const ICON_WHIRL_LURE: i32 = 65;
 pub const ICON_CORK_FLOAT: i32 = 66;
 pub const ICON_TICKET: i32 = 67;
 pub const ICON_BOOK: i32 = 68;
+pub const ICON_SUN_SHELL: i32 = 69;
+pub const ICON_EMBER_SHARD: i32 = 70;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -690,6 +692,24 @@ pub fn objects() -> Image {
         c.rect(6, 2, 4, 2, Color::rgb(180, 180, 190));
         c.rect(7, 6, 2, 3, Color::rgb(250, 220, 60));
         c.rect(6, 8, 2, 3, Color::rgb(250, 220, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_SUN_SHELL, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 9.0, 5.5, 4.5, Color::rgb(250, 200, 120));
+        for x in [5, 8, 11] {
+            c.rect(x, 6, 1, 6, Color::rgb(220, 150, 80));
+        }
+        c.rect(6, 13, 4, 1, Color::rgb(220, 150, 80));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_EMBER_SHARD, OBJ_COLS, 16, 16);
+        for i in 0..6 {
+            c.rect(6 - i / 3, 3 + i, 4 + (i / 2), 1, Color::rgb(230, 90, 40));
+        }
+        c.rect(7, 9, 3, 4, Color::rgb(200, 60, 30));
+        c.px(8, 5, Color::rgb(255, 220, 120));
         c.auto_outline(OUTLINE);
     }
     {
@@ -1254,6 +1274,16 @@ pub fn mine_sheet() -> Image {
         c.rect(0, 13, 16, 3, Color::rgb(45, 38, 36));
     }
     Cell::at(&mut img, 4, 8, 16, 16).rect(0, 0, 16, 16, Color::BLACK);
+    {
+        // Lava: glowing orange with darker crust streaks.
+        let mut c = Cell::at(&mut img, 5, 8, 16, 16);
+        c.noise(Color::rgb(230, 100, 30), 10, 74);
+        for (x, y, w) in [(1, 3, 6), (8, 7, 7), (3, 12, 5)] {
+            c.rect(x, y, w, 1, Color::rgb(140, 40, 20));
+        }
+        c.px(5, 9, Color::rgb(255, 220, 120));
+        c.px(12, 4, Color::rgb(255, 220, 120));
+    }
     img
 }
 

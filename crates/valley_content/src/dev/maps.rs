@@ -265,6 +265,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 7, 3, MINECART, &[("Action", "MinecartTransport Default Town")]);
     b.set_props("Buildings", 6, 11, SIGN, &[("Action", "OpenShop Dev_Bookstall")]);
     b.set_props("Buildings", 27, 11, SIGN, &[("Action", "Port.Divorce")]);
+    b.set_props("Buildings", 18, 25, SIGN, &[("Action", "Port.Travel Dev_Isle 4 14 500 0600-1800")]);
     b.set_props("Buildings", 4, 11, LAMP, &[("Action", "Port.Mastery")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {
         b.map_tree(x, y);
@@ -409,6 +410,32 @@ pub fn dunes() -> Map {
     b.map
 }
 
+/// A small island (original placeholder): two sandy halves split by a
+/// channel, a broken rope bridge repaired with sun shells, and the volcano
+/// mouth on the far side.
+pub fn isle() -> Map {
+    let (w, h) = (26, 18);
+    let mut b = B::new("Dev_Isle", w, h, outdoor_sheet());
+    b.water(0, 0, w, h);
+    b.fill("Back", 2, 2, 10, 14, SAND);
+    b.fill("Back", 14, 2, 10, 14, SAND);
+    for (x, y) in [(3, 4), (9, 11), (16, 12), (22, 5)] {
+        b.set("Buildings", x, y, BUSH);
+    }
+    // The bridge deck is wood; the broken rope blocks it until repaired.
+    for x in 12..14 {
+        b.set("Back", x, 8, BRIDGE);
+        b.set_props("Buildings", x, 8, FENCE, &[("Port.ClearedBy", "port_isle_bridge")]);
+    }
+    b.set_props("Buildings", 11, 7, SIGN, &[("Action", "Port.Unlock SunShell 5 port_isle_bridge Repair the rope bridge.")]);
+    // Volcano mouth.
+    b.fill("Buildings", 18, 2, 5, 2, SANDSTONE);
+    b.set_props("Buildings", 20, 3, 29, &[("Action", "Port.Volcano")]);
+    // Boat home.
+    b.set_props("Buildings", 3, 15, SIGN, &[("Action", "Port.Travel Town 17 24 0")]);
+    b.map
+}
+
 /// A small games parlor off the dunes (original placeholder).
 pub fn parlor() -> Map {
     let (w, h) = (12, 10);
@@ -449,5 +476,5 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market(), parlor()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
 }

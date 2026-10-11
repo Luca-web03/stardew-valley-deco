@@ -28,6 +28,8 @@ pub mod passive_festivals;
 pub mod casino;
 pub mod perfection;
 pub mod mastery;
+pub mod island;
+pub mod volcano;
 pub mod gsq;
 pub mod house;
 pub mod input;

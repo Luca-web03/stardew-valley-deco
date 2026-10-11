@@ -239,6 +239,12 @@ pub struct Farmer {
     pub mastery_perks: Vec<Skill>,
     #[serde(default)]
     pub powers: Vec<String>,
+    /// Collectible counters (e.g. golden walnuts) and other tallies.
+    #[serde(default)]
+    pub counters: BTreeMap<String, i32>,
+    /// Forge level per weapon id (each level adds damage).
+    #[serde(default)]
+    pub weapon_forge: BTreeMap<String, i32>,
     /// `days_played` when the next baby arrives.
     #[serde(default)]
     pub baby_due: Option<i32>,
@@ -347,6 +353,8 @@ impl Farmer {
             movies_seen_with: Vec::new(),
             mastery_perks: Vec::new(),
             powers: Vec::new(),
+            counters: BTreeMap::new(),
+            weapon_forge: BTreeMap::new(),
             baby_due: None,
             letters_read: Vec::new(),
             professions: Vec::new(),

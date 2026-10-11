@@ -226,6 +226,8 @@ pub struct World {
     pub mine_ladder_spawned: bool,
     /// Where the up-ladder returns to.
     pub mine_entrance: (String, TilePos),
+    /// Where the volcano's top ladder leads.
+    pub volcano_entrance: (String, TilePos),
     pub cooking: BTreeMap<String, crate::crafting::Recipe>,
     pub mail_data: HashMap<String, String>,
     pub quest_data: HashMap<String, String>,
@@ -375,6 +377,7 @@ impl World {
             mine_stones_left: 0,
             mine_ladder_spawned: false,
             mine_entrance: ("Mine".into(), TilePos::new(5, 5)),
+            volcano_entrance: ("Farm".into(), TilePos::new(10, 10)),
             cooking: crate::crafting::parse_all_cooking(&cm.load_string_dict("Data/CookingRecipes")),
             mail_data: cm.load_string_dict("Data/mail"),
             quest_data: cm.load_string_dict("Data/Quests"),
@@ -730,6 +733,7 @@ impl World {
         self.cart_morning();
         self.orders_morning();
         self.passive_festivals_morning();
+        self.apply_cleared_tiles();
     }
 
     /// End the day (sleep or pass out) and start the next one.
@@ -1107,6 +1111,7 @@ impl World {
         self.check_warps();
         self.check_bed();
         self.update_horse();
+        self.lava_check();
     }
 
     /// When the farmer clips a corner, slide them around it.
@@ -1401,6 +1406,9 @@ impl World {
             "Tailoring" => self.open_tailoring(),
             "Theater" | "Port.Theater" => self.watch_movie(),
             "Port.Mastery" => self.open_mastery(),
+            "Port.Unlock" => self.unlock_action(&toks),
+            "Port.Volcano" => self.enter_volcano_from_here(),
+            "Port.Forge" => self.forge_action(),
             "Port.Divorce" | "DivorceBook" => {
                 if self.farmer.spouse.is_none() {
                     self.emit(WorldEvent::Message("Marriage and divorce records. You have nothing to file.".into()));
@@ -2000,6 +2008,9 @@ impl World {
 
     /// Add an item to the inventory; drops it at the farmer if full.
     pub fn give_item(&mut self, item: Item) {
+        if self.collect_counter(&item) {
+            return;
+        }
         let shown = item.clone();
         if let Some(left) = self.farmer.inventory.add(item) {
             let c = self.farmer.center();
@@ -2051,6 +2062,10 @@ impl World {
         }
         for i in picked.into_iter().rev() {
             let d = self.dropped[i].clone();
+            if self.collect_counter(&d.item) {
+                self.dropped.remove(i);
+                continue;
+            }
             if self.farmer.inventory.can_fit(&d.item) {
                 self.dropped.remove(i);
                 self.farmer.inventory.add(d.item.clone());

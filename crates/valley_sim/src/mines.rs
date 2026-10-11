@@ -328,6 +328,7 @@ impl World {
         }
         self.location_mut().state.objects.remove(&t);
         self.sound("stoneCrack");
+        self.volcano_rock_bonus(t.world_center());
         let level = self.mine_level().unwrap_or(1);
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, t.x as i64, t.y as i64]));
         let mi = self.mine_items.clone();
@@ -381,6 +382,10 @@ impl World {
 
     /// Use a ladder (or jump down a shaft) at `t`.
     pub(crate) fn use_ladder(&mut self, t: TilePos) -> bool {
+        if crate::volcano::volcano_floor(&self.current).is_some() {
+            let Some(PlacedObject { kind: ObjKind::Ladder { down }, .. }) = self.location().object(t).cloned() else { return false };
+            return self.volcano_ladder(down);
+        }
         if matches!(self.location().object(t).map(|o| &o.kind), Some(ObjKind::Shaft)) {
             self.emit(crate::world::WorldEvent::ShaftPrompt);
             return true;

@@ -103,6 +103,8 @@ Other conventions:
 | Books: objects with `Port.BookXp` ("<Skill> <xp>") and/or `Port.BookPower` (id in `Data/Powers`) | `valley_sim::mastery::read_book` |
 | Trinkets: `Data/Trinkets` items `(TR)id`, worn in the trinket slot; effects via `Port.TrinketStats` ("attack 2 defense 1 speed 1 magnet 32 luck 1"); the original's effect classes are not implemented | `valley_sim::item::TrinketData` |
 | Divorce: `Port.Divorce` / `DivorceBook` tile action, fee 50,000g (approx.); jealousy: -30 spouse points for gifts to another romanceable villager within 10 tiles of the spouse (approx.) | `valley_sim::romance` |
+| Collectibles: `Port.Collectible` ("<counter> [n]") objects go to a counter (golden walnut `73` -> `GoldenWalnut`); `Port.Unlock <counter> <cost> <flag> [text]` spends them; Buildings tiles with `Port.ClearedBy <flag>` vanish once the flag is set | `valley_sim::island` |
+| Volcano (generic): `Port.Volcano` enters 5 generated floors with lava (`Type: Lava` tiles burn), shard-bearing rocks and a `Port.Forge` on the last floor; shards = object `848` or placeholder `Dev_EmberShard`; +3 damage per forge level (approx.) | `valley_sim::volcano` |
 
 ## Mods
 

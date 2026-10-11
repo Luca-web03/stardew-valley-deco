@@ -44,6 +44,9 @@ were not available; such values are isolated constants that can be tuned.
       between areas, warp totems and obelisks, placeholder desert
 - [x] Stables and horse riding, minecart networks, TV channels with the
       cooking show
+- [x] Island-style progression (collectible counters, unlock actions,
+      flag-cleared tiles) and a generated volcano dungeon with lava and a
+      weapon forge; placeholder isle
 - [x] Farm buildings, silos and hay, animals (feeding, petting, produce,
       friendship), farmhouse upgrades, kitchen fridge, fish ponds, harvest huts
 - [x] NPCs: schedules, routing across locations, dialogue with questions,
@@ -72,8 +75,11 @@ were not available; such values are isolated constants that can be tuned.
       placeholder cues and music, music by location/season/weather/time
 
 ## Not yet
-- [ ] Area-specific mechanics beyond that (island, volcano, desert shops
-      and events)
+- [ ] The original's island/volcano/desert specifics that are game code
+      (golden walnut locations, parrots, volcano layouts and forge
+      enchantments, desert festival); generic counterparts exist:
+      collectibles + unlocks, flag-cleared tiles, a generated volcano with
+      lava and a forge
 - [ ] Real-content farmer sprite composition (generated placeholder farmer
       used; any simple sheet can be configured in `valley_layouts.json`)
 - [ ] Audio follow-ups: xWMA decoding (convert such tracks to

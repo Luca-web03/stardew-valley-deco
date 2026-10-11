@@ -173,7 +173,8 @@ impl World {
             let item = self.farmer.inventory.get(s.slot).cloned();
             if let Some(Item::Weapon { id }) = item {
                 if let Some(w) = self.items.weapons.get(&id).cloned() {
-                    self.melee_hit(w.min_damage, w.max_damage, w.knockback, w.crit_chance, w.crit_multiplier, w.area_of_effect);
+                    let forged = self.forge_level(&id) * crate::volcano::FORGE_BONUS;
+                    self.melee_hit(w.min_damage + forged, w.max_damage + forged, w.knockback, w.crit_chance, w.crit_multiplier, w.area_of_effect);
                 }
             }
         }
@@ -334,6 +335,10 @@ impl World {
         self.farmer.stamina = self.farmer.stamina.max(self.farmer.max_stamina as f32 * 0.25);
         self.farmer.invincible_ms = 0;
         self.weapon_swing = None;
+        if crate::volcano::volcano_floor(&self.current).is_some() {
+            self.locations.retain(|k, _| crate::volcano::volcano_floor(k).is_none());
+            self.monsters.retain(|m| crate::volcano::volcano_floor(&m.location).is_none());
+        }
         self.special = None;
         self.sling = None;
         self.projectiles.clear();
