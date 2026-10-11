@@ -7,7 +7,7 @@ use crate::math::Color;
 pub struct TexId(pub u32);
 
 /// CPU-side RGBA8 image (straight alpha).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Image {
     pub width: u32,
     pub height: u32,

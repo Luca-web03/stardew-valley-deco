@@ -9,7 +9,7 @@ pub mod net;
 
 use std::path::PathBuf;
 
-use engine::font::BuiltinFont;
+use engine::font::{BuiltinFont, Font, SpriteFont};
 use engine::{Color, DrawList, EngineCtx, FRect, GameModule, IRect, Key, MouseButton, Vec2};
 use valley_content::ContentManager;
 use valley_render::ui::{self, Ui};
@@ -61,11 +61,13 @@ pub struct Options {
     pub music_volume: f32,
     pub sound_volume: f32,
     pub bindings: input_map::Bindings,
+    /// Content language code ("" = English).
+    pub language: String,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Self { zoom: 1.0, music_volume: 0.75, sound_volume: 1.0, bindings: Default::default() }
+        Self { zoom: 1.0, music_volume: 0.75, sound_volume: 1.0, bindings: Default::default(), language: String::new() }
     }
 }
 
@@ -114,7 +116,7 @@ pub struct ValleyGame {
     pub cm: ContentManager,
     pub world: Option<World>,
     assets: Assets,
-    font: Option<BuiltinFont>,
+    font: Option<Font>,
     screen: Screen,
     menus: Vec<Menu>,
     toasts: Vec<(String, u32)>,
@@ -133,6 +135,8 @@ impl ValleyGame {
         let options = std::fs::read_to_string(save_dir.join("..").join("options.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         let options: Options = options;
         input_map::set_bindings(&options.bindings);
+        let mut cm = cm;
+        cm.set_locale(&options.language);
         Self {
             net: None,
             farm_choices: Vec::new(),
@@ -1038,6 +1042,17 @@ impl ValleyGame {
                                     }));
                                 }
                             }
+                            if language_rect(sw, sh).contains(ctx.input.mouse) {
+                                action = Some(Box::new(|g: &mut ValleyGame, _| {
+                                    let langs = g.cm.languages();
+                                    let i = langs.iter().position(|(c, _)| *c == g.options.language).unwrap_or(0);
+                                    let (code, name) = langs[(i + 1) % langs.len()].clone();
+                                    g.options.language = code.clone();
+                                    g.cm.set_locale(&code);
+                                    g.save_options();
+                                    g.toast(format!("Language: {name} (applies to newly loaded text; restart for everything)"));
+                                }));
+                            }
                             if b[0].contains(ctx.input.mouse) {
                                 action = Some(Box::new(|g: &mut ValleyGame, _| {
                                     g.menus.clear();
@@ -1523,7 +1538,7 @@ impl ValleyGame {
         let font = self.font.as_ref().unwrap();
         let white = self.assets.white(&mut ctx.textures);
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
-        let title_w = BuiltinFont::measure("valley-rs", 8.0).x;
+        let title_w = ui.measure("valley-rs", 8.0).x;
         ui.text_shadow("valley-rs", Vec2::new((sw - title_w) / 2.0, sh * 0.15), 8.0, ui::TEXT_LIGHT);
         let sub = if self.cm.has_game_content { "using your game content" } else { "placeholder content (no game folder set)" };
         ui.text_centered(sub, sw / 2.0, sh * 0.15 + 96.0, 2.0, ui::TEXT_LIGHT);
@@ -1981,6 +1996,12 @@ fn trash_rect(sw: f32, sh: f32) -> Option<FRect> {
     Some(FRect::new(f.x + f.w - 112.0, f.y + f.h - 112.0, 64.0, 64.0))
 }
 
+/// The language button in the options tab.
+fn language_rect(sw: f32, sh: f32) -> FRect {
+    let f = menu_frame(sw, sh);
+    FRect::new(f.x + 80.0, f.y + 190.0, 360.0, 30.0)
+}
+
 fn options_buttons(sw: f32, sh: f32) -> [FRect; 2] {
     let f = menu_frame(sw, sh);
     [FRect::new(f.x + 80.0, f.y + 40.0, 360.0, 64.0), FRect::new(f.x + 80.0, f.y + 120.0, 360.0, 64.0)]
@@ -2257,6 +2278,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     let b = options_buttons(sw, sh);
                     ui.button(b[0], "Save & Exit to Title", false);
                     ui.button(b[1], "Quit Game", false);
+                    ui.button(language_rect(sw, sh), &format!("Language: {}", LANG.with(|l| l.borrow().clone())), false);
                     let o = opts_snapshot();
                     let labels = [format!("Zoom {:.0}%", o.0 * 100.0), format!("Music {:.0}%", o.1 * 100.0), format!("Sound {:.0}%", o.2 * 100.0)];
                     for ((minus, plus), label) in option_adjust_rects(sw, sh).iter().zip(labels.iter()) {
@@ -2785,7 +2807,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
         Menu::Arcade { game } => {
             ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(12, 10, 14));
             let depth = ui.depth + 0.01;
-            let font = ui.font.tex;
+            let font = ui.font.builtin_tex();
             let mut c = arcade::Canvas::fit(ui.out, FRect::new(0.0, 0.0, sw, sh - 24.0), depth, Some(font));
             game.0.borrow().draw(&mut c);
             ui.text_centered("Esc: leave the cabinet", sw / 2.0, sh - 20.0, 2.0, Color::rgb(170, 170, 180));
@@ -2867,6 +2889,7 @@ fn draw_recipe_tooltip(rc: &mut RenderCtx, ui: &mut Ui, w: &World, r: &valley_si
 thread_local! {
     static MOUSE: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((0.0, 0.0)) };
     static OPTS: std::cell::Cell<(f32, f32, f32)> = const { std::cell::Cell::new((1.0, 0.75, 1.0)) };
+    static LANG: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
     static BINDS: std::cell::RefCell<(Vec<Vec<Key>>, Option<usize>)> = const { std::cell::RefCell::new((Vec::new(), None)) };
 }
 
@@ -3133,12 +3156,21 @@ impl GameModule for ValleyGame {
     }
 
     fn init(&mut self, ctx: &mut EngineCtx) {
-        self.font = Some(BuiltinFont::install(&mut ctx.textures));
+        // The game's own small font when the content has it.
+        self.font = Some(match self.cm.load_font("Fonts/SmallFont") {
+            Some(data) => {
+                let builtin = BuiltinFont::install(&mut ctx.textures);
+                Font::sprite(SpriteFont::install(&mut ctx.textures, "__font/SmallFont", data), builtin)
+            }
+            None => Font::Builtin(BuiltinFont::install(&mut ctx.textures)),
+        });
     }
 
     fn update(&mut self, ctx: &mut EngineCtx) {
         MOUSE.with(|m| m.set((ctx.input.mouse.x, ctx.input.mouse.y)));
         OPTS.with(|o| o.set((self.options.zoom, self.options.music_volume, self.options.sound_volume)));
+        let lang = if self.options.language.is_empty() { "English".to_string() } else { self.options.language.clone() };
+        LANG.with(|l| *l.borrow_mut() = lang);
         BINDS.with(|b| *b.borrow_mut() = ((0..input_map::BINDING_NAMES.len()).map(|i| self.options.bindings.get(i).clone()).collect(), self.rebinding));
         self.fade.alpha += (self.fade.target - self.fade.alpha).clamp(-0.05, 0.05);
         self.flash = self.flash.saturating_sub(1);

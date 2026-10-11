@@ -147,6 +147,52 @@ impl ContentManager {
         }
     }
 
+    /// Switch the content language (`""` = English, else a code such as
+    /// `de-DE`); assets named `<asset>.<code>` are then preferred.
+    pub fn set_locale(&mut self, locale: &str) {
+        if self.locale != locale {
+            self.locale = locale.to_string();
+            self.json_cache.clear();
+            self.string_cache.clear();
+        }
+    }
+
+    /// Languages the game offers: (code, name). The built-in ones plus
+    /// `Data/AdditionalLanguages` (`LanguageCode`, `Id`).
+    pub fn languages(&mut self) -> Vec<(String, String)> {
+        let mut v: Vec<(String, String)> = [
+            ("", "English"),
+            ("de-DE", "German"),
+            ("es-ES", "Spanish"),
+            ("fr-FR", "French"),
+            ("hu-HU", "Hungarian"),
+            ("it-IT", "Italian"),
+            ("ja-JP", "Japanese"),
+            ("ko-KR", "Korean"),
+            ("pt-BR", "Portuguese"),
+            ("ru-RU", "Russian"),
+            ("tr-TR", "Turkish"),
+            ("zh-CN", "Chinese"),
+        ]
+        .iter()
+        .map(|(c, n)| (c.to_string(), n.to_string()))
+        .collect();
+        let extra = self.peek_json("Data/AdditionalLanguages");
+        let entries: Vec<serde_json::Value> = match extra {
+            Some(serde_json::Value::Array(a)) => a,
+            Some(serde_json::Value::Object(o)) => o.into_iter().map(|(_, e)| e).collect(),
+            _ => Vec::new(),
+        };
+        for e in entries {
+            let Some(code) = e.get("LanguageCode").and_then(|c| c.as_str()) else { continue };
+            let name = e.get("Id").and_then(|c| c.as_str()).unwrap_or(code);
+            if !v.iter().any(|(c, _)| c == code) {
+                v.push((code.to_string(), name.to_string()));
+            }
+        }
+        v
+    }
+
     pub fn exists(&self, asset: &str) -> bool {
         self.read_with_ext(asset, &["png", "json", "tmx", "tbin", "xnb"]).is_some()
     }
@@ -168,6 +214,46 @@ impl ContentManager {
                 None
             }
         }
+    }
+
+    /// A sprite font: an XNB `SpriteFont`, or an unpacked pair
+    /// `<asset>.json` (`LineSpacing`, `Spacing`, `DefaultCharacter`,
+    /// `Glyphs`: { char: { "BoundsInTexture": [x,y,w,h], "Cropping": [x,y,w,h],
+    /// "LeftSideBearing", "Width", "RightSideBearing" } }) + `<asset>.png`.
+    pub fn load_font(&mut self, asset: &str) -> Option<engine::font::SpriteFontData> {
+        if let Some((_, bytes)) = self.read_with_ext(asset, &["xnb"]) {
+            match xnb::read(&bytes) {
+                Ok(XnbAsset::Font(f)) => return Some(f),
+                Ok(_) => self.warnings.push(format!("{asset}: not a font")),
+                Err(e) => self.warnings.push(format!("{asset}: {e}")),
+            }
+        }
+        let v = self.load_json_value(asset)?;
+        let image = self.load_image(asset)?;
+        let rect = |v: Option<&serde_json::Value>| -> engine::IRect {
+            let a: Vec<i32> = v.and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|n| n.as_i64()).map(|n| n as i32).collect()).unwrap_or_default();
+            match a.as_slice() {
+                [x, y, w, h] => engine::IRect::new(*x, *y, *w, *h),
+                _ => engine::IRect::new(0, 0, 0, 0),
+            }
+        };
+        let mut f = engine::font::SpriteFontData {
+            image,
+            line_spacing: v.get("LineSpacing").and_then(|n| n.as_i64()).unwrap_or(16) as i32,
+            spacing: v.get("Spacing").and_then(|n| n.as_f64()).unwrap_or(0.0) as f32,
+            default_char: v.get("DefaultCharacter").and_then(|c| c.as_str()).and_then(|c| c.chars().next()),
+            ..Default::default()
+        };
+        for (k, g) in v.get("Glyphs").and_then(|g| g.as_object()).into_iter().flatten() {
+            let Some(c) = k.chars().next() else { continue };
+            let src = rect(g.get("BoundsInTexture"));
+            f.chars.push(c);
+            f.glyphs.push(src);
+            f.cropping.push(rect(g.get("Cropping")));
+            let num = |key: &str, d: f32| g.get(key).and_then(|n| n.as_f64()).map(|n| n as f32).unwrap_or(d);
+            f.kerning.push([num("LeftSideBearing", 0.0), num("Width", src.w as f32), num("RightSideBearing", 0.0)]);
+        }
+        (!f.chars.is_empty()).then_some(f)
     }
 
     pub fn load_map(&mut self, asset: &str) -> Option<Map> {
@@ -219,6 +305,25 @@ impl ContentManager {
         let v = Arc::new(value);
         self.json_cache.insert(key, v.clone());
         Some(v)
+    }
+
+    /// A JSON asset with mods merged, without caching or warnings (for
+    /// read-only users such as the audio library).
+    pub fn peek_json(&self, asset: &str) -> Option<serde_json::Value> {
+        let parse = |b: &[u8]| serde_json::from_slice::<serde_json::Value>(b.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(b)).ok();
+        let Some(base) = self.base.clone() else {
+            let (_, bytes) = self.read_with_ext(asset, &["json"])?;
+            return parse(&bytes);
+        };
+        let mut value = Self::read_from(&*base, &self.locale, asset, &["json"]).and_then(|(_, b)| parse(&b));
+        for (_, src) in &self.mod_sources {
+            let Some(patch) = Self::read_from(&**src, &self.locale, asset, &["json"]).and_then(|(_, b)| parse(&b)) else { continue };
+            match value.as_mut() {
+                Some(v) => crate::mods::merge_json(v, &patch),
+                None => value = Some(patch),
+            }
+        }
+        value
     }
 
     pub fn load_json<T: DeserializeOwned>(&mut self, asset: &str) -> Option<T> {
@@ -301,5 +406,26 @@ impl ContentSource for SharedSource {
     }
     fn describe(&self) -> String {
         self.0.describe()
+    }
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::*;
+    use crate::source::MemSource;
+
+    #[test]
+    fn locale_prefers_translated_assets_and_lists_languages() {
+        let mut m = MemSource::new("test");
+        m.insert_str("Strings/UI.json", r#"{ "Hello": "Hello" }"#);
+        m.insert_str("Strings/UI.de-DE.json", r#"{ "Hello": "Hallo" }"#);
+        m.insert_str("Data/AdditionalLanguages.json", r#"[{ "Id": "Pirate", "LanguageCode": "en-PI" }]"#);
+        let mut cm = ContentManager::new(Box::new(m));
+        assert_eq!(cm.load_string_dict("Strings/UI")["Hello"], "Hello");
+        cm.set_locale("de-DE");
+        assert_eq!(cm.load_string_dict("Strings/UI")["Hello"], "Hallo");
+        let langs = cm.languages();
+        assert_eq!(langs[0].1, "English");
+        assert!(langs.iter().any(|(c, n)| c == "en-PI" && n == "Pirate"));
     }
 }

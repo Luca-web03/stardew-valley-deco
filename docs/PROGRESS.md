@@ -16,6 +16,8 @@ were not available; such values are isolated constants that can be tuned.
       an intro event
 - [x] Desktop window (macroquad) and headless scripted runner with screenshots
 - [x] Content mods: folder overlays with entry-level JSON merging
+- [x] Game fonts (XNB SpriteFont, DXT textures), language selection with
+      localized assets, `Data/AudioChanges`
 
 ## Gameplay
 - [x] Time, calendar, weather (Data/LocationContexts weather rules, else

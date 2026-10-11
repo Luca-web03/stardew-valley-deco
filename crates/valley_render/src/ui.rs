@@ -1,7 +1,7 @@
 //! UI drawing primitives in an original style: framed wooden boxes, text,
 //! item slots, bars. Menus in the game crate are built from these.
 
-use engine::font::BuiltinFont;
+use engine::font::Font;
 use engine::{Color, DrawList, FRect, IRect, Sprite, TexId, Vec2};
 
 pub const PANEL: Color = Color::rgb(244, 214, 160);
@@ -14,7 +14,7 @@ pub const HIGHLIGHT: Color = Color::rgb(255, 80, 60);
 
 pub struct Ui<'a> {
     pub out: &'a mut DrawList,
-    pub font: &'a BuiltinFont,
+    pub font: &'a Font,
     pub white: TexId,
     pub depth: f32,
 }
@@ -53,12 +53,12 @@ impl<'a> Ui<'a> {
     }
 
     pub fn text_centered(&mut self, s: &str, center_x: f32, y: f32, scale: f32, color: Color) {
-        let w = BuiltinFont::measure(s, scale).x;
+        let w = self.font.measure(s, scale).x;
         self.text(s, Vec2::new(center_x - w / 2.0, y), scale, color);
     }
 
     pub fn measure(&self, s: &str, scale: f32) -> Vec2 {
-        BuiltinFont::measure(s, scale)
+        self.font.measure(s, scale)
     }
 
     /// Draw `src` fitted into `r`, preserving aspect ratio (centered).
@@ -78,7 +78,7 @@ impl<'a> Ui<'a> {
             return;
         }
         let s = n.to_string();
-        let w = BuiltinFont::measure(&s, 2.0).x;
+        let w = self.font.measure(&s, 2.0).x;
         let p = Vec2::new(slot.x + slot.w - w - 4.0, slot.y + slot.h - 18.0);
         self.font.draw(self.out, &s, p + Vec2::new(2.0, 2.0), 2.0, Color::rgba(0, 0, 0, 160), self.depth + 0.0006);
         self.font.draw(self.out, &s, p, 2.0, TEXT_LIGHT, self.depth + 0.0007);
@@ -86,22 +86,7 @@ impl<'a> Ui<'a> {
 
     /// Wrap text to a pixel width at a given scale.
     pub fn wrap(&self, s: &str, width: f32, scale: f32) -> Vec<String> {
-        let max_chars = ((width / (8.0 * scale)).floor() as usize).max(1);
-        let mut lines = Vec::new();
-        for para in s.split('\n') {
-            let mut line = String::new();
-            for word in para.split_whitespace() {
-                if !line.is_empty() && line.len() + 1 + word.len() > max_chars {
-                    lines.push(std::mem::take(&mut line));
-                }
-                if !line.is_empty() {
-                    line.push(' ');
-                }
-                line.push_str(word);
-            }
-            lines.push(line);
-        }
-        lines
+        self.font.wrap(s, width, scale)
     }
 
     /// Vertical bar filled bottom-up (energy/health).
@@ -121,8 +106,8 @@ impl<'a> Ui<'a> {
         self.out.fill(r, FRAME, d);
         self.out.fill(FRect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0), if hover { Color::rgb(255, 236, 190) } else { PANEL_DARK }, d + 0.00001);
         let scale = 2.0;
-        let m = BuiltinFont::measure(label, scale);
-        self.text(label, Vec2::new(r.x + (r.w - m.x) / 2.0, r.y + (r.h - 8.0 * scale) / 2.0), scale, TEXT);
+        let m = self.font.measure(label, scale);
+        self.text(label, Vec2::new(r.x + (r.w - m.x) / 2.0, r.y + (r.h - self.font.line_height(scale)) / 2.0), scale, TEXT);
         r
     }
 }

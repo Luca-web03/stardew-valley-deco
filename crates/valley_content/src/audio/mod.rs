@@ -3,6 +3,9 @@
 //!
 //! A cue (or music track) name resolves, first match wins, to:
 //!
+//! 0. a `Data/AudioChanges` entry (public format: `Id`, `FilePaths` (one
+//!    picked at random; absolute, or relative to the content folder),
+//!    `Category`, `Looped`...), which adds or replaces cues (for mods);
 //! 1. a loose file `Audio/<cue>.wav` or `Audio/<cue>.ogg` in the content folder;
 //! 2. an entry from `Audio/cues.json` (manual cue -> wave index mapping);
 //! 3. the waves the cue plays according to `XACT/Sound Bank.xsb`;
@@ -57,6 +60,8 @@ pub struct AudioLibrary {
     banks: Vec<Bank>,
     sound_bank: Option<SoundBank>,
     overrides: HashMap<String, Vec<(usize, usize)>>,
+    /// `Data/AudioChanges`: cue -> file paths.
+    changes: HashMap<String, Vec<String>>,
     decoded: HashMap<(usize, usize), Option<Arc<SoundBuffer>>>,
     loose: HashMap<String, Option<(Arc<SoundBuffer>, Origin)>>,
     placeholders: HashMap<String, (Arc<SoundBuffer>, Origin)>,
@@ -81,7 +86,50 @@ impl AudioLibrary {
             }
             source = Arc::new(layered);
         }
-        Self::from_source(source)
+        let mut lib = Self::from_source(source);
+        if let Some(v) = cm.peek_json("Data/AudioChanges") {
+            lib.apply_audio_changes(&v);
+        }
+        lib
+    }
+
+    /// Register `Data/AudioChanges` entries (an object keyed by id, or a list).
+    pub fn apply_audio_changes(&mut self, v: &serde_json::Value) {
+        let entries: Vec<(Option<&String>, &serde_json::Value)> = match v {
+            serde_json::Value::Object(o) => o.iter().map(|(k, e)| (Some(k), e)).collect(),
+            serde_json::Value::Array(a) => a.iter().map(|e| (None, e)).collect(),
+            _ => return,
+        };
+        for (key, e) in entries {
+            let id = e.get("Id").and_then(|i| i.as_str()).map(str::to_string).or_else(|| key.cloned());
+            let paths: Vec<String> = e.get("FilePaths").and_then(|p| p.as_array()).map(|a| a.iter().filter_map(|p| p.as_str().map(|s| s.replace('\\', "/"))).collect()).unwrap_or_default();
+            if let (Some(id), false) = (id, paths.is_empty()) {
+                let key = id.to_lowercase();
+                self.loose.remove(&key);
+                self.changes.insert(key, paths);
+            }
+        }
+    }
+
+    fn changed_file(&mut self, cue: &str) -> Option<(Arc<SoundBuffer>, Origin)> {
+        let paths = self.changes.get(&cue.to_lowercase())?.clone();
+        let start = self.next_rand() as usize % paths.len();
+        for k in 0..paths.len() {
+            let path = &paths[(start + k) % paths.len()];
+            let p = std::path::Path::new(path);
+            let bytes = if p.is_absolute() { std::fs::read(p).ok() } else { self.source.read(path) };
+            let Some(bytes) = bytes else {
+                self.warn_once(path.clone(), format!("Data/AudioChanges {cue}: {path} not found"));
+                continue;
+            };
+            let r = if path.to_ascii_lowercase().ends_with(".ogg") { wav::decode_ogg(&bytes) } else { wav::decode(&bytes) };
+            match r {
+                Ok(b) if !b.is_empty() => return Some((Arc::new(b), Origin::File(path.clone()))),
+                Ok(_) => self.warn_once(path.clone(), format!("{path}: no audio data")),
+                Err(e) => self.warn_once(path.clone(), format!("{path}: {e}")),
+            }
+        }
+        None
     }
 
     pub fn from_source(source: Arc<dyn ContentSource>) -> Self {
@@ -90,6 +138,7 @@ impl AudioLibrary {
             banks: Vec::new(),
             sound_bank: None,
             overrides: HashMap::new(),
+            changes: HashMap::new(),
             decoded: HashMap::new(),
             loose: HashMap::new(),
             placeholders: HashMap::new(),
@@ -316,6 +365,9 @@ impl AudioLibrary {
     /// bank, wave names); `None` if nothing usable was found. Variations are
     /// picked at random; with `cache`, decoded waves are kept for reuse.
     pub fn load_real(&mut self, cue: &str, cache: bool) -> Option<(Arc<SoundBuffer>, Origin)> {
+        if let Some(r) = self.changed_file(cue) {
+            return Some(r);
+        }
         if let Some(r) = self.loose_file(cue, cache) {
             return Some(r);
         }
@@ -410,6 +462,17 @@ mod tests {
         let tone: Vec<i16> = (0..64).map(|i| (i * 100) as i16).collect();
         let wb1 = xwb::tests::build_xwb("Wave Bank(1)", &[xwb::tests::pcm16(44100, 1, &tone), xwb::tests::pcm16(44100, 2, &[1, 2, 3, 4])], false);
         vec![("XACT/Sound Bank.xsb", xsb::tests::sample_sound_bank()), ("XACT/Wave Bank.xwb", wb0), ("XACT/Wave Bank(1).xwb", wb1)]
+    }
+
+    #[test]
+    fn audio_changes_add_and_replace_cues() {
+        let tone: Vec<i16> = (0..32).map(|i| (i * 50) as i16).collect();
+        let wav = wav::encode_pcm16(&SoundBuffer::from_interleaved(22050, 1, tone));
+        let mut lib = library(&[("Mods/Bells/chime.wav", wav)]);
+        lib.apply_audio_changes(&serde_json::json!({ "Bells_Chime": { "Id": "Bells_Chime", "Category": "Sound", "FilePaths": ["Mods\\Bells\\chime.wav"] } }));
+        let (b, o) = lib.sfx("Bells_Chime");
+        assert_eq!(o, Origin::File("Mods/Bells/chime.wav".into()));
+        assert!(!b.is_empty());
     }
 
     #[test]

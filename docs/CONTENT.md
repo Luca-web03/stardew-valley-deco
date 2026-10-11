@@ -19,7 +19,19 @@ data, point the engine at your own copy of the game's `Content` folder.
 The content folder is layered over the built-in placeholder pack: anything
 found in your folder wins, anything missing falls back to placeholders. Raw
 `.xnb` files are read directly where possible (uncompressed or LZ4
-textures and maps); LZX-compressed files need unpacking first.
+textures in Color, Bgr565, Bgra5551, Bgra4444 and DXT1/3/5 formats, sprite
+fonts and maps); LZX-compressed files need unpacking first.
+
+Text uses the game's `Fonts/SmallFont` when present (XNB, or an unpacked
+`Fonts/SmallFont.json` + `.png` pair: `LineSpacing`, `Spacing`,
+`DefaultCharacter`, `Glyphs` { char: { `BoundsInTexture`, `Cropping`,
+`LeftSideBearing`, `Width`, `RightSideBearing` } }), laid out like XNA's
+`SpriteFont` and scaled so a line advances as far as the built-in 8x8 font
+(the fallback). The language (options tab, saved in `options.json`) makes
+assets named `<asset>.<code>` win (`de-DE`, `es-ES`, `fr-FR`, `hu-HU`,
+`it-IT`, `ja-JP`, `ko-KR`, `pt-BR`, `ru-RU`, `tr-TR`, `zh-CN`, plus
+`Data/AdditionalLanguages` `LanguageCode`s); text already loaded keeps its
+language until restart. Non-Latin scripts need the matching game font.
 
 Never commit game content to this repository (`.gitignore` blocks the usual
 names).
@@ -177,6 +189,7 @@ Other conventions:
 | Incoming calls: `Data/IncomingPhoneCalls` (`TriggerCondition`, `RingCondition`, `FromNpc`, `FromDisplayName`, `Dialogue`, `SimpleDialogueSplitBy`, `IgnoreBaseChance`, `MaxCalls` default 1); one call a day at most, base chance 15% (approx.), rings between 9:00 and 17:00 for two hours if a telephone is placed; answering it at the phone plays the dialogue | `valley_sim::phone_calls` |
 | Fish tanks: `fishtank` furniture holds fish (category -4; capacity width + 1, approx.), which swim inside using `Data/AquariumFish` sprite indexes on `LooseSprites/AquariumFish` (24x24 cells), else their item icon | `valley_sim::furniture` |
 | Mannequins: `Data/Mannequins` (`DisplayName`, `Texture`, `SheetIndex`) as `(M)<id>` items placed like furniture (indoors or out); clothing or boots held go on (swapping that slot), empty hands swap outfits with the farmer, using it undresses then picks it up. Cursed mannequins' wandering isn't implemented | `valley_sim::furniture` |
+| Audio changes: `Data/AudioChanges` entries (`Id`, `FilePaths` absolute or relative to the content folder, `.wav`/`.ogg`; one picked at random) add or replace cues ahead of every other source, mods included | `valley_content::audio` |
 | Forge menu: weapon + gem (ids 60/62/64/66/68/70, or `Port.Forge` = Emerald/Aquamarine/Ruby/Amethyst/Topaz/Jade) up to 3 forges for 10/15/20 shards; diamond (72) fills them randomly; prismatic shard (74, `Port.Forge: Prismatic`) gives weapons Artful/Bug Killer/Crusader/Haymaker/Vampiric and tools Swift/Efficient/Powerful/Shavings/Archaeologist/Generous/Bottomless/Reaching (iridium)/Auto-Hook/Master/Preserving for 20; dragon tooth (852, `DragonTooth`) a random innate enchantment for 10; same-type weapon = look for 10; ring + ring = combined ring (`880` if present) for 20; galaxy weapons (4/23/29) + 3 galaxy souls (896) = infinity (62/64/63). Unforge refunds half. Effect sizes approx. (ruby +10% damage, aquamarine +4.6% crit, jade +0.1 crit power, amethyst +0.1 knockback, topaz +1 defense, emerald +1 speed; bug killer x2 vs bugs, crusader x1.5 vs undead and no mummy revive, slime slayer x1.5 vs slimes, vampiric 9% heal on kill, swift +50% swing speed, shavings 25% wood per hit, preserving 50% bait kept) | `valley_sim::forge` |
 
 ## Mods
