@@ -806,6 +806,7 @@ impl World {
         self.apply_cleared_tiles();
         self.grandpa_morning();
         self.cave_morning();
+        self.quest_state_checks();
         self.farm_type_morning();
     }
 
@@ -1036,6 +1037,7 @@ impl World {
                 ClockEvent::TenMinutes => {
                     self.update_npc_schedules();
                     self.farm_type_night();
+                    self.quest_state_checks();
                     self.advance_machines(10);
                     self.maybe_lightning();
                     for b in self.farmer.buffs.iter_mut() {
@@ -1771,6 +1773,14 @@ impl World {
             } else if self.recipes.contains_key(r) {
                 self.farmer.crafting_recipes.entry(r.clone()).or_insert(0);
             }
+        }
+        if let Some(q) = &letter.quest {
+            if !self.farmer.quests.iter().any(|x| &x.id == q) {
+                self.add_quest(q);
+            }
+        }
+        if let Some((t, days)) = &letter.topic {
+            self.farmer.conversation_topics.insert(t.clone(), *days);
         }
         self.farmer.mail_received.push(id.clone());
         self.farmer.letters_read.push(id.clone());

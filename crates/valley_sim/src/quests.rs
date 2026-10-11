@@ -16,6 +16,10 @@ pub enum Objective {
     Visit { location: String },
     /// Craft an item.
     Craft { item: String },
+    /// Have a building of this kind.
+    Build { kind: String },
+    /// Meet every villager.
+    Social,
     /// No automatic objective.
     Basic,
 }
@@ -46,6 +50,8 @@ pub fn parse_quest(id: &str, s: &str) -> Option<Quest> {
         "Monster" if !obj.is_empty() => Objective::Slay { monster: obj[0].replace('_', " "), count: num(1).max(1), progress: 0 },
         "Location" if !obj.is_empty() => Objective::Visit { location: obj[0].into() },
         "Crafting" if !obj.is_empty() => Objective::Craft { item: obj[0].into() },
+        "Building" if !obj.is_empty() => Objective::Build { kind: obj.join(" ") },
+        "Social" => Objective::Social,
         _ => Objective::Basic,
     };
     Some(Quest {

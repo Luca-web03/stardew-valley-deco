@@ -69,3 +69,20 @@ fn meadowlands_starts_with_a_coop_and_two_animals() {
     assert_eq!(w.animals.len(), 2);
     assert_eq!(w.farmer.money, 500, "the gift is free");
 }
+
+#[test]
+fn letters_start_quests_and_building_quests_complete() {
+    let (_, mut w) = world("Standard");
+    w.quest_data.insert("Dev_BuildCoop".into(), "Building/Room to Roost/Build a henhouse./Build a coop./Coop/-1/300//false/".into());
+    w.mail_data.insert("Dev_CoopLetter".into(), "@,^Thought you might want some hens.%item quest Dev_BuildCoop %%[#]Hens".into());
+    w.farmer.mailbox.clear();
+    w.farmer.mailbox.push("Dev_CoopLetter".into());
+    w.warp_farmer("Farm", TilePos::new(25, 10), Some(valley_sim::Dir::Up));
+    assert!(w.do_action(Some(TilePos::new(25, 9))));
+    assert!(w.farmer.quests.iter().any(|q| q.id == "Dev_BuildCoop"));
+    let money = w.farmer.money;
+    w.grant_building("Coop", TilePos::new(10, 20)).unwrap();
+    w.end_day(false);
+    assert!(!w.farmer.quests.iter().any(|q| q.id == "Dev_BuildCoop"), "completed");
+    assert_eq!(w.farmer.money, money + 300);
+}

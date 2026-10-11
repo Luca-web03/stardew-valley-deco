@@ -160,7 +160,7 @@ impl World {
     }
 
     /// Put up a finished building for free (starting gifts).
-    pub(crate) fn grant_building(&mut self, kind: &str, tile: TilePos) -> Result<u32, String> {
+    pub fn grant_building(&mut self, kind: &str, tile: TilePos) -> Result<u32, String> {
         let data = self.buildings_data.get(kind).cloned().ok_or("Unknown building")?;
         let size = (data.size.x.max(1), data.size.y.max(1));
         self.next_building_id += 1;

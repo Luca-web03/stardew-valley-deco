@@ -10,6 +10,10 @@ pub struct Letter {
     pub items: Vec<Item>,
     pub money: i32,
     pub recipe: Option<String>,
+    /// `%item quest <id>`: a quest the letter starts.
+    pub quest: Option<String>,
+    /// `%item conversationTopic <id> <days>`.
+    pub topic: Option<(String, i32)>,
 }
 
 pub fn parse(raw: &str, db: &ItemDb, farmer_name: &str) -> Letter {
@@ -36,10 +40,24 @@ pub fn parse(raw: &str, db: &ItemDb, farmer_name: &str) -> Letter {
                     }
                 }
             }
-            ["bigobject", id, ..] => {
+            ["bigobject", id, ..] | ["BigObject", id, ..] => {
                 if let Some(item) = db.create(&format!("(BC){id}"), 1) {
                     l.items.push(item);
                 }
+            }
+            ["furniture", id, ..] => {
+                if let Some(item) = db.create(&format!("(F){id}"), 1) {
+                    l.items.push(item);
+                }
+            }
+            ["tools", kind, ..] => {
+                if let Some(item) = db.create(&format!("(T){kind}"), 1) {
+                    l.items.push(item);
+                }
+            }
+            ["quest", id, ..] => l.quest = Some(id.to_string()),
+            ["conversationTopic", id, days @ ..] => {
+                l.topic = Some((id.to_string(), days.first().and_then(|d| d.parse().ok()).unwrap_or(4)));
             }
             ["money", a, b @ ..] => {
                 let lo: i32 = a.parse().unwrap_or(0);

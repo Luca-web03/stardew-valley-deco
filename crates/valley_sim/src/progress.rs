@@ -169,6 +169,27 @@ impl World {
         self.check_quests();
     }
 
+    /// Building and social quests are checked against the world's state.
+    pub(crate) fn quest_state_checks(&mut self) {
+        let kinds: Vec<String> = self.buildings.iter().filter(|b| b.days_left == 0).map(|b| b.kind.clone()).collect();
+        let met_all = self.npcs.iter().all(|n| self.farmer.friendships.get(&n.name).is_some_and(|f| f.met));
+        let mut changed = false;
+        for q in self.farmer.quests.iter_mut().filter(|q| !q.complete) {
+            let done = match &q.objective {
+                Objective::Build { kind } => kinds.iter().any(|k| k.eq_ignore_ascii_case(kind) || k.replace(' ', "").eq_ignore_ascii_case(&kind.replace(' ', ""))),
+                Objective::Social => met_all,
+                _ => false,
+            };
+            if done {
+                q.complete = true;
+                changed = true;
+            }
+        }
+        if changed {
+            self.check_quests();
+        }
+    }
+
     pub(crate) fn quest_crafted(&mut self, item: &Item) {
         let Some(id) = item.object_id().or(item.big_id()) else { return };
         for q in self.farmer.quests.iter_mut() {
