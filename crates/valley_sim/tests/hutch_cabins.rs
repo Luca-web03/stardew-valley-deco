@@ -118,3 +118,23 @@ fn farmhands_live_in_cabins() {
     let loc = &w.locations[&cabin];
     assert!(valley_sim::collision::tile_passable(loc, farmer));
 }
+
+#[test]
+fn builders_offer_their_own_buildings() {
+    let mut w = world();
+    w.drain_events();
+    assert!(w.run_action_pub("Carpenter"));
+    let robin = w.drain_events().into_iter().find_map(|e| match e {
+        valley_sim::world::WorldEvent::OpenCarpenter(l) => Some(l),
+        _ => None,
+    }).unwrap();
+    assert!(robin.contains(&"Coop".to_string()));
+    assert!(!robin.contains(&"Dev_Obelisk".to_string()), "the wizard builds obelisks");
+    assert!(w.run_action_pub("WizardBook"));
+    let wizard = w.drain_events().into_iter().find_map(|e| match e {
+        valley_sim::world::WorldEvent::OpenCarpenter(l) => Some(l),
+        _ => None,
+    }).unwrap();
+    assert!(wizard.contains(&"Dev_Obelisk".to_string()) && wizard.contains(&"Dev_HarvestHut".to_string()));
+    assert!(!wizard.contains(&"Coop".to_string()));
+}

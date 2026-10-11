@@ -295,6 +295,7 @@ pub fn town() -> Map {
     b.set_props("Buildings", 27, 11, SIGN, &[("Action", "Port.Divorce")]);
     b.set_props("Buildings", 24, 11, SIGN, &[("Action", "Port.JojaMembership")]);
     b.set_props("Buildings", 25, 11, SIGN, &[("Action", "Port.JojaForm")]);
+    b.set_props("Buildings", 8, 11, SIGN, &[("Action", "WizardBook")]);
     b.set_props("Buildings", 18, 25, SIGN, &[("Action", "Port.Travel Dev_Isle 4 14 500 0600-1800")]);
     b.set_props("Buildings", 4, 11, LAMP, &[("Action", "Port.Mastery")]);
     for (x, y) in [(4, 5), (33, 12), (6, 20), (35, 20)] {

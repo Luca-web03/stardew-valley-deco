@@ -1657,12 +1657,29 @@ impl World {
                 self.emit(WorldEvent::OpenAnimalShop(list));
                 true
             }
-            "Carpenter" => {
-                let mut list: Vec<String> = self.buildings_data.keys().cloned().collect();
-                if self.house_upgrade_cost().is_some() {
+            "Carpenter" | "WizardBook" | "Port.Builder" => {
+                // Each builder offers the buildings naming them (`Builder`)
+                // whose `BuildCondition` holds.
+                let builder = match cmd {
+                    "WizardBook" => "Wizard".to_string(),
+                    "Port.Builder" => toks.get(1).map(|s| s.to_string()).unwrap_or_else(|| "Robin".into()),
+                    _ => "Robin".to_string(),
+                };
+                let candidates: Vec<(String, Option<String>)> = self
+                    .buildings_data
+                    .iter()
+                    .filter(|(_, d)| d.builder.as_deref().is_some_and(|b| b.eq_ignore_ascii_case(&builder)))
+                    .map(|(k, d)| (k.clone(), d.build_condition.clone()))
+                    .collect();
+                let mut list: Vec<String> = candidates.into_iter().filter(|(_, c)| self.gsq_ok(c.as_deref())).map(|(k, _)| k).collect();
+                if builder == "Robin" && self.house_upgrade_cost().is_some() {
                     list.insert(0, crate::world::HOUSE_UPGRADE_ENTRY.to_string());
                 }
-                self.emit(WorldEvent::OpenCarpenter(list));
+                if list.is_empty() {
+                    self.emit(WorldEvent::Message("There's nothing to build right now.".into()));
+                } else {
+                    self.emit(WorldEvent::OpenCarpenter(list));
+                }
                 true
             }
             "Billboard" => {

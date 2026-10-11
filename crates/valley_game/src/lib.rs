@@ -157,7 +157,9 @@ impl ValleyGame {
 
     /// Skip the title screen and start a new game immediately.
     pub fn start_new_game(&mut self, opts: NewGame) {
-        let w = World::new(&mut self.cm, opts);
+        let mut w = World::new(&mut self.cm, opts);
+        // An opening cutscene in the starting location plays right away.
+        w.check_location_events();
         self.world = Some(w);
         self.screen = Screen::Playing;
         self.menus.clear();

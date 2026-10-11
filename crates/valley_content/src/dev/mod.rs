@@ -751,7 +751,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Buildings", json!({
             "Dev_HarvestHut": {
                 "Name": "Harvest Hut", "Description": "Gathers ripe crops nearby each night and keeps them inside.", "Texture": "Buildings\\Dev_Hut",
-                "Size": { "X": 2, "Y": 2 }, "BuildCost": 20000, "BuildDays": 1,
+                "Size": { "X": 2, "Y": 2 }, "BuildCost": 20000, "BuildDays": 1, "Builder": "Wizard",
                 "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 200 }, { "ItemId": "(O)Dev_Berry", "Amount": 10 }],
                 "CustomFields": { "Port.HarvestHut": "true" }
             },
@@ -763,7 +763,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             },
             "Dev_Obelisk": {
                 "Name": "Dune Obelisk", "Description": "Touch it to travel to the dunes.", "Texture": "Buildings\\Dev_Obelisk",
-                "Size": { "X": 2, "Y": 3 }, "BuildCost": 5000, "BuildDays": 2,
+                "Size": { "X": 2, "Y": 3 }, "BuildCost": 5000, "BuildDays": 2, "Builder": "Wizard",
                 "BuildMaterials": [{ "ItemId": "(O)390", "Amount": 200 }, { "ItemId": "(O)Dev_GoldBar", "Amount": 2 }],
                 "DefaultAction": "ObeliskWarp Dev_Dunes 10 14 true"
             },
