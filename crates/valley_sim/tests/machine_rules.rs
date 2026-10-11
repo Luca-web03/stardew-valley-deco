@@ -54,7 +54,14 @@ fn geode_crushers_open_geodes() {
     let mut cm = ContentManager::dev_only();
     let w = World::new(&mut cm, NewGame::default());
     let mut rng = engine::Rng::new(5);
-    let found = w.geode_contents(&mut rng).unwrap();
-    assert!(w.items.objects.contains_key(&found));
+    let found = w.geode_contents("Dev_Geode", &mut rng).unwrap();
+    assert!(w.items.objects.contains_key(found.object_id().unwrap()));
+    // Data-defined drops win.
+    let mut w = w;
+    if let Some(o) = w.items.objects.get_mut("Dev_Geode") {
+        o.data.geode_drops = vec![valley_content::data::GeodeDrop { item_id: Some("(O)Dev_Ruby".into()), chance: 1.0, min_stack: 2, max_stack: 2, ..Default::default() }];
+    }
+    let found = w.geode_contents("Dev_Geode", &mut rng).unwrap();
+    assert_eq!((found.object_id(), found.stack()), (Some("Dev_Ruby"), 2));
     assert!(w.is_geode("Dev_Geode"));
 }

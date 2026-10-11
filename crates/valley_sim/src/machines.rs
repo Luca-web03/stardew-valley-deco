@@ -491,10 +491,10 @@ impl World {
             // Geode crusher: the geode's contents.
             n if n.contains("GeodeCrusher") || n.contains("Geode") => {
                 let id = input.object_id()?;
-                if !self.is_geode(id) {
+                if !self.is_geode(id) && self.items.object(id).is_none_or(|o| o.data.geode_drops.is_empty()) {
                     return None;
                 }
-                Some(Item::object(&self.geode_contents(&mut rng)?, 1))
+                self.geode_contents(id, &mut rng)
             }
             // Deconstructor: a crafted item back into its main ingredient.
             n if n.contains("Deconstructor") => {

@@ -146,7 +146,7 @@ pub fn expand_item_query(query: &str, db: &ItemDb, ctx: &mut QueryCtx) -> (Vec<S
             };
             let priced = !require_price || o.data.price > 0;
             // Random sales skip junk and quest items (approx.).
-            let saleable = !random_sale || !matches!(o.data.kind.as_str(), "Litter" | "Quest");
+            let saleable = !random_sale || (!matches!(o.data.kind.as_str(), "Litter" | "Quest") && !o.data.exclude_from_random_sale);
             in_range && priced && saleable
         })
         .map(|(id, _)| id.clone())

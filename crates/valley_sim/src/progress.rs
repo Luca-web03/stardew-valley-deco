@@ -287,11 +287,31 @@ impl World {
         }
     }
 
-    /// What a geode holds: a random gem, mineral or resource (approx.
-    /// pool: objects in the gem, mineral and resource categories).
-    pub fn geode_contents(&self, rng: &mut engine::Rng) -> Option<String> {
+    /// What a geode holds: its `GeodeDrops` (by precedence, chance and
+    /// condition), else a random gem, mineral or resource (approx. pool).
+    pub fn geode_contents(&self, geode: &str, rng: &mut engine::Rng) -> Option<Item> {
+        if let Some(info) = self.items.object(geode) {
+            let mut drops = info.data.geode_drops.clone();
+            drops.sort_by_key(|d| d.precedence);
+            for d in drops {
+                if !rng.chance(d.chance) || !self.check_query(d.condition.as_deref(), None, None, &mut rng.clone()) {
+                    continue;
+                }
+                let id = match &d.random_item_id {
+                    Some(ids) if !ids.is_empty() => rng.pick(ids).cloned(),
+                    _ => d.item_id.clone(),
+                };
+                let n = if d.max_stack > d.min_stack { rng.range(d.min_stack.max(1), d.max_stack + 1) } else { d.min_stack.max(1) };
+                if let Some(item) = id.and_then(|id| self.items.create(&id, n)) {
+                    return Some(item);
+                }
+            }
+            if !info.data.geode_drops.is_empty() && !info.data.geode_drops_default_items {
+                return None;
+            }
+        }
         let pool: Vec<String> = self.items.objects.iter().filter(|(_, o)| matches!(o.data.category, -2 | -12 | -15) && o.data.price > 0).map(|(k, _)| k.clone()).collect();
-        rng.pick(&pool).cloned()
+        rng.pick(&pool).map(|id| Item::object(id, 1))
     }
 
     pub fn is_geode(&self, id: &str) -> bool {
@@ -301,19 +321,16 @@ impl World {
     /// Crack the held geode: returns the item found.
     pub fn crack_geode(&mut self, slot: usize) -> Result<Item, String> {
         let Some(id) = self.farmer.inventory.get(slot).and_then(|i| i.object_id()).map(String::from) else { return Err("Hold a geode.".into()) };
-        let info = self.items.object(&id).cloned().ok_or("Hold a geode.")?;
-        let _ = info;
-        if !self.is_geode(&id) {
+        if self.items.object(&id).is_none() || !(self.is_geode(&id) || self.items.object(&id).is_some_and(|o| !o.data.geode_drops.is_empty())) {
             return Err("That isn't a geode.".into());
         }
         if self.farmer.money < 25 {
             return Err("Not enough money.".into());
         }
         let mut rng = engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, self.game_ms as i64, slot as i64, 9]));
-        let found = self.geode_contents(&mut rng).ok_or("This geode is empty.")?;
+        let item = self.geode_contents(&id, &mut rng).ok_or("This geode is empty.")?;
         self.farmer.money -= 25;
         self.farmer.inventory.reduce(slot, 1);
-        let item = Item::object(&found, 1);
         self.give_item(item.clone());
         self.sound("stoneCrack");
         Ok(item)

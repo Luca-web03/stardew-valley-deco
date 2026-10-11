@@ -134,7 +134,18 @@ impl World {
         let boost = if self.tool_has(slot, "Archaeologist") { 2.0 } else { 1.0 };
         let generous = self.tool_has(slot, "Generous");
         let mut got = false;
-        for d in drops {
+        // Artifacts that can turn up in this location (`ArtifactSpotChances`).
+        let here = self.current.clone();
+        let artifacts: Vec<(String, f64)> = self.items.objects.iter().filter_map(|(id, o)| o.data.artifact_spot_chances.as_ref().and_then(|m| m.get(&here)).map(|c| (id.clone(), *c))).collect();
+        for (id, chance) in artifacts {
+            if rng.chance((chance * boost).min(1.0)) {
+                self.spawn_drop(Item::object(&id, 1), t.world_center());
+                got = true;
+                break;
+            }
+        }
+        let found_artifact = got;
+        for d in drops.into_iter().filter(|_| !found_artifact) {
             if !self.check_query(d.condition.as_deref(), None, None, &mut rng.clone()) {
                 continue;
             }

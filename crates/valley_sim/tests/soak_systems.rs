@@ -43,7 +43,7 @@ fn two_busy_years_with_everything_running() {
         for (dx, dy) in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
             let p = TilePos::new(15 + dx, 22 + dy);
             let mut dirt = valley_sim::terrain::HoeDirt::new();
-            dirt.crop = Some(valley_sim::crop::Crop::new("Dev_TurnipSeeds", &mut engine::Rng::new(dx as u64 + 7)));
+            dirt.crop = Some(valley_sim::crop::Crop::new("Dev_TurnipSeeds", &mut engine::Rng::new((dx + 7) as u64)));
             farm.state.terrain.insert(p, valley_sim::terrain::TerrainFeature::HoeDirt(dirt));
         }
         let mut tea = valley_sim::bushes::Bush::new(valley_sim::bushes::TEA);

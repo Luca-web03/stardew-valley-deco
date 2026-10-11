@@ -52,6 +52,35 @@ pub struct ObjectData {
     pub context_tags: Option<Vec<String>>,
     pub buffs: Option<serde_json::Value>,
     pub custom_fields: Option<BTreeMap<String, String>>,
+    /// What cracking this geode can give.
+    pub geode_drops: Vec<GeodeDrop>,
+    /// Fall back to the default geode pool when no drop applies.
+    #[serde(default = "yes")]
+    pub geode_drops_default_items: bool,
+    /// Location -> chance to dig this up from an artifact spot there.
+    pub artifact_spot_chances: Option<BTreeMap<String, f64>>,
+    pub exclude_from_random_sale: bool,
+    pub exclude_from_shipping_collection: bool,
+    pub exclude_from_fishing_collection: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct GeodeDrop {
+    pub id: Option<String>,
+    pub item_id: Option<String>,
+    pub random_item_id: Option<Vec<String>>,
+    pub condition: Option<String>,
+    #[serde(default = "one_f")]
+    pub chance: f64,
+    pub precedence: i32,
+    pub min_stack: i32,
+    pub max_stack: i32,
+    pub set_flag_on_pickup: Option<String>,
+}
+
+fn one_f() -> f64 {
+    1.0
 }
 
 impl Default for ObjectData {
@@ -72,6 +101,12 @@ impl Default for ObjectData {
             context_tags: None,
             buffs: None,
             custom_fields: None,
+            geode_drops: Vec::new(),
+            geode_drops_default_items: true,
+            artifact_spot_chances: None,
+            exclude_from_random_sale: false,
+            exclude_from_shipping_collection: false,
+            exclude_from_fishing_collection: false,
         }
     }
 }
