@@ -19,6 +19,7 @@ pub mod mines;
 pub mod dialogue;
 pub mod events;
 pub mod farm;
+pub mod farm_cave;
 pub mod farm_events;
 pub mod farmer;
 pub mod festivals;

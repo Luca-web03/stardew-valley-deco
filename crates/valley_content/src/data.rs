@@ -352,6 +352,9 @@ pub struct MachineOutputItem {
     pub object_internal_name: Option<String>,
     pub object_display_name: Option<String>,
     pub price_modifiers: Option<Vec<QuantityModifier>>,
+    /// Code-defined output ("<type>, <assembly>: <method>").
+    pub output_method: Option<String>,
+    pub random_item_id: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]

@@ -433,6 +433,7 @@ pub const ICON_HARDWOOD: i32 = 72;
 pub const ICON_IRIDIUM_ORE: i32 = 73;
 pub const ICON_DIAMOND: i32 = 74;
 pub const ICON_SLIME_EGG: i32 = 75;
+pub const ICON_MUSHROOM: i32 = 76;
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
@@ -938,6 +939,14 @@ pub fn objects() -> Image {
         c.auto_outline(OUTLINE);
     }
     {
+        let mut c = Cell::at(&mut img, ICON_MUSHROOM, OBJ_COLS, 16, 16);
+        c.ellipse(8.0, 7.0, 6.0, 4.0, Color::rgb(170, 110, 70));
+        c.px(6, 5, Color::rgb(230, 210, 180));
+        c.px(10, 6, Color::rgb(230, 210, 180));
+        c.rect(6, 9, 4, 5, Color::rgb(235, 225, 200));
+        c.auto_outline(OUTLINE);
+    }
+    {
         // Rain totem: a carved post with a cloud.
         let mut c = Cell::at(&mut img, ICON_RAIN_TOTEM, OBJ_COLS, 16, 16);
         c.rect(6, 5, 4, 10, Color::rgb(150, 100, 60));
@@ -1030,6 +1039,24 @@ pub fn craftables() -> Image {
         c.ellipse(8.0, 23.0, 7.0, 7.0, Color::rgb(110, 190, 80));
         c.ellipse(6.0, 20.0, 2.5, 2.0, Color::rgb(180, 235, 150));
         c.ellipse(10.0, 26.0, 2.0, 1.5, Color::rgb(80, 150, 60));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Mushroom box: a crate of logs sprouting caps.
+        let mut c = Cell::at(&mut img, 10, 8, 16, 32);
+        c.rect(1, 20, 14, 10, Color::rgb(130, 90, 55));
+        c.rect(1, 20, 14, 2, Color::rgb(160, 115, 70));
+        c.ellipse(5.0, 18.0, 3.0, 2.0, Color::rgb(170, 110, 70));
+        c.ellipse(11.0, 17.0, 3.0, 2.0, Color::rgb(190, 130, 80));
+        c.auto_outline(OUTLINE);
+    }
+    {
+        // Seed maker: a hopper on a box with a little chute.
+        let mut c = Cell::at(&mut img, 11, 8, 16, 32);
+        c.rect(2, 16, 12, 14, Color::rgb(110, 140, 90));
+        c.rect(4, 10, 8, 6, Color::rgb(150, 120, 80));
+        c.rect(5, 22, 6, 3, Color::rgb(60, 50, 40));
+        c.px(7, 23, Color::rgb(220, 200, 120));
         c.auto_outline(OUTLINE);
     }
     {

@@ -236,6 +236,9 @@ pub struct Farmer {
     /// the farmhouse).
     #[serde(default)]
     pub home_location: Option<String>,
+    /// The farm cave's residents: "mushrooms" or "bats".
+    #[serde(default)]
+    pub cave_choice: Option<String>,
     /// Movies watched (ids) and villagers taken along.
     #[serde(default)]
     pub movies_seen: Vec<String>,
@@ -358,6 +361,7 @@ impl Farmer {
             qi_gems: 0,
             grandpa_candles: 0,
             home_location: None,
+            cave_choice: None,
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),
             mastery_perks: Vec::new(),

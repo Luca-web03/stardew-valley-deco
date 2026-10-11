@@ -147,6 +147,8 @@ pub fn farm() -> Map {
     b.house(18, 4, 6, "Warp 5 8 FarmHouse");
     b.set_props("Buildings", 25, 9, MAILBOX, &[("Action", "Mailbox")]);
     b.set_props("Buildings", 10, 8, SHRINE, &[("Action", "Port.Shrine")]);
+    // Cave mouth in the northern cliff.
+    b.set_props("Buildings", 12, 1, DOOR, &[("Action", "Warp 6 8 FarmCave")]);
     b.set("Buildings", 27, 9, BIN);
     for x in 30..34 {
         b.set("Back", x, 9, FLOWERS);
@@ -283,6 +285,28 @@ pub fn town() -> Map {
     b.set_props("Buildings", 8, 8, GARBAGE, &[("Action", "Garbage Dev_House")]);
     b.prop("Warp", "-1 15 Farm 46 13 -1 16 Farm 46 14 3 0 Mine 5 8");
     b.prop("TravelingCartTile", "28 18");
+    b.map
+}
+
+/// The farm cave (mushrooms or fruit bats).
+pub fn farm_cave() -> Map {
+    let (w, h) = (12, 10);
+    let mut sheet = TileSheet { id: "mine".into(), image: "dev_mine".into(), sheet_w: 8, sheet_h: 1, tile_w: 16, tile_h: 16, ..Default::default() };
+    sheet.set_tile_prop(0, "Type", s("Stone"));
+    let mut b = B::new("FarmCave", w, h, sheet);
+    b.fill("Back", 0, 0, w, h, 0);
+    for x in 0..w {
+        b.set("Buildings", x, 0, 2);
+        b.set("Buildings", x, 1, 3);
+        if x != 6 {
+            b.set("Buildings", x, h - 1, 2);
+        }
+    }
+    for y in 0..h {
+        b.set("Buildings", 0, y, 2);
+        b.set("Buildings", w - 1, y, 2);
+    }
+    b.prop("Warp", "6 9 Farm 12 2");
     b.map
 }
 
@@ -510,7 +534,7 @@ pub fn parlor() -> Map {
             b.set("Buildings", x, h - 1, IWALL_TOP);
         }
     }
-    for (x, action) in [(2, "Port.Reels"), (3, "Port.Reels"), (5, "Port.HighLow"), (8, "Port.CoinCounter"), (9, "OpenShop Dev_PrizeCounter")] {
+    for (x, action) in [(2, "Port.Reels"), (3, "Port.Reels"), (5, "Port.HighLow"), (7, "SpecialOrders Qi"), (8, "Port.CoinCounter"), (9, "OpenShop Dev_PrizeCounter")] {
         b.set_props("Buildings", x, 4, if action.starts_with("OpenShop") || action == "Port.CoinCounter" { COUNTER } else { TABLE }, &[("Action", action)]);
     }
     b.set("Back", 6, h - 1, MAT);
@@ -532,5 +556,5 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
+    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
 }

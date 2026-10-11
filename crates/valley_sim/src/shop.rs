@@ -78,17 +78,57 @@ pub fn build_stock(id: &str, data: &ShopData, db: &ItemDb, ctx: &mut QueryCtx) -
     ShopStock { id: id.to_string(), owner, entries }
 }
 
-/// Expand an item query into concrete item ids. Supports plain ids and
-/// `RANDOM_ITEMS <type> [min id] [max id] [@requirePrice] [@isRandomSale]`
-/// for objects. Returns the ids and whether random-sale pricing applies.
+/// Ids of every item of a type ("(O)", "(BC)", "(F)", "(H)", "(S)", "(P)",
+/// "(B)", "(W)", "(TR)"), qualified.
+fn ids_of_type(db: &ItemDb, kind: &str) -> Vec<String> {
+    let keys: Vec<&String> = match kind {
+        "(O)" => db.objects.keys().collect(),
+        "(BC)" => db.bigs.keys().collect(),
+        "(F)" => db.furniture.keys().collect(),
+        "(H)" => db.hats.keys().collect(),
+        "(S)" => db.shirts.keys().collect(),
+        "(P)" => db.pants.keys().collect(),
+        "(B)" => db.boots.keys().collect(),
+        "(W)" => db.weapons.keys().collect(),
+        "(TR)" => db.trinkets.keys().collect(),
+        _ => vec![],
+    };
+    keys.into_iter().map(|k| format!("{kind}{k}")).collect()
+}
+
+/// Today's dish at the saloon: a random cooked dish (category -7) picked
+/// by the day's shop RNG.
+pub fn dish_of_the_day(db: &ItemDb, ctx: &mut QueryCtx) -> Option<String> {
+    let dishes: Vec<&String> = db.objects.iter().filter(|(_, o)| o.data.category == -7 && o.data.price > 0).map(|(k, _)| k).collect();
+    ctx.rng.pick(&dishes).map(|s| s.to_string())
+}
+
+/// Expand an item query into concrete item ids. Supports plain ids,
+/// `RANDOM_ITEMS <type> [min id] [max id] [@requirePrice] [@isRandomSale]`,
+/// `ALL_ITEMS [type]` and `DISH_OF_THE_DAY`. Returns the ids and whether
+/// random-sale pricing applies.
 pub fn expand_item_query(query: &str, db: &ItemDb, ctx: &mut QueryCtx) -> (Vec<String>, bool) {
     let toks: Vec<&str> = query.split_whitespace().collect();
-    if toks.first().copied() != Some("RANDOM_ITEMS") {
-        return (vec![query.to_string()], false);
+    match toks.first().copied() {
+        Some("DISH_OF_THE_DAY") => return (dish_of_the_day(db, ctx).into_iter().collect(), false),
+        Some("ALL_ITEMS") => {
+            let kinds: Vec<&str> = match toks.get(1).filter(|t| !t.starts_with('@')) {
+                Some(k) => vec![*k],
+                None => vec!["(O)", "(BC)", "(F)", "(H)", "(S)", "(P)", "(B)", "(W)", "(TR)"],
+            };
+            return (kinds.iter().flat_map(|k| ids_of_type(db, k)).collect(), false);
+        }
+        Some("RANDOM_ITEMS") => {}
+        _ => return (vec![query.to_string()], false),
     }
     let kind = toks.get(1).copied().unwrap_or("(O)");
     if kind != "(O)" {
-        return (vec![], false);
+        let mut ids = ids_of_type(db, kind);
+        for i in (1..ids.len()).rev() {
+            let j = ctx.rng.range(0, i as i32 + 1) as usize;
+            ids.swap(i, j);
+        }
+        return (ids, toks.contains(&"@isRandomSale"));
     }
     let flags: Vec<&str> = toks.iter().skip(2).filter(|t| t.starts_with('@')).copied().collect();
     let nums: Vec<i64> = toks.iter().skip(2).filter_map(|t| t.parse().ok()).collect();

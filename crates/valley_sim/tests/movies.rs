@@ -53,7 +53,13 @@ fn inviting_a_villager_changes_friendship_by_taste() {
     assert_eq!(w.farmer.inventory.count("Dev_Ticket"), 1);
     let before = w.farmer.friendships.get("Mara").map(|f| f.points).unwrap_or(0);
     w.warp_farmer("Town", TilePos::new(33, 9), Some(Dir::Up));
+    w.drain_events();
     assert!(w.do_action(Some(theater_door())));
+    // A snack is offered first; skip it.
+    let offered = w.drain_events().iter().any(|e| matches!(e, WorldEvent::Choice { options, .. } if options.iter().any(|(id, _)| id == "concession:")));
+    assert!(offered);
+    assert_eq!(w.movie_invite.as_deref(), Some("Mara"), "still invited until the movie starts");
+    w.choose("concession:");
     let after = w.farmer.friendships["Mara"].points;
     assert_eq!(after - before, 200, "Mara loves adventure films");
     assert_eq!(w.farmer.inventory.count("Dev_Ticket"), 1, "the invitation covered the showing");
@@ -65,4 +71,24 @@ fn inviting_a_villager_changes_friendship_by_taste() {
     assert_eq!(w.movie_reaction("Mara", &movie), "dislike");
     assert_eq!(w.movie_reaction("Tobin", &movie), "like");
     assert_eq!(w.movie_reaction("Nobody", &movie), "neutral");
+}
+
+#[test]
+fn a_snack_the_guest_loves_adds_friendship() {
+    let mut w = world();
+    w.farmer.inventory.slots[8] = Some(Item::object("Dev_Ticket", 1));
+    w.farmer.current_slot = 8;
+    talk_to(&mut w, "Mara");
+    let before = w.farmer.friendships.get("Mara").map(|f| f.points).unwrap_or(0);
+    let money = w.farmer.money;
+    w.warp_farmer("Town", TilePos::new(33, 9), Some(Dir::Up));
+    assert!(w.do_action(Some(theater_door())));
+    w.choose("concession:Dev_Pretzel");
+    assert_eq!(w.farmer.money, money - 60);
+    assert_eq!(w.farmer.friendships["Mara"].points - before, 200 + 50, "loves the movie and the hearty pretzel");
+    let pretzel = w.concessions.iter().find(|c| c.id == "Dev_Pretzel").unwrap().clone();
+    let pop = w.concessions.iter().find(|c| c.id == "Dev_FizzyPop").unwrap().clone();
+    assert_eq!(w.concession_taste("Mara", &pretzel), "love");
+    assert_eq!(w.concession_taste("Mara", &pop), "dislike");
+    assert_eq!(w.concession_taste("Tobin", &pop), "like", "everyone else likes sweets");
 }

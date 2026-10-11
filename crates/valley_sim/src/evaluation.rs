@@ -217,6 +217,10 @@ impl World {
             if let Err(e) = self.buy_joja_project(p) {
                 self.emit(WorldEvent::Message(e));
             }
+        } else if let Some(c) = id.strip_prefix("concession:") {
+            self.choose_concession(c);
+        } else if let Some(c) = id.strip_prefix("cave:") {
+            self.choose_cave(c);
         }
     }
 

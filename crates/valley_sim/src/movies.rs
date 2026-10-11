@@ -2,7 +2,9 @@
 //! subsets). Tickets come from a shop; giving a ticket to a villager
 //! invites them for today. Watching plays the movie's scene texts; an
 //! invited villager reacts by the movie's tags and friendship changes.
-//! Reaction values are approximations.
+//! With a guest, a snack from `Data/Concessions` can be bought first; the
+//! guest's `Data/ConcessionTastes` (their own entry, then `*`) decide how
+//! much they enjoy it. Reaction values are approximations.
 
 use std::collections::BTreeMap;
 
@@ -45,6 +47,31 @@ pub struct NpcMovieReactions {
     pub npc_name: String,
     pub reactions: Vec<MovieReaction>,
 }
+
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct ConcessionData {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub price: i32,
+    pub texture: Option<String>,
+    pub sprite_index: i32,
+    pub item_tags: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct ConcessionTaste {
+    pub name: String,
+    pub loved_tags: Vec<String>,
+    pub liked_tags: Vec<String>,
+    pub disliked_tags: Vec<String>,
+}
+
+/// Friendship change by snack taste (approx.).
+pub const CONCESSION_POINTS: &[(&str, i32)] = &[("love", 50), ("like", 25), ("dislike", 0)];
 
 /// Friendship change by reaction (approx.).
 pub const REACTION_POINTS: &[(&str, i32)] = &[("love", 200), ("like", 100), ("dislike", 0)];
@@ -107,12 +134,67 @@ impl World {
         true
     }
 
+    /// How `npc` likes a snack: "love", "like", "dislike" or "neutral".
+    pub fn concession_taste(&self, npc: &str, c: &ConcessionData) -> &'static str {
+        let has = |tags: &[String]| tags.iter().any(|t| c.item_tags.iter().any(|x| x.eq_ignore_ascii_case(t)) || t.eq_ignore_ascii_case(&c.name));
+        for who in [npc, "*"] {
+            if let Some(t) = self.concession_tastes.iter().find(|t| t.name == who) {
+                if has(&t.loved_tags) {
+                    return "love";
+                }
+                if has(&t.disliked_tags) {
+                    return "dislike";
+                }
+                if has(&t.liked_tags) {
+                    return "like";
+                }
+            }
+        }
+        "neutral"
+    }
+
     /// Theater door: watch today's movie (with a ticket or an invitation).
+    /// With a guest, offer a snack first.
     pub(crate) fn watch_movie(&mut self) -> bool {
-        let Some(movie) = self.movie_today().cloned() else {
+        if self.movie_today().is_none() {
             self.emit(WorldEvent::Message("The theater is between showings.".into()));
             return true;
-        };
+        }
+        if let Some(guest) = self.movie_invite.clone() {
+            if !self.concessions.is_empty() {
+                let display = self.npcs.iter().find(|n| n.name == guest).map(|n| n.display_name.clone()).unwrap_or(guest.clone());
+                let mut options: Vec<(String, String)> = self
+                    .concessions
+                    .iter()
+                    .map(|c| {
+                        let name = self.items.expand_text(if c.display_name.is_empty() { &c.name } else { &c.display_name });
+                        (format!("concession:{}", c.id), format!("{name} - {}g", c.price))
+                    })
+                    .collect();
+                options.push(("concession:".into(), "No snack".into()));
+                self.emit(WorldEvent::Choice { text: format!("Get a snack for {display}?"), options });
+                return true;
+            }
+        }
+        self.play_movie(None)
+    }
+
+    /// The snack choice: buy it (if affordable) and start the movie.
+    pub(crate) fn choose_concession(&mut self, id: &str) {
+        let snack = self.concessions.iter().find(|c| c.id == id).cloned();
+        if let Some(c) = &snack {
+            if self.farmer.money < c.price {
+                self.emit(WorldEvent::Message("You can't afford that.".into()));
+                return;
+            }
+            self.farmer.money -= c.price;
+            self.sound("purchase");
+        }
+        self.play_movie(snack);
+    }
+
+    fn play_movie(&mut self, snack: Option<ConcessionData>) -> bool {
+        let Some(movie) = self.movie_today().cloned() else { return false };
         let guest = self.movie_invite.take();
         if guest.is_none() {
             let Some(ticket) = self.ticket_item() else { return false };
@@ -139,6 +221,20 @@ impl World {
                 _ => format!("{display}: \"That was nice. Thanks!\""),
             };
             pages.push(DialoguePage { text: line, emotion: if reaction == "dislike" { Emotion::Sad } else { Emotion::Happy } });
+            if let Some(c) = &snack {
+                let taste = self.concession_taste(&npc, c);
+                let points = CONCESSION_POINTS.iter().find(|(t, _)| *t == taste).map(|(_, p)| *p).unwrap_or(0);
+                let f = self.farmer.friendship(&npc);
+                f.points = (f.points + points).clamp(0, f.max_points(romanceable));
+                let snack_name = self.items.expand_text(if c.display_name.is_empty() { &c.name } else { &c.display_name });
+                let line = match taste {
+                    "love" => format!("{display}: \"And {snack_name}! You know me so well.\""),
+                    "like" => format!("{display}: \"Thanks for the {snack_name}.\""),
+                    "dislike" => format!("{display}: \"I'm not really a fan of {snack_name}...\""),
+                    _ => format!("{display}: \"Oh, {snack_name}. Thanks.\""),
+                };
+                pages.push(DialoguePage { text: line, emotion: if taste == "dislike" { Emotion::Sad } else { Emotion::Happy } });
+            }
             self.farmer.movies_seen_with.push(npc);
         }
         self.farmer.movies_seen.push(movie.id.clone());
@@ -152,6 +248,12 @@ pub fn load(cm: &mut valley_content::ContentManager) -> (Vec<MovieData>, Vec<Npc
     let movies: Vec<MovieData> = cm.load_json("Data/Movies").unwrap_or_default();
     let reactions: Vec<NpcMovieReactions> = cm.load_json("Data/MoviesReactions").unwrap_or_default();
     (movies, reactions)
+}
+
+pub fn load_concessions(cm: &mut valley_content::ContentManager) -> (Vec<ConcessionData>, Vec<ConcessionTaste>) {
+    let list: Vec<ConcessionData> = cm.load_json("Data/Concessions").unwrap_or_default();
+    let tastes: Vec<ConcessionTaste> = cm.load_json("Data/ConcessionTastes").unwrap_or_default();
+    (list, tastes)
 }
 
 /// For callers that want reactions by NPC.

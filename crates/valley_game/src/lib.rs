@@ -1196,7 +1196,7 @@ impl ValleyGame {
                 }
             }
             Menu::OrderBoard => {
-                let offers = self.world.as_ref().map(|w| w.order_offers.clone()).unwrap_or_default();
+                let offers = self.world.as_ref().map(|w| w.board_offers().to_vec()).unwrap_or_default();
                 let busy = self.world.as_ref().is_some_and(|w| w.farmer.special_order.is_some());
                 let clicked = order_accept_rects(sw, sh).iter().position(|r| r.contains(ctx.input.mouse)).filter(|_| ctx.input.mouse_pressed(MouseButton::Left));
                 if let Some(id) = clicked.and_then(|i| offers.get(i)).filter(|_| !busy).cloned() {
@@ -2477,10 +2477,10 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
                     y += 30.0;
                 }
                 ui.text(&format!("Days left: {}", o.days_left), Vec2::new(r.x + 20.0, r.y + r.h - 40.0), 2.0, ui::TEXT);
-            } else if w.order_offers.is_empty() {
+            } else if w.board_offers().is_empty() {
                 ui.text_centered("No orders posted this week.", sw / 2.0, f.y + 200.0, 2.0, ui::TEXT);
             } else {
-                for (i, id) in w.order_offers.iter().enumerate().take(2) {
+                for (i, id) in w.board_offers().iter().enumerate().take(2) {
                     let r = card(i);
                     ui.slot(r, false);
                     let Some((name, text)) = w.order_text(id) else { continue };

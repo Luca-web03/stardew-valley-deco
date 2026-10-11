@@ -138,6 +138,8 @@ impl World {
         self.location_mut().state.objects.insert(t, obj);
         self.farmer.inventory.reduce(slot, 1);
         self.sound("woodyStep");
+        let here = self.current.clone();
+        self.machine_auto_trigger(&here, t, "MachinePutDown", None);
         true
     }
 
@@ -206,7 +208,9 @@ impl World {
                     *minutes_left = 0;
                 }
                 self.sound("coin");
-                self.emit(WorldEvent::Pickup(out));
+                self.emit(WorldEvent::Pickup(out.clone()));
+                let here = self.current.clone();
+                self.machine_auto_trigger(&here, t, "OutputCollected", Some(&out));
                 true
             }
             ObjKind::Machine { output: Some(_), .. } => {
@@ -276,7 +280,16 @@ impl World {
     }
 
     fn make_machine_output(&self, def: &MachineOutputItem, input: &Item) -> Option<Item> {
-        let raw = def.item_id.clone().unwrap_or_default();
+        if let Some(method) = def.output_method.as_deref() {
+            return self.machine_output_method(method, input);
+        }
+        let raw = match def.random_item_id.as_ref().filter(|v| !v.is_empty()) {
+            Some(ids) => {
+                let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, self.clock.time as i64, 211]));
+                rng.pick(ids).cloned().unwrap_or_default()
+            }
+            None => def.item_id.clone().unwrap_or_default(),
+        };
         let input_name = self.items.display_name(input);
         let input_price = self.items.object(input.object_id().unwrap_or("")).map(|o| o.data.price).unwrap_or(0);
         let toks: Vec<&str> = raw.split_whitespace().collect();
@@ -326,6 +339,86 @@ impl World {
             }
         }
         Some(item)
+    }
+
+    /// Code-defined outputs (`OutputMethod`) this engine knows: the seed
+    /// maker. Others produce nothing.
+    fn machine_output_method(&self, method: &str, input: &Item) -> Option<Item> {
+        let name = method.rsplit(':').next().unwrap_or(method).trim();
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, self.clock.time as i64, 223]));
+        match name {
+            "OutputSeedMaker" => {
+                let id = input.object_id()?;
+                // Rare extras (approx. chances).
+                if rng.chance(0.005) && self.items.objects.contains_key("499") {
+                    return Some(Item::object("499", 1));
+                }
+                if rng.chance(0.02) && self.items.objects.contains_key("770") {
+                    return Some(Item::object("770", rng.range(1, 5)));
+                }
+                let seed = self.items.crops.iter().find(|(_, c)| crate::item::split_qualified(&c.harvest_item_id).1 == id).map(|(k, _)| k.clone())?;
+                Some(Item::object(&seed, rng.range(1, 4)))
+            }
+            _ => None,
+        }
+    }
+
+    /// Fire a machine's input-less rules (`DayUpdate`, `MachinePutDown`,
+    /// `OutputCollected`) at `t` in `loc_name`. `last` is the output just
+    /// collected (the input for `OutputCollected` rules).
+    pub(crate) fn machine_auto_trigger(&mut self, loc_name: &str, t: TilePos, trigger: &str, last: Option<&Item>) -> bool {
+        let Some(o) = self.locations.get(loc_name).and_then(|l| l.object(t)).cloned() else { return false };
+        if !matches!(o.kind, ObjKind::Machine { output: None, .. }) {
+            return false;
+        }
+        let Some(data) = self.items.machines.get(&o.qualified_id()).cloned() else { return false };
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.clock.days_played() as i64, t.x as i64, t.y as i64, 227]));
+        let mail = self.farmer.mail_received.clone();
+        let seen = self.farmer.events_seen.clone();
+        for rule in &data.output_rules {
+            let fires = rule.triggers.iter().any(|tr| {
+                let named = tr.trigger.split(',').any(|x| x.trim() == trigger);
+                let item_ok = match (trigger, last) {
+                    ("OutputCollected", Some(l)) => {
+                        tr.required_item_id.as_ref().map_or(true, |r| *r == l.qualified_id() || crate::item::split_qualified(r).1 == l.object_id().unwrap_or(""))
+                            && tr.required_tags.as_ref().map_or(true, |tags| self.items.matches_tags(l, tags))
+                    }
+                    ("OutputCollected", None) => false,
+                    _ => tr.required_item_id.is_none() && tr.required_tags.is_none(),
+                };
+                let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng };
+                named && item_ok && gsq::check(tr.condition.as_deref(), &mut ctx)
+            });
+            if !fires {
+                continue;
+            }
+            let mut ctx = QueryCtx { clock: &self.clock, weather: self.weather, mail: &mail, events_seen: &seen, location: loc_name, rng: &mut rng };
+            let Some(def) = rule.output_item.iter().find(|d| gsq::check(d.condition.as_deref(), &mut ctx)).cloned() else { continue };
+            let input = last.cloned().unwrap_or_else(|| Item::big(&o.item_id, 1));
+            let Some(output) = self.make_machine_output(&def, &input) else { continue };
+            let minutes = if rule.days_until_ready > 0 {
+                crate::time::Clock::minutes_between(self.clock.time, 2600) + 240 + (rule.days_until_ready - 1) * 1440
+            } else {
+                rule.minutes_until_ready.max(10)
+            };
+            if let Some(obj) = self.locations.get_mut(loc_name).and_then(|l| l.state.objects.get_mut(&t)) {
+                obj.kind = ObjKind::Machine { output: Some(output), minutes_left: minutes, ready: false };
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Morning: idle machines with `DayUpdate` rules start working.
+    pub(crate) fn machines_day_update(&mut self) {
+        let idle: Vec<(String, TilePos)> = self
+            .locations
+            .iter()
+            .flat_map(|(name, l)| l.state.objects.iter().filter(|(_, o)| matches!(o.kind, ObjKind::Machine { output: None, .. })).map(move |(p, _)| (name.clone(), *p)))
+            .collect();
+        for (name, p) in idle {
+            self.machine_auto_trigger(&name, p, "DayUpdate", None);
+        }
     }
 
     /// Advance all machines by game minutes.

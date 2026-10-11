@@ -14,7 +14,7 @@ fn world() -> (ContentManager, World) {
 #[test]
 fn board_offers_two_orders_and_accepting_one_activates_it() {
     let (_, mut w) = world();
-    assert_eq!(w.special_orders.len(), 4);
+    assert_eq!(w.special_orders.len(), 5, "four town orders and one Qi order");
     w.warp_farmer("Town", TilePos::new(22, 12), Some(Dir::Up));
     w.drain_events();
     assert!(w.do_action(Some(TilePos::new(22, 11))));

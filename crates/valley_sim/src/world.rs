@@ -204,6 +204,9 @@ pub struct World {
     /// Data/SpecialOrders and this week's board offers.
     pub special_orders: BTreeMap<String, crate::special_orders::SpecialOrderData>,
     pub order_offers: Vec<String>,
+    /// This week's Qi board offers, and which board was opened last.
+    pub qi_offers: Vec<String>,
+    pub order_board: String,
     /// The spouse will ask about a baby when next spoken to.
     pub child_question_pending: bool,
     pub fish_pond_data: Vec<crate::fish_ponds::FishPondData>,
@@ -224,8 +227,13 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// Movie snacks and who likes what.
+    pub concessions: Vec<crate::movies::ConcessionData>,
+    pub concession_tastes: Vec<crate::movies::ConcessionTaste>,
     /// Community development projects (Joja route).
     pub joja_projects: Vec<crate::evaluation::JojaProject>,
+    /// The cave choice was offered this session.
+    pub cave_offered: bool,
     /// Hutches whose slimes have been brought out this session.
     pub spawned_hutches: std::collections::BTreeSet<String>,
     /// Crows on the farm this morning.
@@ -379,6 +387,8 @@ impl World {
             shop_sold: BTreeMap::new(),
             special_orders: cm.load_json("Data/SpecialOrders").unwrap_or_default(),
             order_offers: Vec::new(),
+            qi_offers: Vec::new(),
+            order_board: "Town".into(),
             child_question_pending: false,
             fish_pond_data: cm.load_json("Data/FishPondData").unwrap_or_default(),
             secret_notes: cm.load_string_dict("Data/SecretNotes").into_iter().collect(),
@@ -396,7 +406,10 @@ impl World {
             giant_crops: crate::clumps::load_giant_crops(cm),
             crows: Vec::new(),
             spawned_hutches: Default::default(),
+            cave_offered: false,
             joja_projects: crate::evaluation::load_joja_projects(cm),
+            concessions: Vec::new(),
+            concession_tastes: Vec::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -496,6 +509,7 @@ impl World {
                 w.spouse_dialogue.insert(n, d);
             }
         }
+        (w.concessions, w.concession_tastes) = crate::movies::load_concessions(cm);
         w.place_farm_clumps();
         w.populate_new_farm();
         w.adopt_pet("Biscuit");
@@ -727,6 +741,7 @@ impl World {
         self.check_wedding();
         let raining = self.weather.is_raining();
         self.unlock_recipes();
+        self.machines_day_update();
         self.run_sprinklers();
         self.spawn_forage();
         self.deliver_dated_mail();
@@ -766,6 +781,7 @@ impl World {
         self.passive_festivals_morning();
         self.apply_cleared_tiles();
         self.grandpa_morning();
+        self.cave_morning();
     }
 
     /// The active player's overnight rest: energy, health and friendship
@@ -1015,6 +1031,7 @@ impl World {
         self.update_bombs(dt);
         self.update_animals(dt);
         self.sync_hutch_slimes();
+        self.check_cave_choice();
         self.update_crows(dt);
         self.update_pet(dt);
         self.update_children(dt);
@@ -1544,7 +1561,8 @@ impl World {
                 true
             }
             "HayHopper" | "hayHopper" => self.hay_hopper(),
-            "SpecialOrders" => self.open_order_board(),
+            "SpecialOrders" => self.open_board(if toks.get(1).is_some_and(|b| b.eq_ignore_ascii_case("Qi")) { "Qi" } else { "Town" }),
+            "QiChallengeBoard" => self.open_board("Qi"),
             // Engine convention: Port.Travel <location> <x> <y> <fare> [open-close]
             "Port.Travel" if toks.len() >= 5 => {
                 let (Ok(x), Ok(y), Ok(fare)) = (toks[2].parse(), toks[3].parse(), toks[4].parse()) else { return false };

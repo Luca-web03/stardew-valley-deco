@@ -1,7 +1,10 @@
 //! Special orders from `Data/SpecialOrders` (public format, subset): the
 //! town board offers two orders each week; one can be active at a time.
 //! Objectives: Collect, Ship, Deliver, Fish, Gift, Slay, ReachMineFloor.
-//! Rewards: Money, Friendship, Mail. Board timing is approximate.
+//! Rewards: Money, Gems (Qi gems), Friendship, Mail. Orders with
+//! `OrderType: Qi` appear on the Qi board (`SpecialOrders Qi` or
+//! `QiChallengeBoard` tile actions) instead of the town board. Board
+//! timing is approximate.
 
 use std::collections::BTreeMap;
 
@@ -123,8 +126,9 @@ impl World {
         })
     }
 
-    fn order_available(&self, id: &str, d: &SpecialOrderData) -> bool {
-        if !(d.order_type.is_empty() || d.order_type == "Town") {
+    fn order_available(&self, id: &str, d: &SpecialOrderData, board: &str) -> bool {
+        let kind = if d.order_type.is_empty() { "Town" } else { d.order_type.as_str() };
+        if !kind.eq_ignore_ascii_case(board) {
             return false;
         }
         if !d.objectives.iter().all(|o| SUPPORTED.contains(&o.kind.as_str())) || d.objectives.is_empty() {
@@ -146,23 +150,43 @@ impl World {
     /// Monday morning (or first look): pick this week's board offers.
     pub(crate) fn refresh_order_board(&mut self) {
         let week = self.clock.days_played() / 7;
-        let mut ids: Vec<String> = self.special_orders.iter().filter(|(id, d)| self.order_available(id, d)).map(|(id, _)| id.clone()).collect();
-        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, week as i64, 29]));
-        for i in (1..ids.len()).rev() {
-            let j = rng.range(0, i as i32 + 1) as usize;
-            ids.swap(i, j);
+        for (board, salt) in [("Town", 29), ("Qi", 31)] {
+            let mut ids: Vec<String> = self.special_orders.iter().filter(|(id, d)| self.order_available(id, d, board)).map(|(id, _)| id.clone()).collect();
+            let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, week as i64, salt]));
+            for i in (1..ids.len()).rev() {
+                let j = rng.range(0, i as i32 + 1) as usize;
+                ids.swap(i, j);
+            }
+            ids.truncate(OFFERS);
+            if board == "Town" {
+                self.order_offers = ids;
+            } else {
+                self.qi_offers = ids;
+            }
         }
-        ids.truncate(OFFERS);
-        self.order_offers = ids;
     }
 
     /// The board action: show offers (or the active order).
     pub fn open_order_board(&mut self) -> bool {
-        if self.order_offers.is_empty() && self.farmer.special_order.is_none() {
+        self.open_board("Town")
+    }
+
+    pub fn open_board(&mut self, board: &str) -> bool {
+        self.order_board = board.to_string();
+        if self.board_offers().is_empty() && self.farmer.special_order.is_none() {
             self.refresh_order_board();
         }
         self.emit(WorldEvent::OpenOrderBoard);
         true
+    }
+
+    /// Offers on the board that was opened last.
+    pub fn board_offers(&self) -> &[String] {
+        if self.order_board == "Qi" {
+            &self.qi_offers
+        } else {
+            &self.order_offers
+        }
     }
 
     /// Display text for an order id (title, description).
@@ -196,6 +220,7 @@ impl World {
             objectives,
         });
         self.order_offers.retain(|o| o != id);
+        self.qi_offers.retain(|o| o != id);
         self.sound("newArtifact");
         self.hud("Special order accepted. (F: journal)");
         Ok(())
@@ -257,7 +282,7 @@ impl World {
         self.apply_counts(counts);
     }
 
-    pub(crate) fn order_slay(&mut self, monster: &str) {
+    pub fn order_slay(&mut self, monster: &str) {
         self.advance_objectives(|_, o| {
             let any = o.target().map_or(true, |t| t.split(',').any(|n| n.trim().eq_ignore_ascii_case(monster)));
             if o.kind == "Slay" && any { 1 } else { 0 }
@@ -311,6 +336,11 @@ impl World {
                     if let Some(n) = r.data.get("Amount").and_then(|a| a.trim().parse::<i32>().ok()) {
                         self.farmer.money += n;
                         self.farmer.total_earned += n.max(0) as i64;
+                    }
+                }
+                "Gems" => {
+                    if let Some(n) = r.data.get("Amount").and_then(|a| a.trim().parse::<i32>().ok()) {
+                        self.farmer.qi_gems += n;
                     }
                 }
                 "Friendship" => {

@@ -160,6 +160,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Dev_CorkFloat": { "Name": "Cork Float", "DisplayName": "Cork Float", "Description": "Makes the catch bar a little taller. Attach to an upgraded rod.", "Type": "Basic", "Category": -22, "Price": 250,
                            "SpriteIndex": ICON_CORK_FLOAT, "CustomFields": { "Port.Tackle": "bar_size" } },
         "Dev_Crawler": obj("Pond Crawler", "Fish", -4, 60, ICON_CRAWLER, 5),
+        "Dev_Mushroom": obj("Cave Mushroom", "Basic", -81, 40, ICON_MUSHROOM, 10),
         "Dev_SlimeEgg": { "Name": "Blob Egg", "DisplayName": "Blob Egg", "Description": "Warm and squishy. Hatches in an incubator.", "Type": "Basic", "Category": 0, "Price": 500,
                           "SpriteIndex": ICON_SLIME_EGG, "CustomFields": { "Port.SlimeType": "Dev_Blob" } },
         "Dev_Battery": obj("Storm Cell", "Basic", 0, 500, ICON_BATTERY, -300),
@@ -227,6 +228,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "Price": 50, "SpriteIndex": 5, "CustomFields": { "Port.Cask": "true" } },
         "Dev_SewingMachine": { "Name": "Sewing Machine", "DisplayName": "Sewing Machine", "Description": "Turns cloth into clothing.",
                                "Price": 50, "SpriteIndex": 6, "CustomFields": { "Port.SewingMachine": "true" } },
+        "Dev_MushroomBox": { "Name": "Mushroom Box", "DisplayName": "Mushroom Box", "Description": "Grows a mushroom every day.",
+                             "Price": 0, "SpriteIndex": 10, "CustomFields": { "Port.MushroomBox": "true" } },
+        "Dev_SeedMaker": { "Name": "Seed Maker", "DisplayName": "Seed Maker", "Description": "Turns crops into seeds.",
+                           "Price": 50, "SpriteIndex": 11 },
         "Dev_Incubator": { "Name": "Blob Incubator", "DisplayName": "Blob Incubator", "Description": "Hatches blob eggs. Only works in a slime hutch.",
                            "Price": 50, "SpriteIndex": 8, "CustomFields": { "Port.SlimeIncubator": "true" } },
         "Dev_SlimeBall": { "Name": "Goo Ball", "DisplayName": "Goo Ball", "Description": "Squish it for goo.",
@@ -247,6 +252,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "MinutesUntilReady": 120
             }],
             "InvalidItemMessage": "The juicer only takes fruit and vegetables."
+        },
+        "(BC)Dev_MushroomBox": {
+            "OutputRules": [{ "Id": "daily", "Triggers": [{ "Trigger": "DayUpdate" }, { "Trigger": "MachinePutDown" }],
+                              "OutputItem": [{ "ItemId": "(O)Dev_Mushroom" }], "DaysUntilReady": 1 }]
+        },
+        "(BC)Dev_SeedMaker": {
+            "OutputRules": [{ "Id": "seeds", "Triggers": [{ "Trigger": "ItemPlacedInMachine", "RequiredTags": ["category_vegetable,category_fruits"] }],
+                              "OutputItem": [{ "OutputMethod": "StardewValley.Object, Stardew Valley: OutputSeedMaker" }], "MinutesUntilReady": 20 }],
+            "InvalidItemMessage": "The seed maker only takes crops."
         },
         "(BC)Dev_Furnace": {
             "OutputRules": [
@@ -273,6 +287,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         "Lightning Rod": "Dev_IronBar 1 Dev_Quartz 1/Home/Dev_LightningRod/true/default/",
         "Straw Scarecrow": "388 50 771 20 Dev_Coal 1/Home/Dev_Scarecrow/true/default/",
         "Blob Incubator": "Dev_IronBar 2 Dev_Goo 20/Home/Dev_Incubator/true/default/",
+        "Seed Maker": "388 25 Dev_Coal 10 Dev_GoldBar 1/Home/Dev_SeedMaker/true/default/",
         "Rain Totem": "388 1 92 5 Dev_Berry 1/Home/Dev_RainTotem/false/default/",
     });
     let strings = json!({
@@ -450,6 +465,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 { "Id": "bean", "ItemId": "(O)Dev_BeanSeeds", "Condition": "SEASON Spring Summer" },
                 { "Id": "pumpkin", "ItemId": "(O)Dev_PumpkinSeeds", "Condition": "SEASON Fall" },
                 { "Id": "bread", "ItemId": "(O)Dev_Bread", "Price": 120 },
+                { "Id": "dish", "ItemId": "DISH_OF_THE_DAY", "AvailableStock": 3 },
                 { "Id": "fert", "ItemId": "(O)Dev_Fertilizer", "Price": 10 },
                 { "Id": "speed", "ItemId": "(O)Dev_SpeedGro" },
                 { "Id": "rod", "ItemId": "(T)FishingRod", "Price": 200 },
@@ -495,6 +511,8 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "CreateOnLoad": { "MapPath": "Maps\\SeedShop" } },
         "Mine": { "DisplayName": "Mines", "DefaultArrivalTile": { "X": 5, "Y": 8 },
                   "CreateOnLoad": { "MapPath": "Maps\\Mine" } },
+        "FarmCave": { "DisplayName": "Cave", "DefaultArrivalTile": { "X": 6, "Y": 8 },
+                      "CreateOnLoad": { "MapPath": "Maps\\FarmCave" } },
         "Greenhouse": { "DisplayName": "Greenhouse", "DefaultArrivalTile": { "X": 4, "Y": 7 },
                         "CreateOnLoad": { "MapPath": "Maps\\Greenhouse" } },
     });
@@ -541,6 +559,15 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Data/Objects", objects),
         ("Data/BigCraftables", bigs),
         ("Data/Machines", machines),
+        ("Data/Concessions", json!([
+            { "Id": "Dev_KettleCorn", "Name": "Kettle Corn", "DisplayName": "Kettle Corn", "Price": 40, "ItemTags": ["Salty", "Sweet", "Popcorn"] },
+            { "Id": "Dev_FizzyPop", "Name": "Fizzy Pop", "DisplayName": "Fizzy Pop", "Price": 30, "ItemTags": ["Drink", "Sweet"] },
+            { "Id": "Dev_Pretzel", "Name": "Giant Pretzel", "DisplayName": "Giant Pretzel", "Price": 60, "ItemTags": ["Salty", "Hearty"] }
+        ])),
+        ("Data/ConcessionTastes", json!([
+            { "Name": "*", "LovedTags": [], "LikedTags": ["Sweet"], "DislikedTags": [] },
+            { "Name": "Mara", "LovedTags": ["Hearty"], "LikedTags": ["Salty"], "DislikedTags": ["Sweet"] }
+        ])),
         ("Port/JojaProjects", json!([
             { "Id": "Garden", "Area": "Garden", "DisplayName": "Garden Renewal", "Description": "Replant the town garden.", "Price": 8000, "Flag": "jojaGarden" },
             { "Id": "Workshop", "Area": "Workshop", "DisplayName": "Workshop Overhaul", "Description": "Re-equip the old workshop.", "Price": 12000, "Flag": "jojaWorkshop" }
@@ -594,6 +621,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                 "Text": "[LocalizedText Strings\\SpecialOrderStrings:Dev_FishFry_Text]",
                 "Objectives": [{ "Type": "Fish", "Text": "Catch fish", "RequiredCount": "5", "Data": {} }],
                 "Rewards": [{ "Type": "Money", "Data": { "Amount": "600" } }, { "Type": "Mail", "Data": { "MailReceived": "Dev_FishFryDone" } }]
+            },
+            "Dev_QiTrial": {
+                "Name": "Blob Purge", "Requester": "Tobin", "Duration": "Week", "OrderType": "Qi", "Repeatable": true,
+                "Text": "A collector of curiosities wants proof of your mettle: clear out the blobs below, quickly.",
+                "Objectives": [{ "Type": "Slay", "Text": "Defeat mud blobs", "RequiredCount": "25", "Data": { "TargetName": "Dev_Blob" } }],
+                "Rewards": [{ "Type": "Gems", "Data": { "Amount": "5" } }]
             },
             "Dev_DeepDown": {
                 "Name": "Deep Down", "Requester": "Tobin", "Duration": "TwoWeeks", "RequiredTags": "!season_winter",

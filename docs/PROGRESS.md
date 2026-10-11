@@ -35,8 +35,9 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
-- [x] Crafting, placeables, chests, data-driven machines (Data/Machines),
-      furniture, casks, tailoring at the sewing machine
+- [x] Crafting, placeables, chests, data-driven machines (Data/Machines,
+      including day-update / put-down / output-collected triggers and the
+      seed maker), furniture, casks, tailoring at the sewing machine
 - [x] Cooking, food buffs
 - [x] Fishing (cast, bite, minigame, size/quality/XP), crab pots, bait and
       tackle, treasure chests
@@ -72,7 +73,9 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Cutscene events (core command subset), festivals, passive festivals
       (multi-day map swaps)
 - [x] Movie theater: seasonal movies, tickets, inviting villagers,
-      reactions by movie tags (no concessions yet)
+      reactions by movie tags, concessions with guest tastes
+- [x] Farm cave (mushrooms or fruit bats), Qi challenge board with gem
+      rewards, dish of the day
 - [x] Skills, professions, level-up screen, mastery (engine-defined perks),
       books (skill XP, powers), trinkets (stat effects)
 - [x] Co-op: host/join over TCP, farmhands with their own farmer, location,
