@@ -507,25 +507,67 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     let event_here = w.event.as_ref().filter(|e| e.location == loc_name);
     if let Some(e) = event_here {
         let shadow = rc.assets.shadow(rc.textures);
-        for a in &e.actors {
+        for a in e.actors.iter().filter(|a| a.visible) {
             let tex = if a.texture.starts_with("__farmer/") { farmer_texture(rc, &w.farmer.appearance) } else { rc.assets.tex(rc.cm, rc.textures, &a.texture) };
-            let frame = if a.moving.is_some() { ((a.walk_ms / 150) % 4) as i32 } else { 0 };
+            let (fw, fh) = a.size;
+            let src = match a.sprite_frame() {
+                Some(f) => {
+                    let (tw, _) = rc.textures.size(tex);
+                    let cols = (tw as i32 / fw.max(1)).max(1);
+                    IRect::new((f % cols) * fw, (f / cols) * fh, fw, fh)
+                }
+                None if (fw, fh) == (16, 32) => character_src(a.facing, if a.moving.is_some() { ((a.walk_ms / 150) % 4) as i32 } else { 0 }),
+                None => IRect::new(0, 0, fw, fh),
+            };
+            let shake = if a.shake_ms > 0 { ((a.shake_ms as f32) * 0.9).sin() * 4.0 } else { 0.0 };
             let p = cam.to_screen(a.pos);
             let depth = sort_depth(a.pos.y + TILE_F, map_h);
             out.draw(shadow, IRect::new(0, 0, 16, 6), Vec2::new(p.x, p.y + TILE_F - 12.0), ZOOM, depth - 0.0005);
-            out.draw(tex, character_src(a.facing, frame), Vec2::new(p.x, p.y - TILE_F), ZOOM, depth);
-            if let Some((id, _)) = a.emote {
-                if let Some(ft) = rc.textures.id("__engine/font8x8") {
-                    let ch = match id {
-                        8 | 16 => '?',
-                        20 | 32 => '!',
-                        12 => '*',
-                        _ => '!',
-                    } as i32;
-                    let white = rc.assets.white(rc.textures);
-                    out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(p.x + 14.0, p.y - 112.0), 36.0, Color::rgba(255, 255, 255, 230), DEPTH_OVERLAY + 0.009);
-                    out.draw_tinted(ft, IRect::new((ch % 16) * 8, (ch / 16) * 8, 8, 8), Vec2::new(p.x + 20.0, p.y - 106.0), 3.0, Color::rgb(60, 40, 30), DEPTH_OVERLAY + 0.01);
+            let (w_px, h_px) = (fw as f32 * ZOOM, fh as f32 * ZOOM);
+            let flip = a.anim.as_ref().map(|x| x.flip).unwrap_or(a.flip);
+            let mut s = Sprite::new(tex, src, FRect::new(p.x + TILE_F / 2.0 - w_px / 2.0 + shake, p.y + TILE_F - h_px - a.z, w_px, h_px), depth);
+            s.flip_x = flip;
+            out.sprite(s);
+            let head = Vec2::new(p.x + TILE_F / 2.0, p.y + TILE_F - h_px - a.z);
+            if let Some((id, ms)) = a.emote {
+                draw_emote(rc, out, id, 1200u32.saturating_sub(ms), Vec2::new(head.x - 32.0, head.y - 60.0));
+            }
+            if let Some((text, _)) = &a.speech {
+                draw_speech(rc, out, text, Vec2::new(head.x, head.y - 16.0));
+            }
+        }
+        // Props placed by the event.
+        for prop in &e.props {
+            match prop {
+                valley_sim::events::EventProp::Object { tile, id, big } => {
+                    let (tex, src) = if *big { big_sprite(rc, w, id) } else { object_sprite(rc, w, id) };
+                    let p = cam.to_screen(Vec2::new((tile.x * TILE) as f32, (tile.y * TILE) as f32));
+                    let h = src.h as f32 * ZOOM;
+                    out.sprite(Sprite::new(tex, src, FRect::new(p.x, p.y + TILE_F - h, src.w as f32 * ZOOM, h), sort_depth(((tile.y + 1) * TILE) as f32 - 1.0, map_h)));
                 }
+                valley_sim::events::EventProp::Sprite { texture, src, pos, interval_ms, frames, flip, scale, alpha, rotation, elapsed, .. } => {
+                    let tex = rc.assets.tex(rc.cm, rc.textures, texture);
+                    let (tw, _) = rc.textures.size(tex);
+                    let frame = ((*elapsed / (*interval_ms).max(1)) as i32) % (*frames).max(1);
+                    let (mut sx, mut sy) = (src.0 + frame * src.2, src.1);
+                    if tw > 0 && sx + src.2 > tw as i32 {
+                        let per_row = ((tw as i32 - src.0) / src.2.max(1)).max(1);
+                        sx = src.0 + (frame % per_row) * src.2;
+                        sy = src.1 + (frame / per_row) * src.3;
+                    }
+                    let p = cam.to_screen(*pos);
+                    let mut s = Sprite::new(tex, IRect::new(sx, sy, src.2, src.3), FRect::new(p.x, p.y, src.2 as f32 * scale, src.3 as f32 * scale), sort_depth(pos.y + src.3 as f32 * scale, map_h));
+                    s.flip_x = *flip;
+                    s.rotation = *rotation;
+                    s.tint = Color::WHITE.with_alpha(*alpha);
+                    out.sprite(s);
+                }
+            }
+        }
+        if let Some(c) = e.ambient {
+            let a = ((c.r as u32 + c.g as u32 + c.b as u32) / 3) as f32 / 255.0;
+            if a > 0.01 {
+                out.fill(FRect::new(0.0, 0.0, cam.screen_w, cam.screen_h), Color::rgba(c.r / 6, c.g / 6, (c.b / 6).saturating_add(20), (a * 200.0) as u8), DEPTH_OVERLAY - 0.01);
             }
         }
     }
@@ -1110,4 +1152,43 @@ pub fn furniture_sprite(rc: &mut RenderCtx, w: &World, id: &str) -> (engine::Tex
     let (tw, _) = rc.textures.size(tex);
     let cols = (tw / 16).max(1) as i32;
     (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, size.0 * 16, size.1 * 16))
+}
+
+/// An emote bubble: `TileSheets/emotes` (16x16 frames, four per row, the
+/// emote id selects the row) animating in over its first 400 ms.
+pub fn draw_emote(rc: &mut RenderCtx, out: &mut DrawList, id: i32, elapsed_ms: u32, at: Vec2) {
+    let tex = rc.assets.tex(rc.cm, rc.textures, "TileSheets/emotes");
+    let frame = (elapsed_ms / 100).min(3) as i32;
+    let row = id / 4;
+    out.draw(tex, IRect::new(frame * 16, row * 16, 16, 16), at, ZOOM, DEPTH_OVERLAY + 0.008);
+}
+
+/// Speech text above a head (white box, dark text).
+pub fn draw_speech(rc: &mut RenderCtx, out: &mut DrawList, text: &str, bottom_center: Vec2) {
+    let Some(ft) = rc.textures.id("__engine/font8x8") else { return };
+    let scale = 2.0;
+    let wrap = 28usize;
+    let mut lines: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    for word in text.split_whitespace() {
+        if cur.len() + word.len() + 1 > wrap && !cur.is_empty() {
+            lines.push(std::mem::take(&mut cur));
+        }
+        if !cur.is_empty() {
+            cur.push(' ');
+        }
+        cur.push_str(word);
+    }
+    if !cur.is_empty() {
+        lines.push(cur);
+    }
+    let w = lines.iter().map(|l| l.len()).max().unwrap_or(0) as f32 * 8.0 * scale + 16.0;
+    let h = lines.len() as f32 * 10.0 * scale + 12.0;
+    let r = FRect::new(bottom_center.x - w / 2.0, bottom_center.y - h, w, h);
+    out.fill(r, Color::rgba(255, 252, 240, 235), DEPTH_OVERLAY + 0.006);
+    out.outline(r, 2.0, Color::rgb(90, 60, 40), DEPTH_OVERLAY + 0.0065);
+    let font = engine::font::BuiltinFont { tex: ft };
+    for (i, l) in lines.iter().enumerate() {
+        font.draw(out, l, Vec2::new(r.x + 8.0, r.y + 6.0 + i as f32 * 10.0 * scale), scale, Color::rgb(60, 40, 30), DEPTH_OVERLAY + 0.007);
+    }
 }

@@ -52,6 +52,8 @@ pub enum QuestionKind {
     Mastery { skills: Vec<valley_sim::farmer::Skill> },
     /// A sim choice: option i answers `ids[i]` (last option = cancel).
     Choice { ids: Vec<String> },
+    /// A question inside a cutscene (no cancel).
+    EventAnswer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

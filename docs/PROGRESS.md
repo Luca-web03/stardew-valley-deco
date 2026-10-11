@@ -70,8 +70,12 @@ were not available; such values are isolated constants that can be tuned.
       shooter, Rail Runner cart game), also hosted as standalone modules
 - [x] Farm pet (wanders, petting, water bowl, stays in on rainy days),
       trash cans (Data/GarbageCans)
-- [x] Cutscene events (core command subset), festivals, passive festivals
-      (multi-day map swaps)
+- [x] Cutscene events: questions and forks, quick questions, actor
+      animation/frames/hops/shakes, speech above heads, temporary actors,
+      props and animated sprites, temporary map edits, camera pans, ambient
+      light, rewards and state commands, `end` variants; emote sheet;
+      HUD hidden during cutscenes (code-only commands are skipped)
+- [x] Festivals, passive festivals (multi-day map swaps)
 - [x] Movie theater: seasonal movies, tickets, inviting villagers,
       reactions by movie tags, concessions with guest tastes
 - [x] Farm cave (mushrooms or fruit bats), Qi challenge board with gem

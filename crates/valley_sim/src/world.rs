@@ -74,6 +74,9 @@ pub enum WorldEvent {
     Flash,
     /// Confirm a divorce.
     DivorcePrompt,
+    /// An event asks the player a question; the answer goes to
+    /// [`World::event_answer`].
+    EventQuestion { text: String, options: Vec<String> },
     /// Play an arcade cabinet ("ranger" or "rails").
     OpenArcade(String),
     /// Pick one of `options` (id, label) or cancel; the answer goes to
@@ -1860,8 +1863,13 @@ impl World {
         let raining = self.weather.is_raining();
         let hearts = f.hearts();
         let npc = &self.npcs[i];
-        let key = if npc.dialogue.contains_key("__spouse_today") { Some("__spouse_today".to_string()) } else { dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining) };
-        let raw = key.and_then(|k| npc.dialogue.get(&k).cloned()).unwrap_or_else(|| "...".to_string());
+        let key = if npc.dialogue.contains_key("__next") {
+            Some("__next".to_string())
+        } else if npc.dialogue.contains_key("__spouse_today") { Some("__spouse_today".to_string()) } else { dialogue::pick_key(&npc.dialogue, &self.clock, hearts, first, raining) };
+        let raw = key.as_ref().and_then(|k| npc.dialogue.get(k).cloned()).unwrap_or_else(|| "...".to_string());
+        if key.as_deref() == Some("__next") {
+            self.npcs[i].dialogue.remove("__next");
+        }
         let subs = Substitutions { farmer_name: &self.farmer.name, farm_name: &self.farmer.farm_name, male: self.farmer.male };
         let parsed = dialogue::parse_full(&raw, &subs);
         let pages = parsed.pages;

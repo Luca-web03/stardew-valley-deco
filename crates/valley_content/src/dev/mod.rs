@@ -44,6 +44,7 @@ pub fn build() -> MemSource {
     m.insert("Buildings/Dev_Stable.png", art::shed(4, 2, Color::rgb(150, 110, 70), Color::rgb(90, 110, 70)).encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("LooseSprites/Port_Crow.png", art::crow().encode_png());
+    m.insert("TileSheets/emotes.png", art::emotes().encode_png());
     m.insert("TileSheets/Dev_GiantCrops.png", art::giant_crops().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
@@ -807,7 +808,7 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
             }
         })),
         ("Data/Events/Town", json!({
-            "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
+            "Dev_Intro/t 600 1800": "none/6 15/farmer 2 15 1 Mara 12 9 2/skippable/pause 400/emote Mara 16/textAboveHead Mara \"Oh, hello!\"/move Mara 0 6 2/move Mara -8 0 3/speak Mara \"Oh! You must be the new farmer. I'm Mara.#$b#The general store is just up the road, and the old caves are north-west of here.$h\"/faceDirection Mara 1/pause 300/move Mara 8 0 1/move Mara 0 -6 0/friendship Mara 50/end"
         })),
         ("Data/Festivals/FestivalDates", json!({ "fall16": "Harvest Fair" })),
         ("Data/FruitTrees", json!({

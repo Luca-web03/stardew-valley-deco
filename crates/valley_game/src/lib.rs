@@ -613,6 +613,10 @@ impl ValleyGame {
                 }
                 WorldEvent::OpenHighLow => self.menus.push(Menu::HighLow { bet: 10, game: None, last: None }),
                 WorldEvent::Flash => self.fade = Fade { alpha: 1.0, target: 0.0 },
+                WorldEvent::EventQuestion { text, options } => {
+                    let options = if options.is_empty() { vec!["...".to_string()] } else { options };
+                    self.menus.push(Menu::Question { text, options, selected: 0, kind: QuestionKind::EventAnswer });
+                }
                 WorldEvent::Choice { text, options } => {
                     let ids: Vec<String> = options.iter().map(|(id, _)| id.clone()).collect();
                     let mut labels: Vec<String> = options.into_iter().map(|(_, l)| l).collect();
@@ -728,7 +732,7 @@ impl ValleyGame {
                 if ctx.input.pressed(Key::Enter) || ctx.input.pressed(Key::Space) || ctx.input.pressed(Key::X) || ctx.input.pressed(Key::C) {
                     chosen = Some(*selected);
                 }
-                if ctx.input.pressed(Key::Escape) {
+                if ctx.input.pressed(Key::Escape) && *kind != QuestionKind::EventAnswer {
                     chosen = Some(options.len() - 1);
                 }
                 if let Some(i) = chosen {
@@ -750,6 +754,12 @@ impl ValleyGame {
                                 }
                             }));
                         }
+                    } else if kind == QuestionKind::EventAnswer {
+                        action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                            if let Some(w) = g.world.as_mut() {
+                                w.event_answer(i);
+                            }
+                        }));
                     } else if let QuestionKind::Choice { ids } = &kind {
                         if let Some(id) = ids.get(i).cloned() {
                             action = Some(Box::new(move |g: &mut ValleyGame, _| {
@@ -805,7 +815,7 @@ impl ValleyGame {
                                 g.menus.clear();
                                 g.screen = Screen::Title { hovered: None };
                             }
-                            QuestionKind::Elevator { .. } | QuestionKind::Choice { .. } => {}
+                            QuestionKind::Elevator { .. } | QuestionKind::Choice { .. } | QuestionKind::EventAnswer => {}
                             QuestionKind::FestivalMain => {
                                 if let Some(w) = g.world.as_mut() {
                                     w.festival_begin_main();
@@ -1570,7 +1580,10 @@ impl ValleyGame {
         }
 
         let mut ui = Ui { out, font, white, depth: DEPTH_HUD };
-        hud::draw_hud(&mut rc, &mut ui, w, sw, sh, &self.toasts);
+        // Cutscenes hide the HUD (festival roaming keeps it).
+        if !w.in_event() || w.festival_roaming() {
+            hud::draw_hud(&mut rc, &mut ui, w, sw, sh, &self.toasts);
+        }
         ui.depth = DEPTH_HUD + 0.5;
         hud::draw_fishing_overlay(&mut rc, &mut ui, w, sw, sh);
 
@@ -2743,6 +2756,10 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenBundles);
                 "opening bundles".into()
             }
+            Some("event") => match &w.event {
+                Some(e) => format!("event {} at command {}/{}", e.id, e.pc, e.commands.len()),
+                None => format!("no event; seen: {}", w.farmer.events_seen.join(", ")),
+            },
             Some("arcade") => {
                 w.emit(valley_sim::world::WorldEvent::OpenArcade(t.get(1).copied().unwrap_or("ranger").to_string()));
                 "opening the arcade".into()

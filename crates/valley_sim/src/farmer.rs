@@ -236,6 +236,9 @@ pub struct Farmer {
     /// the farmhouse).
     #[serde(default)]
     pub home_location: Option<String>,
+    /// Conversation topics from events, with days left.
+    #[serde(default)]
+    pub conversation_topics: BTreeMap<String, i32>,
     /// The farm cave's residents: "mushrooms" or "bats".
     #[serde(default)]
     pub cave_choice: Option<String>,
@@ -362,6 +365,7 @@ impl Farmer {
             grandpa_candles: 0,
             home_location: None,
             cave_choice: None,
+            conversation_topics: BTreeMap::new(),
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),
             mastery_perks: Vec::new(),

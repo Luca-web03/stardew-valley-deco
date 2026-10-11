@@ -100,15 +100,7 @@ impl World {
             // Make sure the farmer is an actor.
             if !e.actors.iter().any(|a| a.name == "farmer") {
                 let t = self.farmer.tile();
-                e.actors.push(crate::events::Actor {
-                    name: "farmer".into(),
-                    pos: Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F - 16.0),
-                    facing: self.farmer.facing,
-                    texture: self.farmer.appearance.texture_name(),
-                    moving: None,
-                    walk_ms: 0,
-                    emote: None,
-                });
+                e.actors.push(crate::events::Actor::new("farmer", Vec2::new(t.x as f32 * TILE_F, t.y as f32 * TILE_F - 16.0), self.farmer.facing, self.farmer.appearance.texture_name()));
             }
         }
         true

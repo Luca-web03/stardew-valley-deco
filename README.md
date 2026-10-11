@@ -45,7 +45,7 @@ cargo run -p valley_app -- --headless --new Robin \
 | Toolbar slot | 1–0, -, =, mouse wheel |
 | Menu (items, crafting, skills, social, options) | E / I / Esc |
 | Journal (quests) | F |
-| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `clump`, `night`, `arcade`, `host`) |
+| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `clump`, `night`, `arcade`, `event`, `host`) |
 | Arcade cabinets | WASD move, arrows shoot (Dust Ranger); Space / W / Up jump (Rail Runner); Esc leaves |
 | Weapon special move | X or right click with a weapon held (nothing else to interact with) |
 | Slingshot | hold C / left mouse to pull, release to fire (aims at the mouse) |
