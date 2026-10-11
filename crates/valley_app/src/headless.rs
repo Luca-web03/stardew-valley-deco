@@ -80,6 +80,14 @@ pub fn run_script(host: &mut ModuleHost, script: &str) -> Result<(), String> {
                     host.tick();
                 }
             }
+            // Tick at real-time speed (e.g. while a co-op client is connected).
+            ["live", n] => {
+                for _ in 0..n.parse::<u32>().map_err(|e| e.to_string())? {
+                    host.tick();
+                    host.ctx.audio.drain();
+                    std::thread::sleep(std::time::Duration::from_millis(16));
+                }
+            }
             ["hold", k, n] => {
                 let key = parse_key(k).ok_or(format!("unknown key {k}"))?;
                 host.ctx.input.key_down(key);

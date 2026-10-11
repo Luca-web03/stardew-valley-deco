@@ -66,16 +66,35 @@ impl World {
         std::mem::swap(&mut self.events, &mut p.events);
     }
 
+    /// Make farmhand `i` the active player (until [`World::end_farmhand`]).
+    /// While active, `update` only runs that player's own actions.
+    pub fn begin_farmhand(&mut self, i: usize) -> bool {
+        if self.active_farmhand.is_some() || i >= self.farmhands.len() {
+            return false;
+        }
+        let mut p = std::mem::replace(&mut self.farmhands[i], PlayerState::new(Farmer::new("", ""), ""));
+        self.swap_player(&mut p);
+        // The slot now holds the host's state until we swap back.
+        self.farmhands[i] = p;
+        self.active_farmhand = Some(i);
+        true
+    }
+
+    pub fn end_farmhand(&mut self) {
+        let Some(i) = self.active_farmhand.take() else { return };
+        let mut p = std::mem::replace(&mut self.farmhands[i], PlayerState::new(Farmer::new("", ""), ""));
+        self.swap_player(&mut p);
+        self.farmhands[i] = p;
+    }
+
     /// Run `f` as farmhand `i` (their farmer, location and prompts are
     /// active); events produced go to that farmhand.
     pub fn as_farmhand<R>(&mut self, i: usize, f: impl FnOnce(&mut World) -> R) -> Option<R> {
-        let mut p = self.farmhands.get_mut(i).map(|p| std::mem::replace(p, PlayerState::new(Farmer::new("", ""), "")))?;
-        self.swap_player(&mut p);
-        self.active_farmhand = Some(i);
+        if !self.begin_farmhand(i) {
+            return None;
+        }
         let r = f(self);
-        self.active_farmhand = None;
-        self.swap_player(&mut p);
-        self.farmhands[i] = p;
+        self.end_farmhand();
         Some(r)
     }
 

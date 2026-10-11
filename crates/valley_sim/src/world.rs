@@ -934,6 +934,12 @@ impl World {
     }
 
     pub fn update_ms(&mut self, input: &PlayerInput, dt: u32) {
+        // A farmhand's turn only moves that player; the shared world
+        // advances on the host's turn.
+        if self.active_farmhand.is_some() {
+            self.update_player(input, dt);
+            return;
+        }
         self.game_ms += dt as u64;
         self.animate(dt);
         if self.event.is_some() {

@@ -5,6 +5,7 @@ pub mod input_map;
 pub mod menus;
 pub mod music;
 pub mod saves;
+pub mod net;
 
 use std::path::PathBuf;
 
@@ -75,7 +76,28 @@ struct Console {
     history: Vec<String>,
 }
 
+/// One player's screen state; swapped in while that player takes a turn
+/// (the host's own lives directly in [`ValleyGame`]).
+pub struct PlayerUi {
+    flash: u32,
+    placement: Option<Placement>,
+    screen: Screen,
+    menus: Vec<Menu>,
+    toasts: Vec<(String, u32)>,
+    fade: Fade,
+    cursor_tile: Option<TilePos>,
+    music: Option<String>,
+}
+
+impl Default for PlayerUi {
+    fn default() -> Self {
+        Self { flash: 0, placement: None, screen: Screen::Playing, menus: Vec::new(), toasts: Vec::new(), fade: Fade::default(), cursor_tile: None, music: None }
+    }
+}
+
 pub struct ValleyGame {
+    /// Co-op host: remote players' connections and screens.
+    pub net: Option<net::NetHost>,
     /// Remaining ticks of a lightning flash.
     flash: u32,
     pub options: Options,
@@ -107,6 +129,7 @@ impl ValleyGame {
         let options: Options = options;
         input_map::set_bindings(&options.bindings);
         Self {
+            net: None,
             flash: 0,
             options,
             console: None,
@@ -485,7 +508,8 @@ impl ValleyGame {
             w.update(&input);
         }
         if let Some(w) = self.world.as_mut() {
-            w.paused = !self.menus.is_empty();
+            // Co-op games keep running while menus are open.
+            w.paused = !self.menus.is_empty() && w.farmhands.is_empty();
             if w.paused {
                 // Keep animations running while paused.
                 w.update(&Default::default());
@@ -737,9 +761,13 @@ impl ValleyGame {
                     } else if i == 0 {
                         action = Some(Box::new(move |g: &mut ValleyGame, _ctx: &mut EngineCtx| match kind {
                             QuestionKind::Sleep => {
-                                g.fade = Fade { alpha: 0.0, target: 1.0 };
-                                if let Some(w) = g.world.as_mut() {
-                                    w.end_day(false);
+                                if g.world.as_ref().is_some_and(|w| w.active_farmhand.is_some()) {
+                                    g.toast("Resting... the day ends when the host goes to bed.");
+                                } else {
+                                    g.fade = Fade { alpha: 0.0, target: 1.0 };
+                                    if let Some(w) = g.world.as_mut() {
+                                        w.end_day(false);
+                                    }
                                 }
                             }
                             QuestionKind::Eat { slot } => {
@@ -2597,6 +2625,14 @@ impl ValleyGame {
     /// Debug console commands (also used by headless scripts).
     pub fn run_command(&mut self, cmd: &str) -> String {
         let t: Vec<&str> = cmd.split_whitespace().collect();
+        if t.first() == Some(&"host") {
+            let port = t.get(1).copied().unwrap_or("24642");
+            let addr = if port.contains(':') { port.to_string() } else { format!("0.0.0.0:{port}") };
+            return match self.host(&addr) {
+                Ok(p) => format!("hosting co-op on port {p}"),
+                Err(e) => format!("could not host: {e}"),
+            };
+        }
         let Some(w) = self.world.as_mut() else { return "no game loaded".into() };
         let num = |i: usize| t.get(i).and_then(|v| v.parse::<i32>().ok());
         match t.first().copied() {
@@ -2660,6 +2696,115 @@ impl ValleyGame {
     }
 }
 
+impl ValleyGame {
+    fn swap_ui(&mut self, ui: &mut PlayerUi) {
+        std::mem::swap(&mut self.flash, &mut ui.flash);
+        std::mem::swap(&mut self.placement, &mut ui.placement);
+        std::mem::swap(&mut self.screen, &mut ui.screen);
+        std::mem::swap(&mut self.menus, &mut ui.menus);
+        std::mem::swap(&mut self.toasts, &mut ui.toasts);
+        std::mem::swap(&mut self.fade, &mut ui.fade);
+        std::mem::swap(&mut self.cursor_tile, &mut ui.cursor_tile);
+        std::mem::swap(&mut self.music, &mut ui.music);
+    }
+
+    /// Start hosting co-op on `addr` (e.g. "0.0.0.0:24642").
+    pub fn host(&mut self, addr: &str) -> std::io::Result<u16> {
+        let h = net::NetHost::bind(addr)?;
+        let port = h.local_port();
+        self.net = Some(h);
+        Ok(port)
+    }
+
+    /// Each remote player's turn: read their input, run their screen with
+    /// their farmhand swapped in, and stream the frame back.
+    fn update_remotes(&mut self, ctx: &mut EngineCtx) {
+        let Some(mut host) = self.net.take() else { return };
+        host.accept();
+        let send_frame = ctx.tick % 2 == 0;
+        for r in host.remotes.iter_mut() {
+            for (kind, payload) in r.conn.recv() {
+                match kind {
+                    net::KIND_HELLO => {
+                        if r.farmhand.is_none() {
+                            let name = serde_json::from_slice::<net::Hello>(&payload).map(|h| h.name).unwrap_or_else(|_| "Farmhand".into());
+                            if let Some(w) = self.world.as_mut() {
+                                let i = w.add_farmhand(&name);
+                                r.farmhand = Some(i);
+                                r.name = Some(name);
+                                r.conn.send_json(net::KIND_WELCOME, &i);
+                                self.toasts.push((format!("{} joined the farm.", r.name.clone().unwrap_or_default()), 3000));
+                            }
+                        }
+                    }
+                    net::KIND_INPUT => {
+                        if let Ok(events) = serde_json::from_slice::<Vec<net::InputEvent>>(&payload) {
+                            for e in &events {
+                                net::apply_input(&mut r.input, &mut r.screen, e);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let Some(fi) = r.farmhand else { continue };
+            if r.conn.closed {
+                continue;
+            }
+            // Swap the remote player in: farmhand, screen state, input, screen size, audio.
+            if !self.world.as_mut().is_some_and(|w| w.begin_farmhand(fi)) {
+                continue;
+            }
+            self.swap_ui(&mut r.ui);
+            std::mem::swap(&mut ctx.input, &mut r.input);
+            let host_size = (ctx.screen_w, ctx.screen_h);
+            (ctx.screen_w, ctx.screen_h) = r.screen;
+            let host_audio = std::mem::take(&mut ctx.audio);
+            self.fade.alpha += (self.fade.target - self.fade.alpha).clamp(-0.05, 0.05);
+            if self.fade.target >= 1.0 && self.fade.alpha >= 1.0 {
+                self.fade.target = 0.0;
+            }
+            self.update_playing(ctx);
+            self.update_music(ctx);
+            let mut list = DrawList::new(ctx.screen_w, ctx.screen_h);
+            if send_frame {
+                GameModule::draw(self, ctx, &mut list);
+            }
+            let sounds: Vec<net::NetSound> = ctx.audio.cmds.iter().map(net::net_sound).collect();
+            ctx.audio = host_audio;
+            (ctx.screen_w, ctx.screen_h) = host_size;
+            std::mem::swap(&mut ctx.input, &mut r.input);
+            r.input.end_tick();
+            self.swap_ui(&mut r.ui);
+            if let Some(w) = self.world.as_mut() {
+                w.end_farmhand();
+            }
+            if send_frame {
+                // Textures first (new or changed), then the frame.
+                let mut used: Vec<u32> = list.cmds.iter().filter_map(|c| match c {
+                    engine::DrawCmd::Sprite(s) => Some(s.tex.0),
+                    _ => None,
+                }).collect();
+                used.sort_unstable();
+                used.dedup();
+                for id in used {
+                    let gen = ctx.textures.generation(engine::TexId(id));
+                    if r.sent.get(&id) != Some(&gen) {
+                        r.conn.send(net::KIND_TEXTURE, &net::encode_texture(engine::TexId(id), ctx.textures.get(engine::TexId(id))));
+                        r.sent.insert(id, gen);
+                    }
+                }
+                r.conn.send(net::KIND_FRAME, &net::encode_frame(&list));
+            }
+            if !sounds.is_empty() {
+                r.conn.send_json(net::KIND_SOUND, &sounds);
+            }
+        }
+        host.remotes.retain(|r| !r.conn.closed);
+        self.net = Some(host);
+    }
+}
+
 impl GameModule for ValleyGame {
     fn id(&self) -> &str {
         MODULE_ID
@@ -2685,6 +2830,9 @@ impl GameModule for ValleyGame {
             Screen::Playing => self.update_playing(ctx),
         }
         self.update_music(ctx);
+        if self.net.is_some() && matches!(self.screen, Screen::Playing) && self.world.is_some() {
+            self.update_remotes(ctx);
+        }
     }
 
     fn suspend(&mut self, ctx: &mut EngineCtx) {

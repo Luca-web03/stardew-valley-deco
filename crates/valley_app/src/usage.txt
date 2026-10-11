@@ -14,6 +14,7 @@ Options:
   --headless          Run without a window (uses the software renderer).
   --script "<steps>"  Headless input script, steps separated by spaces:
                         wait:N          advance N ticks (60 per second)
+                        live:N          advance N ticks at real-time speed
                         hold:KEY:N      hold KEY for N ticks
                         tap:KEY         press KEY for one tick
                         click:X:Y       left click at screen X,Y
@@ -24,6 +25,17 @@ Options:
                                         __ = underscore),
                                         e.g. cmd:mine_3 cmd:give_388_50
   --screenshot <png>  Save a screenshot after the script finishes.
+
+Co-op:
+  --host <port|addr>  Host the game for other players (in game: console
+                      command `host [port]`, default port 24642). Joined
+                      players are farmhands on the host's farm.
+  --join <addr>       Join a hosted game (host[:port], default port 24642).
+                      The client needs no
+                      game content: the host streams what to draw and play.
+                      With --headless, --script runs against the stream
+                      (wait/hold/tap/click/shot).
+  --name <name>       Your farmhand's name when joining.
 
 Audio tools (use the --content folder like the game does):
   --audio-info               Show wave/sound banks found and how cues resolve.

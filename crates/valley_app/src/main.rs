@@ -10,6 +10,7 @@
 
 mod audio;
 mod gamepad;
+mod client;
 mod headless;
 mod window;
 
@@ -24,6 +25,12 @@ pub struct Args {
     pub content: Option<PathBuf>,
     /// Folder of content mods layered over the game content.
     pub mods: Option<PathBuf>,
+    /// Host co-op on this address or port.
+    pub host: Option<String>,
+    /// Join a co-op game at this address (client mode).
+    pub join: Option<String>,
+    /// Player name when joining.
+    pub name: Option<String>,
     pub saves: PathBuf,
     pub headless: bool,
     pub script: String,
@@ -54,6 +61,9 @@ fn parse_args() -> Args {
         match arg.as_str() {
             "--content" => a.content = it.next().map(PathBuf::from),
             "--mods" => a.mods = it.next().map(PathBuf::from),
+            "--host" => a.host = it.next(),
+            "--join" => a.join = it.next(),
+            "--name" => a.name = it.next(),
             "--saves" => a.saves = it.next().map(PathBuf::from).unwrap_or(a.saves),
             "--headless" => a.headless = true,
             "--script" => a.script = it.next().unwrap_or_default(),
@@ -109,6 +119,13 @@ pub fn build_game(args: &Args) -> ValleyGame {
     if let Some(name) = &args.new_game {
         game.start_new_game(NewGame { farmer_name: name.clone(), seed: args.seed.unwrap_or(1), ..Default::default() });
     }
+    if let Some(h) = &args.host {
+        let addr = if h.contains(':') { h.clone() } else { format!("0.0.0.0:{h}") };
+        match game.host(&addr) {
+            Ok(port) => eprintln!("hosting co-op on port {port}"),
+            Err(e) => eprintln!("could not host on {addr}: {e}"),
+        }
+    }
     game
 }
 
@@ -122,6 +139,9 @@ fn main() {
     }
     if let Some(cues) = &args.audio_test {
         std::process::exit(audio::play_test(args.content.as_deref(), cues));
+    }
+    if args.join.is_some() {
+        std::process::exit(client::run(args));
     }
     if args.headless {
         std::process::exit(headless::run(&args));

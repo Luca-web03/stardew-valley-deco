@@ -24,6 +24,10 @@ cargo run --release -p valley_app -- --content "/path/to/Content (unpacked)"
 # Skip the title screen
 cargo run --release -p valley_app -- --new Robin --seed 42
 
+# Co-op: host, then join from another machine (the client needs no content)
+cargo run --release -p valley_app -- --new Robin --host 24642
+cargo run --release -p valley_app -- --join 192.168.1.20:24642 --name Sam
+
 # Headless: scripted input + screenshot (no window, no audio device)
 cargo run -p valley_app -- --headless --new Robin \
     --script "cmd:mine_3 wait:60 shot:out/mine.png"
@@ -41,7 +45,7 @@ cargo run -p valley_app -- --headless --new Robin \
 | Toolbar slot | 1–0, -, =, mouse wheel |
 | Menu (items, crafting, skills, social, options) | E / I / Esc |
 | Journal (quests) | F |
-| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`) |
+| Console | F1 (commands: `warp`, `mine`, `give`, `money`, `time`, `day`, `child`, `wear`, `slot`, `tile`, `bundles`, `host`) |
 | Weapon special move | X or right click with a weapon held (nothing else to interact with) |
 | Slingshot | hold C / left mouse to pull, release to fire (aims at the mouse) |
 | Debug overlay | F3 |
@@ -58,7 +62,7 @@ dialogue, gifts, dating, marriage and children, shops, a traveling cart,
 clothing, mail, quests, special orders, bundles, museum, secret notes,
 achievements, trash cans, cutscene events, festivals, skills and
 professions, warp totems, obelisks and paid travel, weather and seasons,
-day/night, saves, audio, and content mods. See `docs/PROGRESS.md` for the
+day/night, saves, audio, content mods and online co-op. See `docs/PROGRESS.md` for the
 detailed status.
 
 ## Workspace
@@ -88,6 +92,15 @@ Mods/
 JSON assets merge entry by entry (a `null` value removes an entry; array
 entries match by `Id`), so mods only need the entries they change. Images,
 maps and audio replace the original file. See `docs/CONTENT.md`.
+
+## Co-op
+
+The host runs the whole game; joined players are farmhands with their own
+farmer, inventory, location and menus, and wake up in the farmhouse each
+morning. The host streams compressed draw lists, textures and sounds to each
+client, and clients send back raw input, so a client only needs the
+executable. The day ends when the host sleeps; the game doesn't pause for
+menus while farmhands are connected. Farmhands are saved with the host's game.
 
 ## Merging other games
 

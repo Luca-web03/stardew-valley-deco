@@ -66,6 +66,11 @@ were not available; such values are isolated constants that can be tuned.
       reactions by movie tags (no concessions yet)
 - [x] Skills, professions, level-up screen, mastery (engine-defined perks),
       books (skill XP, powers), trinkets (stat effects)
+- [x] Co-op: host/join over TCP, farmhands with their own farmer, location,
+      tools and menus (swapped into the shared world for their turn),
+      render streaming (lz4 draw lists, textures, sounds) so clients need no
+      content, farmhands saved with the host's game (no cabins or
+      split-screen; the host's sleep ends the day)
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
       debug overlay (F3)
@@ -86,4 +91,3 @@ were not available; such values are isolated constants that can be tuned.
       be filled in against the real files)
 - [ ] Audio follow-ups: xWMA decoding (convert such tracks to
       `Audio/<cue>.ogg`), sound bank volume/pitch/categories
-- [ ] Multiplayer

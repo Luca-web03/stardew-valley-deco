@@ -1192,6 +1192,7 @@ name = "valley_game"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "lz4_flex",
  "serde",
  "serde_json",
  "valley_content",

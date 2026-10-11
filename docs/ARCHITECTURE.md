@@ -60,3 +60,19 @@ day end...). Saves are JSON snapshots of everything not reloaded from content.
 `valley_render` converts world state into draw commands (depth bands
 documented in its crate docs). `valley_game` owns screens, menus, HUD, input
 mapping and saving, and implements `GameModule`.
+
+## Co-op
+
+`World` holds the host's per-player state directly (`farmer`, `current`,
+fishing, swings, prompts, events) and each farmhand's in
+`World::farmhands`. `begin_farmhand(i)` swaps a farmhand's state in, so all
+player code runs unchanged for them; while one is active, `update` only
+runs that player's own actions (`update_player`), and the shared world is
+advanced once per tick by the host. `valley_game` swaps per-player UI
+(`PlayerUi`: screen, menus, toasts, fade, music) the same way.
+
+`valley_game::net` is the wire protocol: length-prefixed messages over TCP;
+clients send `Hello` then `InputEvent`s; the host answers with `Welcome`,
+then textures (each sent once per generation), lz4-compressed draw lists and
+sound commands. `valley_app::client` replays them with the same renderer and
+mixer as the local game.

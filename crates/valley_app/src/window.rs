@@ -6,7 +6,7 @@ use macroquad::prelude as mq;
 use crate::audio::AudioSystem;
 use crate::Args;
 
-const KEYS: &[(mq::KeyCode, Key)] = &[
+pub(crate) const KEYS: &[(mq::KeyCode, Key)] = &[
     (mq::KeyCode::W, Key::W), (mq::KeyCode::A, Key::A), (mq::KeyCode::S, Key::S), (mq::KeyCode::D, Key::D),
     (mq::KeyCode::E, Key::E), (mq::KeyCode::F, Key::F), (mq::KeyCode::I, Key::I), (mq::KeyCode::M, Key::M),
     (mq::KeyCode::J, Key::J), (mq::KeyCode::Q, Key::Q), (mq::KeyCode::R, Key::R), (mq::KeyCode::T, Key::T),
@@ -23,22 +23,22 @@ const KEYS: &[(mq::KeyCode, Key)] = &[
     (mq::KeyCode::F5, Key::F5), (mq::KeyCode::F9, Key::F9), (mq::KeyCode::F10, Key::F10), (mq::KeyCode::F11, Key::F11), (mq::KeyCode::F12, Key::F12),
 ];
 
-fn col(c: EColor) -> mq::Color {
+pub(crate) fn col(c: EColor) -> mq::Color {
     mq::Color::from_rgba(c.r, c.g, c.b, c.a)
 }
 
 /// GPU copies of engine textures, refreshed when an image is replaced.
 #[derive(Default)]
-struct GpuTextures {
+pub(crate) struct GpuTextures {
     map: HashMap<TexId, (u32, mq::Texture2D)>,
 }
 
 impl GpuTextures {
-    fn get(&mut self, host: &ModuleHost, id: TexId) -> &mq::Texture2D {
-        let gen = host.ctx.textures.generation(id);
+    fn get(&mut self, store: &engine::TextureStore, id: TexId) -> &mq::Texture2D {
+        let gen = store.generation(id);
         let stale = self.map.get(&id).map(|(g, _)| *g != gen).unwrap_or(true);
         if stale {
-            let img = host.ctx.textures.get(id);
+            let img = store.get(id);
             let t = mq::Texture2D::from_rgba8(img.width as u16, img.height as u16, &img.rgba);
             t.set_filter(mq::FilterMode::Nearest);
             self.map.insert(id, (gen, t));
@@ -47,7 +47,7 @@ impl GpuTextures {
     }
 }
 
-fn present(list: &DrawList, host: &ModuleHost, gpu: &mut GpuTextures, scale: f32, offset: mq::Vec2) {
+pub(crate) fn present(list: &DrawList, store: &engine::TextureStore, gpu: &mut GpuTextures, scale: f32, offset: mq::Vec2) {
     mq::clear_background(col(list.clear));
     for cmd in list.sorted() {
         match cmd {
@@ -55,7 +55,7 @@ fn present(list: &DrawList, host: &ModuleHost, gpu: &mut GpuTextures, scale: f32
                 mq::draw_rectangle(offset.x + rect.x * scale, offset.y + rect.y * scale, rect.w * scale, rect.h * scale, col(*color));
             }
             DrawCmd::Sprite(s) => {
-                let tex = gpu.get(host, s.tex).clone();
+                let tex = gpu.get(store, s.tex).clone();
                 let x = offset.x + s.dst.x * scale;
                 let y = offset.y + s.dst.y * scale;
                 let params = mq::DrawTextureParams {
@@ -140,7 +140,7 @@ pub fn run(args: Args) {
                 break;
             }
             host.draw(&mut list);
-            present(&list, &host, &mut gpu, 1.0, mq::vec2(0.0, 0.0));
+            present(&list, &host.ctx.textures, &mut gpu, 1.0, mq::vec2(0.0, 0.0));
             mq::next_frame().await;
         }
     });
