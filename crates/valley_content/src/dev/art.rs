@@ -2224,3 +2224,50 @@ pub fn monster_simple(body: Color, style: u8) -> Image {
     }
     img
 }
+
+/// A hand-painted-style overview map of the placeholder valley (300x180).
+pub fn world_map() -> Image {
+    let mut img = Image::new(300, 180);
+    let mut c = Cell { ox: 0, oy: 0, w: 300, h: 180, img: &mut img };
+    c.noise(Color::rgb(110, 160, 80), 6, 41);
+    // Sea along the bottom-left and a river.
+    c.rect(0, 150, 120, 30, Color::rgb(70, 130, 200));
+    for y in 0..150 {
+        let x = 118 + ((y as f32 / 18.0).sin() * 4.0) as i32;
+        c.rect(x, y, 5, 1, Color::rgb(80, 145, 210));
+    }
+    // Mountains (north).
+    for i in 0..9 {
+        let x = 120 + i * 18;
+        for k in 0..14 {
+            c.rect(x + k / 2, 22 - k, 18 - k, 1, shade(Color::rgb(120, 110, 100), -k * 2));
+        }
+    }
+    // Farm fields.
+    c.rect(20, 40, 90, 70, Color::rgb(150, 110, 70));
+    for y in (44..106).step_by(6) {
+        c.rect(24, y, 82, 2, Color::rgb(120, 85, 55));
+    }
+    c.rect(56, 44, 14, 10, Color::rgb(170, 70, 50));
+    // Town.
+    c.rect(150, 40, 80, 60, Color::rgb(185, 175, 150));
+    for (x, y) in [(156, 46), (176, 46), (196, 46), (156, 70), (186, 70), (210, 76)] {
+        c.rect(x, y, 14, 12, Color::rgb(170, 80, 60));
+        c.rect(x + 2, y + 6, 4, 6, Color::rgb(90, 60, 40));
+    }
+    // Mine mouth.
+    c.ellipse(150.0, 22.0, 6.0, 5.0, Color::rgb(40, 30, 30));
+    // Dunes.
+    c.rect(230, 110, 60, 50, Color::rgb(220, 190, 130));
+    for i in 0..4 {
+        c.ellipse(245.0 + i as f32 * 12.0, 130.0 + (i % 2) as f32 * 10.0, 6.0, 3.0, Color::rgb(200, 165, 105));
+    }
+    // Isle in the sea.
+    c.ellipse(50.0, 165.0, 20.0, 9.0, Color::rgb(230, 210, 150));
+    c.ellipse(50.0, 163.0, 12.0, 5.0, Color::rgb(90, 160, 80));
+    // Roads.
+    c.rect(110, 70, 40, 3, Color::rgb(200, 180, 140));
+    c.rect(228, 98, 3, 14, Color::rgb(200, 180, 140));
+    c.auto_outline(OUTLINE);
+    img
+}

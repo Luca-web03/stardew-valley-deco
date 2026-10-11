@@ -44,6 +44,11 @@ pub enum Channel {
 }
 
 impl World {
+    /// Evaluate a game state query in today's context.
+    pub fn gsq_ok_pub(&self, condition: Option<&str>) -> bool {
+        self.gsq_ok(condition)
+    }
+
     pub(crate) fn gsq_ok(&self, condition: Option<&str>) -> bool {
         let mut rng = self.day_rng(57);
         let mail = self.farmer.mail_received.clone();

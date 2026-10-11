@@ -86,3 +86,17 @@ fn letters_start_quests_and_building_quests_complete() {
     assert!(!w.farmer.quests.iter().any(|q| q.id == "Dev_BuildCoop"), "completed");
     assert_eq!(w.farmer.money, money + 300);
 }
+
+#[test]
+fn the_world_map_places_players() {
+    let (_, mut w) = world("Standard");
+    assert!(!w.world_map.is_empty());
+    w.warp_farmer("Town", TilePos::new(10, 10), None);
+    let p = w.map_point("Town", w.farmer.tile()).expect("town is on the map");
+    assert_eq!(p.region, "Valley");
+    assert!((150.0..230.0).contains(&p.x) && (40.0..100.0).contains(&p.y));
+    let inside = w.map_point("FarmHouse", TilePos::new(3, 3)).unwrap();
+    assert!((58.0..66.0).contains(&inside.x));
+    assert_eq!(w.map_tooltip("Valley", 60.0, 60.0).as_deref(), Some("Your farm"));
+    assert_eq!(w.map_region_here().as_deref(), Some("Valley"));
+}

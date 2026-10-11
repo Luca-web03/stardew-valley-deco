@@ -74,6 +74,7 @@ pub mod terrain;
 pub mod time;
 pub mod tools;
 pub mod world;
+pub mod world_map;
 
 pub use world::World;
 

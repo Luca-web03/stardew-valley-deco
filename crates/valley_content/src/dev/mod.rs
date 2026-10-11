@@ -50,6 +50,7 @@ pub fn build() -> MemSource {
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
     m.insert("LooseSprites/Port_Crow.png", art::crow().encode_png());
     m.insert("TileSheets/emotes.png", art::emotes().encode_png());
+    m.insert("LooseSprites/Dev_Map.png", art::world_map().encode_png());
     m.insert("TileSheets/Dev_GiantCrops.png", art::giant_crops().encode_png());
     m.insert("Characters/Dev_Child.png", art::child().encode_png());
     m.insert("Characters/Farmer/Dev_Hats.png", art::hats().encode_png());
@@ -573,6 +574,35 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         ("Characters/Dialogue/rainy", json!({
             "Mara": "Rain again... the roof of my shed leaks every time.$s",
             "Tobin": "Rainy days are slow days. Perfect for restocking."
+        })),
+        ("Data/WorldMap", json!({
+            "Valley": {
+                "DisplayName": "Placeholder Valley",
+                "BaseTexture": [{ "Id": "Default", "Texture": "LooseSprites\\Dev_Map", "MapPixelArea": { "X": 0, "Y": 0, "Width": 300, "Height": 180 } }],
+                "MapAreas": [
+                    { "Id": "Farm", "PixelArea": { "X": 20, "Y": 40, "Width": 90, "Height": 70 },
+                      "Tooltips": [{ "Text": "Your farm" }],
+                      "WorldPositions": [
+                          { "LocationName": "Farm" },
+                          { "LocationNames": ["FarmHouse", "FarmHouse1", "Greenhouse", "FarmCave"], "MapPixelArea": { "X": 58, "Y": 48, "Width": 8, "Height": 6 } }
+                      ] },
+                    { "Id": "Town", "PixelArea": { "X": 150, "Y": 40, "Width": 80, "Height": 60 },
+                      "Tooltips": [{ "Text": "Town" }],
+                      "WorldPositions": [
+                          { "LocationName": "Town" },
+                          { "LocationNames": ["SeedShop"], "MapPixelArea": { "X": 196, "Y": 46, "Width": 14, "Height": 12 } }
+                      ] },
+                    { "Id": "Mine", "PixelArea": { "X": 140, "Y": 12, "Width": 20, "Height": 18 },
+                      "Tooltips": [{ "Text": "The mines" }],
+                      "WorldPositions": [{ "LocationName": "Mine" }] },
+                    { "Id": "Dunes", "PixelArea": { "X": 230, "Y": 110, "Width": 60, "Height": 50 },
+                      "Tooltips": [{ "Text": "Sunscorch Dunes" }],
+                      "WorldPositions": [{ "LocationNames": ["Dev_Dunes", "Dev_Parlor"] }] },
+                    { "Id": "Isle", "PixelArea": { "X": 30, "Y": 156, "Width": 40, "Height": 18 },
+                      "Tooltips": [{ "Text": "Breezy Isle" }],
+                      "WorldPositions": [{ "LocationName": "Dev_Isle" }] }
+                ]
+            }
         })),
         ("Data/Concessions", json!([
             { "Id": "Dev_KettleCorn", "Name": "Kettle Corn", "DisplayName": "Kettle Corn", "Price": 40, "ItemTags": ["Salty", "Sweet", "Popcorn"] },

@@ -504,6 +504,9 @@ impl ValleyGame {
             self.menus.push(Menu::Inventory { tab: InvTab::Items, held: None, hovered: None });
         } else if input_map::journal_pressed(&ctx.input) {
             self.menus.push(Menu::Journal { selected: 0 });
+        } else if input_map::map_pressed(&ctx.input) && self.world.as_ref().is_some_and(|w| !w.world_map.is_empty()) {
+            let region = self.world.as_ref().and_then(|w| w.map_region_here()).unwrap_or_default();
+            self.menus.push(Menu::WorldMap { region });
         } else if let Some(w) = self.world.as_mut() {
             // Toolbar clicks select slots instead of using tools.
             let mut input = input_map::player_input(&ctx.input, self.cursor_tile);
@@ -1257,6 +1260,11 @@ impl ValleyGame {
                     }
                 }
                 if input_map::menu_pressed(&ctx.input) || input_map::journal_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
+            Menu::WorldMap { .. } => {
+                if input_map::menu_pressed(&ctx.input) || input_map::map_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
                     close = true;
                 }
             }
@@ -2610,6 +2618,7 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
         }
         Menu::NightEvent { kind, ms } => draw_night_event(ui, *kind, *ms, sw, sh),
+        Menu::WorldMap { region } => draw_world_map(rc, ui, w, region, sw, sh),
         Menu::Arcade { game } => {
             ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgb(12, 10, 14));
             let depth = ui.depth + 0.01;
@@ -3074,5 +3083,52 @@ fn draw_night_event(ui: &mut Ui, kind: valley_sim::farm_events::NightEvent, ms: 
     let lines = ui.wrap(kind.text(), f.w - 60.0, 2.0);
     for (i, l) in lines.iter().enumerate() {
         ui.text_centered(l, sw / 2.0, f.y + 28.0 + i as f32 * 24.0, 2.0, ui::TEXT);
+    }
+}
+
+/// The world map: the region's base texture scaled to fit, area overlays,
+/// player markers and the tooltip under the mouse.
+fn draw_world_map(rc: &mut RenderCtx, ui: &mut Ui, w: &World, region: &str, sw: f32, sh: f32) {
+    ui.fill(FRect::new(0.0, 0.0, sw, sh), Color::rgba(0, 0, 0, 200));
+    let Some(r) = w.world_map.get(region) else { return };
+    let (mw, mh) = valley_sim::world_map::map_size(r);
+    let scale = ((sw - 80.0) / mw as f32).min((sh - 120.0) / mh as f32).max(0.5);
+    let origin = Vec2::new((sw - mw as f32 * scale) / 2.0, (sh - mh as f32 * scale) / 2.0 + 20.0);
+    let frame = FRect::new(origin.x - 12.0, origin.y - 12.0, mw as f32 * scale + 24.0, mh as f32 * scale + 24.0);
+    ui.panel(frame);
+    let draw_tex = |rc: &mut RenderCtx, ui: &mut Ui, t: &valley_sim::world_map::MapTexture, default_area: Option<&valley_content::data::Rect>| {
+        let tex = rc.assets.tex(rc.cm, rc.textures, &t.texture.replace('\\', "/"));
+        let (tw, th) = rc.textures.size(tex);
+        let src = t.source_rect.as_ref().map(|s| IRect::new(s.x, s.y, s.width, s.height)).unwrap_or(IRect::new(0, 0, tw as i32, th as i32));
+        let area = t.map_pixel_area.as_ref().or(default_area).map(|a| (a.x, a.y, a.width, a.height)).unwrap_or((0, 0, src.w, src.h));
+        ui.icon(tex, src, FRect::new(origin.x + area.0 as f32 * scale, origin.y + area.1 as f32 * scale, area.2 as f32 * scale, area.3 as f32 * scale));
+    };
+    if let Some(base) = r.base_texture.iter().find(|b| w.gsq_ok_pub(b.condition.as_deref())) {
+        draw_tex(rc, ui, base, None);
+    }
+    for area in r.map_areas.iter().filter(|a| w.gsq_ok_pub(a.condition.as_deref())) {
+        for t in area.textures.iter().filter(|t| w.gsq_ok_pub(t.condition.as_deref())) {
+            draw_tex(rc, ui, t, Some(&area.pixel_area));
+        }
+    }
+    // Players (above the map art).
+    ui.depth += 0.02;
+    for (f, loc) in w.players() {
+        if let Some(p) = w.map_point(loc, f.tile()).filter(|p| p.region == region) {
+            let c = Vec2::new(origin.x + p.x * scale, origin.y + p.y * scale);
+            ui.fill(FRect::new(c.x - 9.0, c.y - 9.0, 18.0, 18.0), Color::rgb(60, 30, 20));
+            ui.fill(FRect::new(c.x - 6.0, c.y - 6.0, 12.0, 12.0), Color::rgb(240, 80, 60));
+        }
+    }
+    let title = r.display_name.as_deref().map(|n| w.items.expand_text(n)).unwrap_or_else(|| region.to_string());
+    ui.text_centered(&title, sw / 2.0, frame.y - 36.0, 3.0, Color::WHITE);
+    let m = ui_mouse_hint();
+    let (mx, my) = ((m.x - origin.x) / scale, (m.y - origin.y) / scale);
+    if let Some(tip) = w.map_tooltip(region, mx, my) {
+        ui.depth += 0.02;
+        let width = ui.measure(&tip, 2.0).x + 32.0;
+        let tr = FRect::new((m.x + 20.0).min(sw - width - 8.0), m.y + 20.0, width, 40.0);
+        ui.panel(tr);
+        ui.text(&tip, Vec2::new(tr.x + 16.0, tr.y + 12.0), 2.0, ui::TEXT);
     }
 }

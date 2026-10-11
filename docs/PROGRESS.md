@@ -103,6 +103,8 @@ were not available; such values are isolated constants that can be tuned.
       `Farm_<type>` location data and approx. perks (quarry rocks, night
       monsters, starter coop)
 - [x] Saves (JSON), title screen, character creation, load list
+- [x] World map (M): `Data/WorldMap` regions, area overlays, tooltips and
+      player markers
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
       debug overlay (F3)
 - [x] Audio: XACT wave banks (PCM 8/16-bit, MS-ADPCM), best-effort sound bank

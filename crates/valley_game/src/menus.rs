@@ -103,6 +103,10 @@ pub enum Menu {
         report: DayReport,
         ms: u32,
     },
+    /// The world map of a region.
+    WorldMap {
+        region: String,
+    },
     /// An arcade cabinet.
     Arcade {
         game: ArcadeSlot,

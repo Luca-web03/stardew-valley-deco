@@ -22,6 +22,7 @@ pub struct Bindings {
     pub menu: Vec<Key>,
     pub journal: Vec<Key>,
     pub walk: Vec<Key>,
+    pub map: Vec<Key>,
 }
 
 impl Default for Bindings {
@@ -36,11 +37,12 @@ impl Default for Bindings {
             menu: vec![Key::E, Key::I],
             journal: vec![Key::F],
             walk: vec![Key::LeftShift, Key::RightShift],
+            map: vec![Key::M],
         }
     }
 }
 
-pub const BINDING_NAMES: [&str; 9] = ["Move up", "Move down", "Move left", "Move right", "Use tool", "Check / act", "Menu", "Journal", "Walk"];
+pub const BINDING_NAMES: [&str; 10] = ["Move up", "Move down", "Move left", "Move right", "Use tool", "Check / act", "Menu", "Journal", "Walk", "Map"];
 
 impl Bindings {
     pub fn get_mut(&mut self, i: usize) -> &mut Vec<Key> {
@@ -53,7 +55,8 @@ impl Bindings {
             5 => &mut self.action,
             6 => &mut self.menu,
             7 => &mut self.journal,
-            _ => &mut self.walk,
+            8 => &mut self.walk,
+            _ => &mut self.map,
         }
     }
     pub fn get(&self, i: usize) -> &Vec<Key> {
@@ -66,7 +69,8 @@ impl Bindings {
             5 => &self.action,
             6 => &self.menu,
             7 => &self.journal,
-            _ => &self.walk,
+            8 => &self.walk,
+            _ => &self.map,
         }
     }
 }
@@ -135,6 +139,10 @@ pub fn player_input(i: &InputState, cursor_tile: Option<TilePos>) -> PlayerInput
         p.scroll = 1;
     }
     p
+}
+
+pub fn map_pressed(i: &InputState) -> bool {
+    BINDINGS.with(|b| pressed_any(i, &b.borrow().map))
 }
 
 pub fn journal_pressed(i: &InputState) -> bool {
