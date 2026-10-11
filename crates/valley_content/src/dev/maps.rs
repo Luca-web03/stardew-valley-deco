@@ -113,8 +113,33 @@ impl B {
 }
 
 pub fn farm() -> Map {
+    farm_builder("Farm").map
+}
+
+/// Farm map variants for the farm type choice (same layout, a twist each).
+pub fn farm_variants() -> Vec<Map> {
+    let mut out = Vec::new();
+    // Riverland: a river down the west side.
+    let mut b = farm_builder("Farm_Fishing");
+    b.water(2, 12, 4, 20);
+    out.push(b.map);
+    // Hill-top: a quarry in the north-west where stones and ore appear.
+    let mut b = farm_builder("Farm_Mining");
+    b.fill("Back", 1, 2, 8, 6, SAND);
+    b.prop("Port.MiningArea", "1 2 8 6");
+    out.push(b.map);
+    // Wilderness: monsters at night (no layout change).
+    out.push(farm_builder("Farm_Combat").map);
+    // Meadowlands: starts with a coop.
+    let mut b = farm_builder("Farm_Ranching");
+    b.fill("Back", 8, 16, 26, 14, GRASS2);
+    out.push(b.map);
+    out
+}
+
+fn farm_builder(id: &str) -> B {
     let (w, h) = (48, 36);
-    let mut b = B::new("Farm", w, h, outdoor_sheet());
+    let mut b = B::new(id, w, h, outdoor_sheet());
     b.fill("Back", 0, 0, w, h, GRASS);
     for i in 0..60 {
         let x = (super::paint::hash(i, 0, 3) % w as u32) as i32;
@@ -164,7 +189,7 @@ pub fn farm() -> Map {
     b.set_props("Buildings", 40, 11, MINECART, &[("Action", "MinecartTransport Default Farm")]);
     b.prop("PetBowlTile", "17 10");
     b.prop("SpawnDebris", "T");
-    b.map
+    b
 }
 
 pub fn farmhouse() -> Map {
@@ -556,5 +581,7 @@ pub fn dunes_market() -> Map {
 }
 
 pub fn all() -> Vec<Map> {
-    vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle()]
+    let mut v = vec![farm(), farmhouse(), farmhouse1(), town(), seed_shop(), mine_entrance(), animal_house("Coop", 10, 8), animal_house("Barn", 14, 10), slime_hutch(), cabin(), farm_cave(), greenhouse(), dunes(), dunes_market(), parlor(), isle()];
+    v.extend(farm_variants());
+    v
 }

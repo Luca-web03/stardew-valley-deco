@@ -120,7 +120,7 @@ impl World {
         let Some(PlacedObject { kind: ObjKind::ArtifactSpot, .. }) = self.location().object(t) else { return false };
         self.location_mut().state.objects.remove(&t);
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, t.x as i64, t.y as i64, 3]));
-        let drops = self.location_data.get(&self.current).map(|d| d.artifact_spots.clone()).unwrap_or_default();
+        let drops = self.location_data_for(&self.current).map(|d| d.artifact_spots.clone()).unwrap_or_default();
         let mut got = false;
         for d in drops {
             if rng.chance(d.chance.unwrap_or(1.0)) {

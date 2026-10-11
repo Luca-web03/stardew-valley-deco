@@ -159,6 +159,18 @@ impl World {
         Ok(())
     }
 
+    /// Put up a finished building for free (starting gifts).
+    pub(crate) fn grant_building(&mut self, kind: &str, tile: TilePos) -> Result<u32, String> {
+        let data = self.buildings_data.get(kind).cloned().ok_or("Unknown building")?;
+        let size = (data.size.x.max(1), data.size.y.max(1));
+        self.next_building_id += 1;
+        let id = self.next_building_id;
+        self.buildings.push(Building { id, kind: kind.to_string(), tile, size, interior: None, days_left: 0, animal_door_open: true, pond: None, horse: None, storage: None, watered_troughs: vec![], slimes: vec![], owner: None });
+        self.finish_building(id);
+        self.rebuild_location_edges();
+        Ok(id)
+    }
+
     /// Create the interior and hook up its exit warp.
     pub(crate) fn finish_building(&mut self, id: u32) {
         let Some(bi) = self.buildings.iter().position(|b| b.id == id) else { return };
@@ -238,11 +250,16 @@ impl World {
 
     /// Buy an animal; it moves into the first suitable building with space.
     pub fn buy_animal(&mut self, kind: &str, name: Option<String>) -> Result<(), String> {
+        self.add_animal(kind, name, true)
+    }
+
+    /// Add an animal to a building with room; `charge` takes the price.
+    pub(crate) fn add_animal(&mut self, kind: &str, name: Option<String>, charge: bool) -> Result<(), String> {
         let data = self.animals_data.get(kind).cloned().ok_or("Unknown animal")?;
-        if data.purchase_price < 0 {
+        if charge && data.purchase_price < 0 {
             return Err("Not for sale.".into());
         }
-        if self.farmer.money < data.purchase_price {
+        if charge && self.farmer.money < data.purchase_price {
             return Err("Not enough money.".into());
         }
         let home = self
@@ -257,7 +274,9 @@ impl World {
             })
             .and_then(|b| b.interior.clone())
             .ok_or(format!("You need a {} with free space.", data.house))?;
-        self.farmer.money -= data.purchase_price;
+        if charge {
+            self.farmer.money -= data.purchase_price;
+        }
         self.next_animal_id += 1;
         let loc = &self.locations[&home];
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.next_animal_id as i64, 17]));

@@ -488,6 +488,11 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       { "Id": "perch", "ItemId": "(O)Dev_Perch", "Chance": 0.7 },
                       { "Id": "junk", "ItemId": "(O)Dev_Driftwood", "Chance": 1.0 }
                   ] },
+        "Farm_Fishing": { "Fish": [
+                      { "Id": "darter", "ItemId": "(O)Dev_Darter", "Chance": 0.5 },
+                      { "Id": "perch", "ItemId": "(O)Dev_Perch", "Chance": 0.8 },
+                      { "Id": "junk", "ItemId": "(O)Dev_Driftwood", "Chance": 1.0 }
+                  ] },
         "FarmHouse": { "DisplayName": "Farmhouse", "DefaultArrivalTile": { "X": 5, "Y": 8 },
                        "CreateOnLoad": { "MapPath": "Maps\\FarmHouse" } },
         "Dev_Dunes": { "DisplayName": "Sunscorch Dunes", "DefaultArrivalTile": { "X": 6, "Y": 16 },

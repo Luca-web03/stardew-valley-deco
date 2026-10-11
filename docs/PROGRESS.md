@@ -93,6 +93,10 @@ were not available; such values are isolated constants that can be tuned.
       render streaming (lz4 draw lists, textures, sounds) so clients need no
       content, farmhands saved with the host's game and living in cabins
       (no split-screen; the host's sleep ends the day)
+- [x] Farm types (Standard, Riverland, Forest, Hill-top, Wilderness, Four
+      Corners, Beach, Meadowlands, plus Data/AdditionalFarms) with their maps,
+      `Farm_<type>` location data and approx. perks (quarry rocks, night
+      monsters, starter coop)
 - [x] Saves (JSON), title screen, character creation, load list
 - [x] Options (zoom, volumes, key bindings), gamepad, console (F1),
       debug overlay (F3)

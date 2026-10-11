@@ -237,7 +237,7 @@ impl World {
 
     /// Choose what bites at `tile` in the current location right now.
     pub fn choose_fish(&self, rng: &mut Rng) -> Option<FishInfo> {
-        let data = self.location_data.get(&self.current)?;
+        let data = self.location_data_for(&self.current)?;
         let level = self.farmer.skills.level(Skill::Fishing);
         let raining = self.weather.is_raining();
         let season = self.clock.season.key();

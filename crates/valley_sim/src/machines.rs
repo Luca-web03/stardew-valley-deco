@@ -515,7 +515,7 @@ impl World {
         let season = self.clock.season;
         let names: Vec<String> = self.locations.keys().cloned().collect();
         for name in names {
-            let Some(data) = self.location_data.get(&name).cloned() else { continue };
+            let Some(data) = self.location_data_for(&name).cloned() else { continue };
             if data.forage.is_empty() {
                 continue;
             }

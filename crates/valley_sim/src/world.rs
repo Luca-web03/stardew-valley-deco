@@ -151,11 +151,13 @@ pub struct NewGame {
     pub favorite_thing: String,
     pub male: bool,
     pub seed: u64,
+    /// Farm map choice (see `farm_types::FARM_TYPES`).
+    pub farm_type: String,
 }
 
 impl Default for NewGame {
     fn default() -> Self {
-        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345 }
+        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345, farm_type: "Standard".into() }
     }
 }
 
@@ -507,6 +509,8 @@ impl World {
         }
         w.hay_id = ["178", "Dev_Hay"].iter().find(|id| w.items.objects.contains_key(**id)).map(|s| s.to_string());
         w.mine_items = crate::mines::MineItems::resolve(&w.items);
+        w.farmer.farm_type = opts.farm_type.clone();
+        w.apply_farm_type(cm);
         w.build_location_edges();
         w.bed_tile = w.find_bed_tile();
         w.setup_compat();
@@ -522,6 +526,7 @@ impl World {
         w.rainy_dialogue = cm.load_string_dict("Characters/Dialogue/rainy");
         w.place_farm_clumps();
         w.populate_new_farm();
+        w.farm_type_start();
         w.adopt_pet("Biscuit");
         let mut grass_rng = Rng::new(Rng::seed_from(&[w.seed as i64, 88]));
         w.seed_grass(&mut grass_rng);
@@ -592,6 +597,10 @@ impl World {
             }
         }
         TilePos::new(5, 5)
+    }
+
+    pub(crate) fn setup_compat_pub(&mut self) {
+        self.setup_compat();
     }
 
     fn setup_compat(&mut self) {
@@ -797,6 +806,7 @@ impl World {
         self.apply_cleared_tiles();
         self.grandpa_morning();
         self.cave_morning();
+        self.farm_type_morning();
     }
 
     /// The active player's overnight rest: energy, health and friendship
@@ -934,6 +944,8 @@ impl World {
         self.bombs.clear();
         self.explosions.clear();
         self.enemy_shots.clear();
+        // Night monsters on the farm leave at dawn.
+        self.monsters.retain(|m| m.location != "Farm");
         self.dropped.clear();
         self.floaters.clear();
         self.weapon_swing = None;
@@ -1023,6 +1035,7 @@ impl World {
             match ev {
                 ClockEvent::TenMinutes => {
                     self.update_npc_schedules();
+                    self.farm_type_night();
                     self.advance_machines(10);
                     self.maybe_lightning();
                     for b in self.farmer.buffs.iter_mut() {

@@ -239,6 +239,9 @@ pub struct Farmer {
     /// Conversation topics from events, with days left.
     #[serde(default)]
     pub conversation_topics: BTreeMap<String, i32>,
+    /// Farm map choice (`farm_types::FARM_TYPES` id; empty = Standard).
+    #[serde(default)]
+    pub farm_type: String,
     /// The farm cave's residents: "mushrooms" or "bats".
     #[serde(default)]
     pub cave_choice: Option<String>,
@@ -365,6 +368,7 @@ impl Farmer {
             grandpa_candles: 0,
             home_location: None,
             cave_choice: None,
+            farm_type: String::new(),
             conversation_topics: BTreeMap::new(),
             movies_seen: Vec::new(),
             movies_seen_with: Vec::new(),
