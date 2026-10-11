@@ -140,6 +140,7 @@ impl World {
                     Weather::Storm => "A thunderstorm is on the way tomorrow. Stay safe!",
                     Weather::Snow => "Snow is in the forecast for tomorrow.",
                     Weather::Wind => "It'll be a breezy day tomorrow.",
+                    Weather::GreenRain => "Strange green clouds are rolling in. Expect a very unusual rain tomorrow!",
                 };
                 format!("Weather report: {forecast}")
             }

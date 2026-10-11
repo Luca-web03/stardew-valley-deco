@@ -289,6 +289,7 @@ impl World {
             "sun" => Some(Weather::Sun),
             "snow" => Some(Weather::Snow),
             "wind" => Some(Weather::Wind),
+            "greenrain" => Some(Weather::GreenRain),
             _ => None,
         }
     }
@@ -309,5 +310,42 @@ impl World {
         self.emit(WorldEvent::Flash);
         self.hud("The clouds stir... the weather will change tomorrow.");
         true
+    }
+
+    /// The summer day of `year` that has green rain.
+    pub fn green_rain_day(&self, year: i32) -> i32 {
+        let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, year as i64, 191]));
+        crate::time::GREEN_RAIN_DAYS[rng.range(0, crate::time::GREEN_RAIN_DAYS.len() as i32) as usize]
+    }
+
+    /// Morning of a green rain: mossy weeds sprout everywhere outdoors and
+    /// wild trees put on a growth spurt (approx. densities).
+    pub(crate) fn green_rain_morning(&mut self) {
+        if self.weather != Weather::GreenRain {
+            return;
+        }
+        let mut rng = self.day_rng(193);
+        let items = self.items.clone();
+        for loc in self.locations.values_mut() {
+            if !loc.outdoors {
+                continue;
+            }
+            for t in loc.state.terrain.values_mut() {
+                if let TerrainFeature::Tree(tree) = t {
+                    if !tree.stump && tree.stage < crate::terrain::TREE_MATURE {
+                        tree.stage += 1;
+                    }
+                }
+            }
+            let spots: Vec<TilePos> = (0..loc.height())
+                .flat_map(|y| (0..loc.width()).map(move |x| TilePos::new(x, y)))
+                .filter(|p| loc.is_clear(*p) && loc.is_diggable(*p))
+                .collect();
+            for p in spots {
+                if rng.chance(0.04) {
+                    loc.state.objects.insert(p, crate::world::debris_object_pub(&items, &mut rng, crate::objects::DebrisKind::Weeds));
+                }
+            }
+        }
     }
 }

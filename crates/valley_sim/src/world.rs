@@ -805,6 +805,7 @@ impl World {
         self.passive_festivals_morning();
         self.apply_cleared_tiles();
         self.grandpa_morning();
+        self.green_rain_morning();
         self.cave_morning();
         self.quest_state_checks();
         self.farm_type_morning();
@@ -888,6 +889,14 @@ impl World {
         let mut rng = self.day_rng(1);
         self.daily_luck = rng.range(-100, 101) as f64 / 1000.0;
         self.weather_tomorrow = roll_weather(&mut rng, self.clock.season, self.clock.day);
+        {
+            // Tomorrow's date decides green rain (the clock already moved).
+            let mut tomorrow = self.clock.clone();
+            tomorrow.next_day();
+            if tomorrow.season == crate::time::Season::Summer && tomorrow.day == self.green_rain_day(tomorrow.year) {
+                self.weather_tomorrow = Weather::GreenRain;
+            }
+        }
 
         // Overnight world updates.
         let season = self.clock.season;
@@ -2569,6 +2578,10 @@ fn debris_candidates(kind: DebrisKind) -> &'static [&'static str] {
         DebrisKind::Twig => &["294", "295", "Dev_Twig"],
         DebrisKind::Stone => &["343", "450", "Dev_Rock"],
     }
+}
+
+pub(crate) fn debris_object_pub(items: &ItemDb, rng: &mut Rng, kind: DebrisKind) -> PlacedObject {
+    debris_object_from(items, rng, kind)
 }
 
 fn debris_object_from(items: &ItemDb, rng: &mut Rng, kind: DebrisKind) -> PlacedObject {

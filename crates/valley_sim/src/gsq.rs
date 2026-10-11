@@ -87,6 +87,7 @@ fn check_one(q: &str, ctx: &mut QueryCtx) -> bool {
                 Weather::Storm => w == "storm" || w == "rain",
                 Weather::Snow => w == "snow",
                 Weather::Wind => w == "wind",
+                Weather::GreenRain => w == "greenrain" || w == "rain",
             }
         }),
         "IS_RAINING" | "LOCATION_IS_RAINING" => ctx.weather.is_raining(),

@@ -54,6 +54,7 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
         Weather::Storm => "Storm",
         Weather::Snow => "Snow",
         Weather::Wind => "Wind",
+        Weather::GreenRain => "Green Rain",
     };
     ui.text(&format!("{} {}", w.clock.season.name(), weather), Vec2::new(r.x + 24.0, r.y + 52.0), 2.0, ui::TEXT);
     ui.text(&w.time_string(), Vec2::new(r.x + 24.0, r.y + 76.0), 3.0, ui::TEXT);

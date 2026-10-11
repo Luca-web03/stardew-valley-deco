@@ -215,3 +215,22 @@ fn rain_totem_makes_tomorrow_rainy() {
     w.end_day(false);
     assert_eq!(w.weather, Weather::Rain);
 }
+
+#[test]
+fn green_rain_comes_once_each_summer() {
+    let mut w = world();
+    let day = w.green_rain_day(1);
+    assert!(valley_sim::time::GREEN_RAIN_DAYS.contains(&day));
+    w.clock.season = Season::Summer;
+    w.clock.day = day - 2;
+    w.end_day(false);
+    assert_eq!(w.weather_tomorrow, Weather::GreenRain, "forecast the day before");
+    clear_farm(&mut w, 10, 10, 40, 34);
+    w.end_day(false);
+    assert_eq!(w.weather, Weather::GreenRain);
+    assert!(w.weather.is_raining(), "it waters the crops");
+    let weeds = w.locations["Farm"].state.objects.iter().filter(|(p, o)| (10..40).contains(&p.x) && (10..34).contains(&p.y) && matches!(o.kind, ObjKind::Debris { .. })).count();
+    assert!(weeds > 5, "mossy weeds sprouted ({weeds})");
+    w.end_day(false);
+    assert_ne!(w.weather, Weather::GreenRain);
+}

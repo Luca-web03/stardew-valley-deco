@@ -972,7 +972,7 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
             let x = (seed * 13.37 + t * 0.6).rem_euclid(cam.screen_w + 40.0) - 20.0;
             let y = (seed * 3.1 + t * 1.4).rem_euclid(cam.screen_h + 40.0) - 20.0;
             let mut s = Sprite::new(white, IRect::new(0, 0, 1, 1), FRect::new(x, y, 2.0, 18.0), DEPTH_OVERLAY + 0.001);
-            s.tint = Color::rgba(170, 190, 255, 150);
+            s.tint = if w.weather == valley_sim::time::Weather::GreenRain { Color::rgba(120, 220, 110, 170) } else { Color::rgba(170, 190, 255, 150) };
             s.rotation = 0.3;
             out.sprite(s);
         }

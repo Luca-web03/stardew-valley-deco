@@ -62,13 +62,18 @@ pub enum Weather {
     Storm,
     Snow,
     Wind,
+    /// Once a year in summer: a mossy green downpour.
+    GreenRain,
 }
 
 impl Weather {
     pub fn is_raining(self) -> bool {
-        matches!(self, Weather::Rain | Weather::Storm)
+        matches!(self, Weather::Rain | Weather::Storm | Weather::GreenRain)
     }
 }
+
+/// Summer days that can have the year's green rain (public list).
+pub const GREEN_RAIN_DAYS: [i32; 8] = [5, 6, 7, 14, 15, 16, 18, 23];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Clock {

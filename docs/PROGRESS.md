@@ -31,7 +31,8 @@ were not available; such values are isolated constants that can be tuned.
       (large stumps, logs, boulders, meteorites; approx. health)
 - [x] Giant crops (Data/GiantCrops), crows and scarecrows, night events
       (fairy, witch, meteorite, owl, capsule, earthquake; approx. chances),
-      rain/weather totems
+      rain/weather totems, green rain (one summer day a year: mossy weeds,
+      tree growth spurt; approx. densities)
 - [x] Items, inventory, toolbar, dropped items, shipping, shops (buy/sell,
       random item queries, daily stock limits, trade items, star tokens /
       Qi coins / Qi gems), traveling cart
