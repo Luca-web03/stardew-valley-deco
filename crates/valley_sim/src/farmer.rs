@@ -467,6 +467,13 @@ impl Farmer {
         self.friendships.entry(npc.to_string()).or_default()
     }
 
+    /// A profession by id or original number ("Shepherd", "3").
+    pub fn has_profession_spec(&self, spec: &str) -> bool {
+        let lower = spec.to_ascii_lowercase();
+        let id = spec.parse::<i32>().ok().and_then(crate::professions::name_for_original_id).map(String::from).unwrap_or(lower);
+        self.has_profession(&id)
+    }
+
     pub fn hearts(&self, npc: &str) -> i32 {
         self.friendships.get(npc).map(|f| f.hearts()).unwrap_or(0)
     }

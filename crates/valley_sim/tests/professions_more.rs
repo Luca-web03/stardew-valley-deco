@@ -60,3 +60,14 @@ fn every_tenth_floor_has_a_treasure_chest_once() {
     w.enter_mine_level(11);
     assert!(!w.location().state.objects.values().any(|o| matches!(o.kind, ObjKind::Treasure { .. })));
 }
+
+#[test]
+fn alternate_breeds_and_profession_spec() {
+    let mut cm = ContentManager::dev_only();
+    let mut w = World::new(&mut cm, NewGame::default());
+    assert!(w.farmer.professions.is_empty());
+    w.farmer.professions.push("shepherd".into());
+    assert!(w.farmer.has_profession_spec("3"), "Shepherd is profession 3");
+    assert!(w.farmer.has_profession_spec("Shepherd"));
+    assert!(!w.farmer.has_profession_spec("2"));
+}

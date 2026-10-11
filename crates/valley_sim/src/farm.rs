@@ -256,6 +256,11 @@ impl World {
     /// Add an animal to a building with room; `charge` takes the price.
     pub(crate) fn add_animal(&mut self, kind: &str, name: Option<String>, charge: bool) -> Result<(), String> {
         let data = self.animals_data.get(kind).cloned().ok_or("Unknown animal")?;
+        // Some purchases give one of several breeds (`AlternatePurchaseTypes`).
+        let mut rng0 = Rng::new(Rng::seed_from(&[self.seed as i64, self.next_animal_id as i64 + 1, 19]));
+        let alt = data.alternate_purchase_types.iter().find(|a| !a.animal_ids.is_empty() && self.check_query(a.condition.as_deref(), None, None, &mut rng0.clone())).and_then(|a| rng0.pick(&a.animal_ids).cloned()).filter(|k| self.animals_data.contains_key(k));
+        let kind_owned = alt.unwrap_or_else(|| kind.to_string());
+        let kind = kind_owned.as_str();
         if charge && data.purchase_price < 0 {
             return Err("Not for sale.".into());
         }
@@ -504,13 +509,20 @@ impl World {
             let mut produce = a.produce.clone();
             if fed && age > data.days_to_mature {
                 since += 1;
-                if since >= data.days_to_produce.max(1) {
+                let faster = data.profession_for_faster_produce.as_deref().is_some_and(|p| self.farmer.has_profession_spec(p));
+                if since >= (data.days_to_produce - faster as i32).max(1) {
                     since = 0;
-                    let list = if f >= 800 && !data.deluxe_produce_item_ids.is_empty() && rng.chance(0.3) { &data.deluxe_produce_item_ids } else { &data.produce_item_ids };
+                    // Deluxe produce: friendship over the minimum, then friendship
+                    // / care divisor (+ luck) as the chance (public formula).
+                    let deluxe_chance = f as f64 / data.deluxe_produce_care_divisor.max(1.0) + self.daily_luck * data.deluxe_produce_luck_multiplier;
+                    let deluxe = f >= data.deluxe_produce_minimum_friendship && !data.deluxe_produce_item_ids.is_empty() && rng.chance(deluxe_chance);
+                    let list = if deluxe { &data.deluxe_produce_item_ids } else { &data.produce_item_ids };
                     let opts: Vec<_> = list.iter().filter(|p| f >= p.minimum_friendship).collect();
                     if let Some(p) = rng.pick(&opts) {
                         let (_, id) = crate::item::split_qualified(&p.item_id);
-                        let q = if rng.chance(f as f64 / 1500.0) { if rng.chance(f as f64 / 2000.0) { Quality::Gold } else { Quality::Silver } } else { Quality::Normal };
+                        let boost = if data.profession_for_quality_boost.as_deref().is_some_and(|p| self.farmer.has_profession_spec(p)) { 300 } else { 0 };
+                        let fq = (f + boost) as f64;
+                        let q = if rng.chance(fq / 1500.0) { if rng.chance(fq / 2000.0) { Quality::Gold } else { Quality::Silver } } else { Quality::Normal };
                         let item = Item::object_q(id, 1, q);
                         if data.harvest_type.eq_ignore_ascii_case("DropOvernight") {
                             drops.push((a.home.clone(), item));

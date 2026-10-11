@@ -675,6 +675,24 @@ pub struct FarmAnimalData {
     pub harvest_tool: Option<String>,
     pub sound: Option<String>,
     pub can_get_pregnant: bool,
+    /// Texture after the produce has been harvested (e.g. shorn).
+    pub harvested_texture: Option<String>,
+    /// Buying this animal may give one of these instead.
+    pub alternate_purchase_types: Vec<AlternatePurchaseAnimals>,
+    pub deluxe_produce_minimum_friendship: i32,
+    pub deluxe_produce_care_divisor: f64,
+    pub deluxe_produce_luck_multiplier: f64,
+    /// Profession ids (names or original numbers).
+    pub profession_for_faster_produce: Option<String>,
+    pub profession_for_quality_boost: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct AlternatePurchaseAnimals {
+    pub id: Option<String>,
+    pub condition: Option<String>,
+    pub animal_ids: Vec<String>,
 }
 
 impl Default for FarmAnimalData {
@@ -696,6 +714,13 @@ impl Default for FarmAnimalData {
             harvest_tool: None,
             sound: None,
             can_get_pregnant: false,
+            harvested_texture: None,
+            alternate_purchase_types: Vec::new(),
+            deluxe_produce_minimum_friendship: 200,
+            deluxe_produce_care_divisor: 1200.0,
+            deluxe_produce_luck_multiplier: 0.0,
+            profession_for_faster_produce: None,
+            profession_for_quality_boost: None,
         }
     }
 }

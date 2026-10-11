@@ -470,7 +470,15 @@ pub fn draw_location_view(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc
     for a in w.animals.iter().filter(|a| a.location == loc_name) {
         let Some(data) = w.animals_data.get(&a.kind) else { continue };
         let baby = a.is_baby(data);
-        let tex_name = if baby { data.baby_texture.clone().unwrap_or_else(|| data.texture.clone()) } else { data.texture.clone() };
+        // Tool-harvested animals look different until their produce regrows.
+        let shorn = !baby && a.produce.is_none() && !data.harvest_type.eq_ignore_ascii_case("DropOvernight") && data.harvested_texture.is_some();
+        let tex_name = if baby {
+            data.baby_texture.clone().unwrap_or_else(|| data.texture.clone())
+        } else if shorn {
+            data.harvested_texture.clone().unwrap_or_default()
+        } else {
+            data.texture.clone()
+        };
         let tex = rc.assets.tex(rc.cm, rc.textures, &tex_name.replace('\\', "/"));
         let (sw_, sh_) = (data.sprite_width.max(16), data.sprite_height.max(16));
         let frame = if a.moving { ((a.walk_ms / 200) % 4) as i32 } else { 0 };
