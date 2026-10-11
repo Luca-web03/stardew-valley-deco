@@ -314,7 +314,7 @@ impl World {
                     let mut plain = self.items.create(id, 1).unwrap_or_else(|| Item::object(id, 1));
                     if let Item::Object { extra, .. } = &mut plain {
                         let wild = kind.eq_ignore_ascii_case("honey").then(|| format!("Wild {base}"));
-                        *extra = Some(Box::new(ItemExtra { preserved_from: None, display_name: wild, price: Some(price_fn(0).max(self.items.object(id).map(|o| o.data.price).unwrap_or(0))) }));
+                        *extra = Some(Box::new(ItemExtra { preserved_from: None, display_name: wild, price: Some(price_fn(0).max(self.items.object(id).map(|o| o.data.price).unwrap_or(0))), ..Default::default() }));
                     }
                     return Some(plain);
                 }
@@ -322,7 +322,7 @@ impl World {
                     id: id.to_string(),
                     stack: 1,
                     quality: crate::item::Quality::Normal,
-                    extra: Some(Box::new(ItemExtra { preserved_from: Some(src_id), display_name: Some(format!("{src_name} {base}")), price: Some(price_fn(src_price)) })),
+                    extra: Some(Box::new(ItemExtra { preserved_from: Some(src_id), display_name: Some(format!("{src_name} {base}")), price: Some(price_fn(src_price)), ..Default::default() })),
                 }
             }
             [id, ..] => self.items.create(id, 1)?,
@@ -390,7 +390,7 @@ impl World {
         let base = self.items.object(honey_id).map(|o| o.display_name.clone()).unwrap_or_else(|| "Honey".into());
         let mut item = item;
         if let Item::Object { extra, .. } = &mut item {
-            *extra = Some(Box::new(ItemExtra { preserved_from: Some(flower), display_name: Some(format!("{name} {base}")), price: Some(100 + price * 2) }));
+            *extra = Some(Box::new(ItemExtra { preserved_from: Some(flower), display_name: Some(format!("{name} {base}")), price: Some(100 + price * 2), ..Default::default() }));
         }
         item
     }

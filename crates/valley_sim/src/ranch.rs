@@ -20,13 +20,24 @@ impl World {
 
     /// Cutting grass with the scythe may store hay.
     pub(crate) fn cut_grass(&mut self, t: TilePos) -> bool {
+        self.cut_grass_with(t, true)
+    }
+
+    /// Cut grass; `hay` gives the scythe's chance of hay for the silos.
+    /// A haymaker weapon drops hay half the time either way.
+    pub(crate) fn cut_grass_with(&mut self, t: TilePos, hay: bool) -> bool {
         let Some(TerrainFeature::Grass(_)) = self.location().terrain(t) else { return false };
         self.location_mut().state.terrain.remove(&t);
         self.sound("cut");
         let cap = self.silo_capacity();
-        if cap > self.farmer.hay_storage && self.rng.chance(0.5) {
+        if hay && cap > self.farmer.hay_storage && self.rng.chance(0.5) {
             self.farmer.hay_storage += 1;
             self.hud(format!("Hay +1 ({}/{})", self.farmer.hay_storage, cap));
+        }
+        if self.held_weapon_has("Haymaker") && self.rng.chance(0.5) {
+            if let Some(h) = self.hay_id.clone() {
+                self.spawn_drop(Item::object(&h, 1), t.world_center());
+            }
         }
         true
     }

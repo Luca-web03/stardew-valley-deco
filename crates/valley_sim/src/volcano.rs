@@ -1,7 +1,7 @@
 //! A volcano dungeon (generic placeholder mechanics): a short run of
 //! generated floors with lava pools that burn, rocks that can hold ember
-//! shards, tougher monsters, and a forge on the last floor that spends
-//! shards to strengthen weapons. Damage values are approximations.
+//! shards, tougher monsters, and a forge on the last floor (`forge`).
+//! Damage values are approximations.
 
 use engine::Rng;
 use valley_content::{PropValue, Tile};
@@ -11,7 +11,7 @@ use crate::combat::Monster;
 use crate::item::Item;
 use crate::location::GameLocation;
 use crate::objects::{ObjKind, PlacedObject};
-use crate::world::{World, WorldEvent};
+use crate::world::World;
 use crate::{Dir, TilePos};
 
 pub const VOLCANO_PREFIX: &str = "Port_Volcano";
@@ -20,8 +20,7 @@ pub const VOLCANO_FLOORS: i32 = 5;
 pub const LAVA_TILE: i32 = 5;
 /// Damage per lava contact (with the usual invincibility window).
 pub const LAVA_DAMAGE: i32 = 8;
-/// Shards per forge level and the damage each level adds.
-pub const FORGE_COSTS: [i32; 3] = [10, 15, 20];
+/// Damage per legacy forge level (saves from before item forging).
 pub const FORGE_BONUS: i32 = 3;
 /// Shard object ids (well-known, then placeholder).
 const SHARDS: &[&str] = &["848", "Dev_EmberShard"];
@@ -159,31 +158,9 @@ impl World {
         }
     }
 
-    /// Forge level of a weapon (0..=3).
+    /// Forge level of a weapon from older saves (per weapon id); new
+    /// forging lives on the item (`forge`).
     pub fn forge_level(&self, weapon_id: &str) -> i32 {
         self.farmer.weapon_forge.get(weapon_id).copied().unwrap_or(0)
-    }
-
-    /// The forge: spend shards to add damage to the held weapon.
-    pub fn forge_held_weapon(&mut self) -> Result<i32, String> {
-        let Some(id) = self.farmer.current_item().and_then(|i| i.weapon_id()).map(String::from) else { return Err("Hold the weapon you want to forge.".into()) };
-        let level = self.forge_level(&id);
-        let Some(&cost) = FORGE_COSTS.get(level as usize) else { return Err("This weapon can't be forged any further.".into()) };
-        let shard = self.shard_item().ok_or("There's nothing to forge with.")?;
-        if self.farmer.inventory.count(shard) < cost {
-            return Err(format!("You need {cost} shards."));
-        }
-        self.farmer.inventory.remove_object(shard, cost);
-        self.farmer.weapon_forge.insert(id, level + 1);
-        self.sound("crit");
-        Ok(level + 1)
-    }
-
-    pub(crate) fn forge_action(&mut self) -> bool {
-        match self.forge_held_weapon() {
-            Ok(l) => self.emit(WorldEvent::Hud(format!("Forged! Weapon damage +{} (level {l}).", FORGE_BONUS * l))),
-            Err(e) => self.emit(WorldEvent::Message(e)),
-        }
-        true
     }
 }

@@ -103,6 +103,10 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
         })
     };
     use art::*;
+    let gem = |name: &str, price: i32, i: i32| {
+        json!({ "Name": name, "DisplayName": name, "Description": "A precious stone. The forge can set it into a weapon.",
+                "Type": "Minerals", "Category": -2, "Price": price, "SpriteIndex": ICON_GEMS + i, "CustomFields": { "Port.Forge": name } })
+    };
     let mut objects = json!({
         "Dev_TurnipSeeds": obj("Turnip Seeds", "Seeds", -74, 10, ICON_TURNIP_SEEDS, -300),
         "Dev_Turnip": obj("Turnip", "Basic", -75, 40, ICON_TURNIP, 12),
@@ -153,6 +157,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                            "SpriteIndex": ICON_BOOK, "ContextTags": ["book_item"], "CustomFields": { "Port.BookPower": "Dev_DuneWalker", "Port.BookXp": "Foraging 100" } },
         "Dev_SunShell": { "Name": "Sun Shell", "DisplayName": "Sun Shell", "Description": "A warm golden shell. The islanders trade favors for them.", "Type": "Basic", "Category": 0, "Price": 0,
                           "SpriteIndex": ICON_SUN_SHELL, "CustomFields": { "Port.Collectible": "SunShell" } },
+        "Dev_Emerald": gem("Emerald", 250, 0), "Dev_Aquamarine": gem("Aquamarine", 180, 1), "Dev_Ruby": gem("Ruby", 250, 2),
+        "Dev_Amethyst": gem("Amethyst", 100, 3), "Dev_Topaz": gem("Topaz", 80, 4), "Dev_Jade": gem("Jade", 200, 5),
+        "Dev_PrismaticShard": { "Name": "Prismatic Shard", "DisplayName": "Prismatic Shard", "Description": "A rare, shimmering shard. The forge can bind its power to a tool or weapon.",
+                                "Type": "Minerals", "Category": -2, "Price": 2000, "SpriteIndex": ICON_PRISMATIC, "CustomFields": { "Port.Forge": "Prismatic" } },
+        "Dev_DragonTooth": { "Name": "Dragon Tooth", "DisplayName": "Dragon Tooth", "Description": "Huge and sharp. The forge can awaken a weapon's hidden strength with it.",
+                             "Type": "Basic", "Category": -2, "Price": 500, "SpriteIndex": ICON_DRAGON_TOOTH, "CustomFields": { "Port.Forge": "DragonTooth" } },
         "Dev_EmberShard": { "Name": "Ember Shard", "DisplayName": "Ember Shard", "Description": "Still warm. The forge in the volcano runs on these.", "Type": "Basic", "Category": 0, "Price": 50,
                             "SpriteIndex": ICON_EMBER_SHARD },
         "Dev_Ticket": { "Name": "Movie Ticket", "DisplayName": "Movie Ticket", "Description": "Good for one showing. Give it to a friend to invite them along.", "Type": "Basic", "Category": 0, "Price": 250,

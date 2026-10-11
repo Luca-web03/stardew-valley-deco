@@ -116,7 +116,8 @@ impl<'a> Ui<'a> {
 
     /// Button; returns its rect for hit testing.
     pub fn button(&mut self, r: FRect, label: &str, hover: bool) -> FRect {
-        let d = self.depth;
+        // Above a panel drawn at the same base depth.
+        let d = self.depth + 0.0001;
         self.out.fill(r, FRAME, d);
         self.out.fill(FRect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0), if hover { Color::rgb(255, 236, 190) } else { PANEL_DARK }, d + 0.00001);
         let scale = 2.0;

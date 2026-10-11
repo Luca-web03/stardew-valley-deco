@@ -305,8 +305,8 @@ impl DustRanger {
         let mut dx = (input.right as i32 - input.left as i32) as f32;
         let mut dy = (input.down as i32 - input.up as i32) as f32;
         if dx != 0.0 && dy != 0.0 {
-            dx *= 0.7071;
-            dy *= 0.7071;
+            dx *= std::f32::consts::FRAC_1_SQRT_2;
+            dy *= std::f32::consts::FRAC_1_SQRT_2;
         }
         let speed = 1.25 + 0.15 * self.speed_level as f32 + if self.boots > 0 { 0.5 } else { 0.0 };
         if !self.blocked(self.px + dx * speed, self.py, PLAYER) {

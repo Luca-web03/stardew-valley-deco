@@ -238,7 +238,7 @@ impl World {
     /// Choose what bites at `tile` in the current location right now.
     pub fn choose_fish(&self, rng: &mut Rng) -> Option<FishInfo> {
         let data = self.location_data_for(&self.current)?;
-        let level = self.farmer.skills.level(Skill::Fishing);
+        let level = self.rod_fishing_level();
         let raining = self.weather.is_raining();
         let season = self.clock.season.key();
         let mail = self.farmer.mail_received.clone();
@@ -285,6 +285,11 @@ impl World {
             }
         }
         None
+    }
+
+    /// Fishing level, plus one with a master rod.
+    pub fn rod_fishing_level(&self) -> i32 {
+        self.farmer.skills.level(Skill::Fishing) + self.rod_has("Master") as i32
     }
 
     pub(crate) fn start_fishing(&mut self) {
@@ -359,11 +364,11 @@ impl World {
                 }
             }
             FishingState::Nibble { bobber, ms } => {
-                if use_pressed {
+                if use_pressed || self.rod_has("AutoHook") {
                     let mut rng = self.fishing_rng();
                     match self.choose_fish(&mut rng) {
                         Some(f) if f.difficulty > 0 => {
-                            let level = self.farmer.skills.level(Skill::Fishing);
+                            let level = self.rod_fishing_level();
                             let gear = self.current_gear();
                             self.consume_gear();
                             let treasure = rng.chance(crate::fishing_gear::TREASURE_CHANCE + self.daily_luck).then(|| rng.range(800, 4000) as u32);

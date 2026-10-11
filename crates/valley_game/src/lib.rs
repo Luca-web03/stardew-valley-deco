@@ -617,6 +617,7 @@ impl ValleyGame {
                 WorldEvent::OpenBillboard => self.menus.push(Menu::Billboard),
                 WorldEvent::OpenOrderBoard => self.menus.push(Menu::OrderBoard),
                 WorldEvent::OpenTailoring => self.menus.push(Menu::Tailoring { left: None, right: None }),
+                WorldEvent::OpenForge => self.menus.push(Menu::Forge { left: None, right: None }),
                 WorldEvent::OpenReels => self.menus.push(Menu::Reels { bet: 10, last: None }),
                 WorldEvent::MasteryMenu { points, skills } => {
                     let mut options: Vec<String> = skills.iter().map(|s| format!("{s:?}: {}", valley_sim::mastery::perk_text(*s))).collect();
@@ -1224,6 +1225,56 @@ impl ValleyGame {
                     close = true;
                 }
             }
+            Menu::Forge { left, right } => {
+                let (prow, _) = chest_rects(sw, sh);
+                let (ls, rs, go, unforge) = forge_rects(sw, sh);
+                if ctx.input.mouse_pressed(MouseButton::Left) {
+                    let m = ctx.input.mouse;
+                    if ls.contains(m) {
+                        *left = None;
+                    } else if rs.contains(m) {
+                        *right = None;
+                    } else if go.contains(m) {
+                        if let (Some(l), Some(r)) = (*left, *right) {
+                            // The forged item stays in the left slot.
+                            *right = None;
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(Err(e)) = g.world.as_mut().map(|w| w.forge(l, r)) {
+                                    g.toast(&e);
+                                }
+                            }));
+                        }
+                    } else if unforge.contains(m) {
+                        if let Some(l) = *left {
+                            action = Some(Box::new(move |g: &mut ValleyGame, _| {
+                                if let Some(Err(e)) = g.world.as_mut().map(|w| w.unforge(l)) {
+                                    g.toast(&e);
+                                }
+                            }));
+                        }
+                    } else if let Some(i) = prow.iter().position(|r| r.contains(m)) {
+                        let has = self.world.as_ref().is_some_and(|w| w.farmer.inventory.get(i).is_some());
+                        if has && *left != Some(i) && *right != Some(i) {
+                            if left.is_none() {
+                                *left = Some(i);
+                            } else {
+                                *right = Some(i);
+                            }
+                        }
+                    }
+                }
+                // Slots emptied by forging (a used-up ingredient) clear.
+                if let Some(w) = self.world.as_ref() {
+                    for s in [&mut *left, &mut *right] {
+                        if s.is_some_and(|i| w.farmer.inventory.get(i).is_none()) {
+                            *s = None;
+                        }
+                    }
+                }
+                if input_map::menu_pressed(&ctx.input) || ctx.input.mouse_pressed(MouseButton::Right) {
+                    close = true;
+                }
+            }
             Menu::OrderBoard => {
                 let offers = self.world.as_ref().map(|w| w.board_offers().to_vec()).unwrap_or_default();
                 let busy = self.world.as_ref().is_some_and(|w| w.farmer.special_order.is_some());
@@ -1758,6 +1809,18 @@ fn tailoring_rects(sw: f32, sh: f32) -> (FRect, FRect, FRect) {
     let f = menu_frame(sw, sh);
     let y = f.y + 120.0;
     (FRect::new(f.x + 200.0, y, 64.0, 64.0), FRect::new(f.x + 320.0, y, 64.0, 64.0), FRect::new(f.x + 440.0, y + 6.0, 140.0, 52.0))
+}
+
+/// Forge: item slot, ingredient slot, Forge and Unforge buttons.
+fn forge_rects(sw: f32, sh: f32) -> (FRect, FRect, FRect, FRect) {
+    let f = menu_frame(sw, sh);
+    let y = f.y + 110.0;
+    (
+        FRect::new(f.x + 80.0, y, 64.0, 64.0),
+        FRect::new(f.x + 200.0, y, 64.0, 64.0),
+        FRect::new(f.x + 320.0, y + 6.0, 140.0, 52.0),
+        FRect::new(f.x + 80.0, y + 90.0, 184.0, 48.0),
+    )
 }
 
 /// Accept buttons under the two special order cards.
@@ -2515,6 +2578,55 @@ fn draw_menu(rc: &mut RenderCtx, ui: &mut Ui, w: &World, m: &Menu, sw: f32, sh: 
             }
             ui.text("Click fabric, then a second item, then Sew.", Vec2::new(f.x + 48.0, f.y + 280.0), 2.0, ui::TEXT);
         }
+        Menu::Forge { left, right } => {
+            let f = menu_frame(sw, sh);
+            ui.panel(f);
+            ui.text_centered("Forge", sw / 2.0, f.y + 28.0, 3.0, ui::TEXT);
+            let (ls, rs, go, unforge) = forge_rects(sw, sh);
+            let slot_item = |i: &Option<usize>| i.and_then(|i| w.farmer.inventory.get(i)).cloned();
+            for (r, it, label) in [(ls, slot_item(left), "Item"), (rs, slot_item(right), "Add")] {
+                ui.slot(r, false);
+                match it {
+                    Some(it) => hud::draw_item_in_slot(rc, ui, w, &it, r),
+                    None => ui.text(label, Vec2::new(r.x + 8.0, r.y + 28.0), 1.5, Color::rgba(70, 36, 20, 140)),
+                }
+            }
+            let preview = match (slot_item(left), slot_item(right)) {
+                (Some(l), Some(r)) => Some(w.forge_preview(&l, &r)),
+                _ => None,
+            };
+            let out = FRect::new(go.x + go.w + 40.0, go.y - 6.0, 64.0, 64.0);
+            ui.slot(out, false);
+            let shards = w.shard_item().map(|s| w.farmer.inventory.count(s)).unwrap_or(0);
+            match &preview {
+                Some(Ok((item, cost))) => {
+                    // Rolled enchantments stay a surprise.
+                    hud::draw_item_in_slot(rc, ui, w, item, out);
+                    let color = if shards >= *cost { ui::TEXT } else { Color::rgb(200, 40, 40) };
+                    ui.text(&format!("Cost: {cost} cinder shards"), Vec2::new(out.x - 40.0, out.y + 80.0), 2.0, color);
+                }
+                Some(Err(e)) => ui.text(e, Vec2::new(f.x + 300.0, f.y + 214.0), 2.0, Color::rgb(160, 50, 40)),
+                None => {}
+            }
+            ui.button(go, "Forge", matches!(&preview, Some(Ok((_, c))) if shards >= *c));
+            let can_unforge = slot_item(left).is_some_and(|l| !valley_sim::forge::forge_lines(&l).is_empty() || l.extra().is_some_and(|e| !e.combined.is_empty()));
+            ui.button(unforge, "Unforge", can_unforge);
+            if let Some(l) = slot_item(left) {
+                let mut y = f.y + 110.0;
+                for line in valley_sim::forge::forge_lines(&l) {
+                    ui.text(&line, Vec2::new(f.x + f.w - 230.0, y), 2.0, Color::rgb(110, 60, 150));
+                    y += 26.0;
+                }
+            }
+            let (prow, _) = chest_rects(sw, sh);
+            for (i, r) in prow.iter().enumerate() {
+                ui.slot(*r, *left == Some(i) || *right == Some(i));
+                if let Some(item) = w.farmer.inventory.get(i) {
+                    hud::draw_item_in_slot(rc, ui, w, item, *r);
+                }
+            }
+            ui.text(&format!("Cinder shards: {shards}"), Vec2::new(f.x + 48.0, f.y + 296.0), 2.0, ui::TEXT);
+        }
         Menu::OrderBoard => {
             let f = menu_frame(sw, sh);
             ui.panel(f);
@@ -2809,6 +2921,10 @@ impl ValleyGame {
                 Some(e) => format!("event {} at command {}/{}", e.id, e.pc, e.commands.len()),
                 None => format!("no event; seen: {}", w.farmer.events_seen.join(", ")),
             },
+            Some("forge") => {
+                w.emit(valley_sim::world::WorldEvent::OpenForge);
+                "opening the forge".into()
+            }
             Some("arcade") => {
                 w.emit(valley_sim::world::WorldEvent::OpenArcade(t.get(1).copied().unwrap_or("ranger").to_string()));
                 "opening the arcade".into()
@@ -2849,7 +2965,7 @@ impl ValleyGame {
                 self.menus.push(Menu::NightEvent { kind, ms: 0 });
                 format!("showing {kind:?}")
             }
-            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event> | arcade <ranger|rails>".into(),
+            _ => "commands: warp <loc> <x> <y> | mine <n> | give <id> [n] | money <n> | time <hhmm> | day | child [age] | wear <(H|S|P)id> | bundles | slot <n> | tile | clump <stump|log|boulder|meteorite|mine|giant crop id> | night <event> | arcade <ranger|rails> | forge".into(),
         }
     }
 }

@@ -8,7 +8,6 @@
 use engine::{IRect, Rng, Vec2};
 
 use crate::collision::box_blocked;
-use crate::item::Item;
 use crate::world::{World, WorldEvent};
 use crate::{Dir, TilePos, TILE_F};
 
@@ -179,8 +178,8 @@ impl World {
     /// Start swinging the held weapon.
     pub fn begin_weapon_swing(&mut self) -> bool {
         let slot = self.farmer.current_slot;
-        let Some(id) = self.farmer.inventory.get(slot).and_then(|i| i.weapon_id()).map(String::from) else { return false };
-        let speed = self.items.weapons.get(&id).map(|w| w.speed).unwrap_or(0);
+        let Some(item) = self.farmer.inventory.get(slot).filter(|i| i.weapon_id().is_some()).cloned() else { return false };
+        let speed = self.weapon_stats(&item).map(|w| w.speed).unwrap_or(0) ;
         // Faster weapons swing quicker (approx. 10% per speed point, clamped).
         let total = (400.0 * (1.0 - speed as f32 * 0.1).clamp(0.4, 1.8)) as u32;
         self.weapon_swing = Some(WeaponSwing { slot, elapsed_ms: 0, total_ms: total, applied: false });
@@ -194,15 +193,33 @@ impl World {
         if !s.applied && s.elapsed_ms >= s.total_ms / 3 {
             s.applied = true;
             let item = self.farmer.inventory.get(s.slot).cloned();
-            if let Some(Item::Weapon { id }) = item {
-                if let Some(w) = self.items.weapons.get(&id).cloned() {
-                    let forged = self.forge_level(&id) * crate::volcano::FORGE_BONUS;
-                    self.melee_hit(w.min_damage + forged, w.max_damage + forged, w.knockback, w.crit_chance, w.crit_multiplier, w.area_of_effect);
-                }
+            if let Some(w) = item.as_ref().and_then(|i| self.weapon_stats(i)) {
+                self.melee_hit(w.min, w.max, w.knockback, w.crit, w.crit_mult, w.aoe);
+                // Blades cut grass and weeds too.
+                let area = self.swing_area(w.aoe);
+                self.weapon_cut(area);
             }
         }
         if s.elapsed_ms < s.total_ms {
             self.weapon_swing = Some(s);
+        }
+    }
+
+    /// A weapon swing cuts the grass and weeds it passes through.
+    pub(crate) fn weapon_cut(&mut self, area: IRect) {
+        let ts = crate::TILE;
+        let (x0, y0) = (area.x.div_euclid(ts), area.y.div_euclid(ts));
+        let (x1, y1) = ((area.x + area.w - 1).div_euclid(ts), (area.y + area.h - 1).div_euclid(ts));
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let t = TilePos::new(x, y);
+                let weeds = matches!(self.location().object(t).map(|o| &o.kind), Some(crate::objects::ObjKind::Debris { debris: crate::objects::DebrisKind::Weeds, .. }));
+                if weeds {
+                    self.break_weeds(t);
+                } else {
+                    self.cut_grass_with(t, false);
+                }
+            }
         }
     }
 
@@ -350,14 +367,7 @@ impl World {
     }
 
     pub fn farmer_defense(&self) -> i32 {
-        self.total_attrs().defense
-            + self.farmer
-            .inventory
-            .get(self.farmer.current_slot)
-            .and_then(|i| i.weapon_id())
-            .and_then(|id| self.items.weapons.get(id))
-            .map(|w| w.defense)
-            .unwrap_or(0)
+        self.total_attrs().defense + self.farmer.current_item().and_then(|i| self.weapon_stats(i)).map(|w| w.defense).unwrap_or(0)
     }
 
     /// Knocked out: lose some money, wake up at home with partial health.

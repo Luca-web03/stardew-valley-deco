@@ -115,11 +115,14 @@ pub struct Tool {
     /// Uses left on the attached tackle.
     #[serde(default)]
     pub tackle_uses: i32,
+    /// Forge enchantment ("Swift", "Bottomless", ...; see `forge`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enchantment: Option<String>,
 }
 
 impl Tool {
     pub fn new(kind: ToolKind) -> Self {
-        let mut t = Self { kind, level: 0, water: 0, attachments: Vec::new(), tackle_uses: 0 };
+        let mut t = Self { kind, level: 0, water: 0, attachments: Vec::new(), tackle_uses: 0, enchantment: None };
         t.water = t.water_capacity();
         t
     }
@@ -142,6 +145,40 @@ pub struct ItemExtra {
     pub preserved_from: Option<String>,
     pub display_name: Option<String>,
     pub price: Option<i32>,
+    /// Rings joined into this combined ring (ring object ids).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub combined: Vec<String>,
+}
+
+/// Forge state on a weapon (see `forge`).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WeaponMods {
+    /// Gem forges in order ("Ruby", "Jade", ...), at most three.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub gems: Vec<String>,
+    /// Enchantment from a prismatic shard ("Vampiric", ...).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enchantment: Option<String>,
+    /// Innate enchantments from dragon teeth, with levels.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub innate: BTreeMap<String, i32>,
+    /// Weapon id whose look this one wears.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub appearance: Option<String>,
+    /// Galaxy souls added so far.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub souls: i32,
+}
+
+fn is_zero(v: &i32) -> bool {
+    *v == 0
+}
+
+impl WeaponMods {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -157,7 +194,11 @@ pub enum Item {
     Big { id: String, stack: i32 },
     Tool(Tool),
     /// Melee weapon from Data/Weapons.
-    Weapon { id: String },
+    Weapon {
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mods: Option<Box<WeaponMods>>,
+    },
     /// Footwear from Data/Boots.
     Boots { id: String },
     /// Furniture from Data/Furniture.
@@ -251,6 +292,16 @@ impl Item {
     pub fn object(id: &str, stack: i32) -> Self {
         Item::Object { id: id.to_string(), stack, quality: Quality::Normal, extra: None }
     }
+    pub fn weapon(id: &str) -> Self {
+        Item::Weapon { id: id.to_string(), mods: None }
+    }
+    /// A weapon's forge state (empty for plain weapons).
+    pub fn weapon_mods(&self) -> Option<&WeaponMods> {
+        match self {
+            Item::Weapon { mods, .. } => mods.as_deref(),
+            _ => None,
+        }
+    }
     pub fn object_q(id: &str, stack: i32, quality: Quality) -> Self {
         Item::Object { id: id.to_string(), stack, quality, extra: None }
     }
@@ -335,7 +386,7 @@ impl Item {
             Item::Object { id, .. } => format!("(O){id}"),
             Item::Big { id, .. } => format!("(BC){id}"),
             Item::Tool(t) => format!("(T){}", t.kind.data_key()),
-            Item::Weapon { id } => format!("(W){id}"),
+            Item::Weapon { id, .. } => format!("(W){id}"),
             Item::Boots { id } => format!("(B){id}"),
             Item::Clothing { slot, id } => format!("({}){id}", slot.prefix()),
             Item::Trinket { id } => format!("(TR){id}"),
@@ -345,7 +396,7 @@ impl Item {
 
     pub fn weapon_id(&self) -> Option<&str> {
         match self {
-            Item::Weapon { id } => Some(id),
+            Item::Weapon { id, .. } => Some(id),
             _ => None,
         }
     }
@@ -716,7 +767,7 @@ impl ItemDb {
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Big { id, .. } => self.big(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
-            Item::Weapon { id } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
+            Item::Weapon { id, .. } => self.weapons.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Boots { id } => self.boots.get(id).map(|o| o.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
             Item::Trinket { id } => self.trinkets.get(id).map(|t| t.display_name.clone()).unwrap_or_else(|| format!("Error Item ({id})")),
@@ -735,10 +786,20 @@ impl ItemDb {
     }
 
     pub fn description(&self, item: &Item) -> String {
+        let base = self.base_description(item);
+        let forged = crate::forge::forge_lines(item);
+        if forged.is_empty() {
+            base
+        } else {
+            format!("{base}\n{}", forged.join("\n"))
+        }
+    }
+
+    fn base_description(&self, item: &Item) -> String {
         match item {
             Item::Object { id, .. } => self.object(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Big { id, .. } => self.big(id).map(|o| o.description.clone()).unwrap_or_default(),
-            Item::Weapon { id } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
+            Item::Weapon { id, .. } => self.weapons.get(id).map(|o| o.description.clone()).unwrap_or_default(),
             Item::Boots { id } => self.boots.get(id).map(|b| format!("{}\nDefense +{}", b.description, b.defense)).unwrap_or_default(),
             Item::Clothing { slot, id } => self.clothing(*slot, id).map(|c| c.description.clone()).unwrap_or_default(),
             Item::Trinket { id } => self.trinkets.get(id).map(|t| t.description.clone()).unwrap_or_default(),
@@ -782,7 +843,7 @@ impl ItemDb {
         match ty {
             "O" => self.objects.contains_key(id).then(|| Item::object(id, stack)),
             "BC" => self.bigs.contains_key(id).then(|| Item::big(id, stack)),
-            "W" => self.weapons.contains_key(id).then(|| Item::Weapon { id: id.to_string() }),
+            "W" => self.weapons.contains_key(id).then(|| Item::weapon(id)),
             "B" => self.boots.contains_key(id).then(|| Item::Boots { id: id.to_string() }),
             "F" => self.furniture.contains_key(id).then(|| Item::Furniture { id: id.to_string() }),
             "TR" => self.trinkets.contains_key(id).then(|| Item::Trinket { id: id.to_string() }),

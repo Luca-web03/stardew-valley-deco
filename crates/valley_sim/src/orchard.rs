@@ -121,11 +121,19 @@ impl World {
         self.location_mut().state.objects.remove(&t);
         let mut rng = Rng::new(Rng::seed_from(&[self.seed as i64, self.game_ms as i64, t.x as i64, t.y as i64, 3]));
         let drops = self.location_data_for(&self.current).map(|d| d.artifact_spots.clone()).unwrap_or_default();
+        let slot = self.farmer.current_slot;
+        // Archaeologist doubles each find's chance; Generous may dig up a
+        // second copy (approx.).
+        let boost = if self.tool_has(slot, "Archaeologist") { 2.0 } else { 1.0 };
+        let generous = self.tool_has(slot, "Generous");
         let mut got = false;
         for d in drops {
-            if rng.chance(d.chance.unwrap_or(1.0)) {
+            if rng.chance((d.chance.unwrap_or(1.0) * boost).min(1.0)) {
                 let n = if d.max_stack > d.min_stack { rng.range(d.min_stack.max(1), d.max_stack + 1) } else { d.min_stack.max(1) };
                 if let Some(item) = self.items.create(&d.item_id, n) {
+                    if generous && rng.chance(0.5) {
+                        self.spawn_drop(item.clone(), t.world_center());
+                    }
                     self.spawn_drop(item, t.world_center());
                     got = true;
                     break;

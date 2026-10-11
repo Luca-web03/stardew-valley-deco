@@ -50,7 +50,10 @@ were not available; such values are isolated constants that can be tuned.
       reviving mummies, exploding hot heads, splitting big slimes, grubs
       turning into flies, quick dust sprites
 - [x] Weapon special moves (block, flurry, slam; approx. timings),
-      slingshot with ammo and projectiles
+      slingshot with ammo and projectiles; weapons cut grass and weeds
+- [x] Forge: gem forges, tool and weapon enchantments with their effects,
+      innate enchantments, weapon looks, combined rings, galaxy souls,
+      unforging (approx. effect sizes)
 - [x] Deep cavern below the mines (shafts, tougher floors), paid travel
       between areas, warp totems and obelisks, placeholder desert
 - [x] Stables and horse riding, minecart networks, TV channels with the
@@ -115,8 +118,8 @@ were not available; such values are isolated constants that can be tuned.
 
 ## Not yet
 - [ ] The original's island/volcano/desert specifics that are game code
-      (golden walnut locations, parrots, volcano layouts and forge
-      enchantments, desert festival); generic counterparts exist:
+      (golden walnut locations, parrots, volcano layouts, desert
+      festival); generic counterparts exist:
       collectibles + unlocks, flag-cleared tiles, a generated volcano with
       lava and a forge
 - [ ] Default layer values for the real farmer sheets (the layered

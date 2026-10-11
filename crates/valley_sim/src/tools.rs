@@ -45,11 +45,13 @@ impl World {
                     return true;
                 }
                 if matches!(t.kind, ToolKind::Hoe | ToolKind::WateringCan) && t.level > 0 {
-                    self.farmer.tool_charge = Some(ToolCharge { kind: t.kind, slot, max_power: t.level, ms: 0 });
+                    // Reaching adds a fifth charge level (5x5).
+                    let reach = (t.enchantment.as_deref() == Some("Reaching")) as i32;
+                    self.farmer.tool_charge = Some(ToolCharge { kind: t.kind, slot, max_power: t.level + reach, ms: 0 });
                     return true;
                 }
                 let level = self.farmer.effective_level(governing_skill(t.kind));
-                let cost = stamina_cost(t.kind, level);
+                let cost = if t.enchantment.as_deref() == Some("Efficient") { 0.0 } else { stamina_cost(t.kind, level) };
                 if cost > 0.0 {
                     let was_exhausted = self.farmer.exhausted;
                     self.farmer.spend_stamina(cost);
@@ -86,7 +88,7 @@ impl World {
         }
         let power = c.power();
         let level = self.farmer.effective_level(governing_skill(c.kind));
-        let cost = stamina_cost(c.kind, level) * (power + 1) as f32;
+        let cost = if self.tool_has(c.slot, "Efficient") { 0.0 } else { stamina_cost(c.kind, level) * (power + 1) as f32 };
         let was = self.farmer.exhausted;
         self.farmer.spend_stamina(cost);
         if self.farmer.exhausted && !was {
@@ -108,6 +110,15 @@ impl World {
             0 => vec![origin],
             1 => line(3),
             2 => line(5),
+            p if p >= 5 => {
+                let mut v = Vec::new();
+                for i in 0..5 {
+                    for side in -2..=2 {
+                        v.push(TilePos::new(origin.x + dx * i + sx * side, origin.y + dy * i + sy * side));
+                    }
+                }
+                v
+            }
             p => {
                 let len = if p == 3 { 3 } else { 6 };
                 let mut v = Vec::new();
@@ -123,7 +134,8 @@ impl World {
 
     pub(crate) fn advance_tool_use(&mut self, dt: u32) {
         let Some(mut u) = self.farmer.tool_use.take() else { return };
-        u.elapsed_ms += dt;
+        // Swift tools swing faster (approx. +50%).
+        u.elapsed_ms += if self.tool_has(u.slot, "Swift") { dt + dt / 2 } else { dt };
         if !u.applied && u.elapsed_ms >= TOOL_HIT_MS {
             u.applied = true;
             self.farmer.tool_use = Some(u.clone());
@@ -202,13 +214,14 @@ impl World {
             self.sound("slosh");
             return;
         }
-        let has_water = self.farmer.inventory.get(slot).and_then(|i| i.tool()).is_some_and(|t| t.water > 0);
+        let bottomless = self.tool_has(slot, "Bottomless");
+        let has_water = bottomless || self.farmer.inventory.get(slot).and_then(|i| i.tool()).is_some_and(|t| t.water > 0);
         if !has_water {
             self.hud("Your watering can is empty.");
             self.sound("woodyStep");
             return;
         }
-        if let Some(tool) = self.farmer.inventory.get_mut(slot).and_then(|i| i.tool_mut()) {
+        if let Some(tool) = self.farmer.inventory.get_mut(slot).and_then(|i| i.tool_mut()).filter(|_| !bottomless) {
             tool.water -= 1;
         }
         if self.water_trough(t) {
@@ -226,10 +239,11 @@ impl World {
         if self.pickup_object(t) {
             return;
         }
-        if self.hit_clump(t, ToolKind::Axe, self.tool_level(slot)) {
+        let powerful = self.tool_has(slot, "Powerful") as i32;
+        if self.hit_clump(t, ToolKind::Axe, self.tool_level(slot) + powerful) {
             return;
         }
-        let damage = self.tool_level(slot) + 1;
+        let damage = self.tool_level(slot) + 1 + powerful;
         if let Some(o) = self.location().object(t) {
             if let ObjKind::Debris { debris: DebrisKind::Twig, .. } = o.kind {
                 self.break_debris(t, DebrisKind::Twig);
@@ -295,6 +309,10 @@ impl World {
             self.sound("woodyStep");
             return;
         }
+        // Shavings: chips of wood with each hit (approx. chance).
+        if self.tool_has(slot, "Shavings") && self.rng.chance(crate::forge::SHAVINGS_CHANCE) {
+            drops.push((Item::object("388", 1), 1));
+        }
         self.sound(sound);
         if xp > 0 {
             if let Some(l) = self.farmer.skills.gain(Skill::Foraging, xp) {
@@ -319,7 +337,7 @@ impl World {
     }
 
     fn use_pickaxe(&mut self, slot: usize, t: TilePos) {
-        let power = self.tool_level(slot) + 1;
+        let power = self.tool_level(slot) + 1 + self.tool_has(slot, "Powerful") as i32;
         if self.hit_mine_rock(t, power) {
             return;
         }
@@ -372,6 +390,10 @@ impl World {
                 }
             }
         }
+    }
+
+    pub(crate) fn break_weeds(&mut self, t: TilePos) {
+        self.break_debris(t, DebrisKind::Weeds);
     }
 
     fn break_debris(&mut self, t: TilePos, kind: DebrisKind) {

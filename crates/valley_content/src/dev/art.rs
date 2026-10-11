@@ -437,11 +437,27 @@ pub const ICON_MUSHROOM: i32 = 76;
 pub const ICON_SUNBLOOM_SEEDS: i32 = 77;
 pub const ICON_SUNBLOOM: i32 = 78;
 pub const ICON_HONEY: i32 = 79;
+/// Forge gems: emerald, aquamarine, ruby, amethyst, topaz, jade, then the
+/// prismatic shard and the dragon tooth.
+pub const ICON_GEMS: i32 = 80;
+pub const ICON_PRISMATIC: i32 = 86;
+pub const ICON_DRAGON_TOOTH: i32 = 87;
+pub const GEM_COLORS: [(u8, u8, u8); 6] = [(60, 190, 100), (90, 200, 220), (220, 50, 70), (160, 90, 210), (240, 180, 50), (100, 170, 110)];
 
 fn seed_packet(c: &mut Cell, col: Color) {
     c.rect(3, 2, 10, 13, Color::rgb(230, 215, 170));
     c.rect(5, 5, 6, 6, col);
     c.rect(3, 2, 10, 2, shade(col, -40));
+    c.auto_outline(OUTLINE);
+}
+
+/// A faceted gem in the middle of an icon cell.
+fn gem(c: &mut Cell, col: Color) {
+    for row in 0..10 {
+        let half = if row < 4 { row + 2 } else { 9 - row };
+        c.rect(8 - half, 3 + row, half * 2, 1, if row < 3 { shade(col, 40) } else { col });
+    }
+    c.px(6, 5, Color::rgb(255, 255, 255));
     c.auto_outline(OUTLINE);
 }
 
@@ -968,6 +984,28 @@ pub fn objects() -> Image {
         c.rect(4, 5, 8, 2, Color::rgb(250, 200, 90));
         c.rect(5, 2, 6, 3, Color::rgb(170, 120, 70));
         c.px(6, 9, Color::rgb(255, 230, 150));
+        c.auto_outline(OUTLINE);
+    }
+    for (i, (r, g, b)) in GEM_COLORS.iter().enumerate() {
+        let col = Color::rgb(*r, *g, *b);
+        let mut c = Cell::at(&mut img, ICON_GEMS + i as i32, OBJ_COLS, 16, 16);
+        gem(&mut c, col);
+    }
+    {
+        let mut c = Cell::at(&mut img, ICON_PRISMATIC, OBJ_COLS, 16, 16);
+        gem(&mut c, Color::rgb(230, 230, 250));
+        c.px(6, 6, Color::rgb(240, 90, 90));
+        c.px(8, 8, Color::rgb(90, 200, 90));
+        c.px(10, 10, Color::rgb(90, 120, 240));
+    }
+    {
+        // Dragon tooth: a long curved fang.
+        let mut c = Cell::at(&mut img, ICON_DRAGON_TOOTH, OBJ_COLS, 16, 16);
+        for i in 0..9 {
+            let w = (5 - i / 2).max(1);
+            c.rect(4 + i / 3, 3 + i, w, 1, Color::rgb(235, 225, 200));
+        }
+        c.px(5, 4, Color::rgb(255, 250, 235));
         c.auto_outline(OUTLINE);
     }
     {

@@ -3,7 +3,7 @@ use valley_sim::collision::tile_passable;
 use valley_sim::item::Item;
 use valley_sim::objects::ObjKind;
 use valley_sim::save::SaveData;
-use valley_sim::volcano::{volcano_floor, FORGE_BONUS, FORGE_COSTS, VOLCANO_FLOORS};
+use valley_sim::volcano::{volcano_floor, VOLCANO_FLOORS};
 use valley_sim::world::{NewGame, World};
 use valley_sim::{Dir, TilePos};
 
@@ -83,15 +83,10 @@ fn volcano_floors_lava_and_forge() {
         (0..loc.height()).flat_map(|y| (0..loc.width()).map(move |x| TilePos::new(x, y))).find(|p| loc.action_at(*p).is_some_and(|a| a == "Port.Forge"))
     };
     assert!(forge.is_some(), "forge on the last floor");
-    // Forging the held weapon.
-    w.farmer.inventory.slots[6] = Some(Item::Weapon { id: "Dev_Sword".into() });
-    w.farmer.current_slot = 6;
-    assert!(w.forge_held_weapon().is_err(), "no shards");
-    w.farmer.inventory.add(Item::object("Dev_EmberShard", FORGE_COSTS[0] + FORGE_COSTS[1]));
-    assert_eq!(w.forge_held_weapon(), Ok(1));
-    assert_eq!(w.forge_held_weapon(), Ok(2));
-    assert_eq!(w.forge_level("Dev_Sword") * FORGE_BONUS, 6);
-    assert_eq!(w.farmer.inventory.count("Dev_EmberShard"), 0);
+    // The forge opens its menu.
+    w.drain_events();
+    assert!(w.run_action_pub("Port.Forge"));
+    assert!(w.drain_events().iter().any(|e| matches!(e, valley_sim::world::WorldEvent::OpenForge)));
     // The top ladder leads back out.
     w.enter_volcano(1);
     let up = w.location().state.objects.iter().find(|(_, o)| matches!(o.kind, ObjKind::Ladder { down: false })).map(|(p, _)| *p).unwrap();

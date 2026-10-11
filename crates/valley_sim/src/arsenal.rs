@@ -97,9 +97,8 @@ impl World {
     }
 
     fn held_hit(&self) -> Option<Hit> {
-        let id = self.farmer.current_item()?.weapon_id()?;
-        let w = self.items.weapons.get(id)?;
-        Some(Hit { min: w.min_damage, max: w.max_damage, knockback: w.knockback, crit: w.crit_chance, crit_mult: w.crit_multiplier, ignore_invincible: false })
+        let w = self.weapon_stats(self.farmer.current_item()?)?;
+        Some(Hit { min: w.min, max: w.max, knockback: w.knockback, crit: w.crit, crit_mult: w.crit_mult, ignore_invincible: false })
     }
 
     /// Damage every monster in `area`; returns how many were struck.
@@ -129,9 +128,13 @@ impl World {
         if self.has_mastery(crate::farmer::Skill::Combat) {
             mult *= 1.1;
         }
+        let mods = self.held_weapon_mods().cloned().unwrap_or_default();
+        let has = |e: &str| mods.enchantment.as_deref() == Some(e) || mods.innate.contains_key(e);
+        let (bug_killer, crusader, slime_slayer) = (has("BugKiller"), has("Crusader"), has("SlimeSlayer"));
         let mut killed = Vec::new();
         for &i in &targets {
             let m = &mut self.monsters[i];
+            let class = crate::forge::monster_class(&m.info.name);
             if rng.chance(m.info.miss_chance) {
                 self.floaters.push(Floater { location: here.clone(), pos: m.center(), text: "Miss".into(), color: engine::Color::WHITE, ms: 800 });
                 continue;
@@ -142,7 +145,17 @@ impl World {
             if is_crit {
                 dmg = (dmg as f32 * hit.crit_mult) as i32;
             }
+            // Enchantment multipliers (approx.).
+            match class {
+                crate::forge::MonsterClass::Bug if bug_killer => dmg *= 2,
+                crate::forge::MonsterClass::Undead if crusader => dmg = dmg * 3 / 2,
+                crate::forge::MonsterClass::Slime if slime_slayer => dmg = dmg * 3 / 2,
+                _ => {}
+            }
             dmg = (dmg - m.info.resilience).max(1);
+            if bug_killer && class == crate::forge::MonsterClass::Bug {
+                m.shell = 0;
+            }
             if m.shell > 0 {
                 // The shell takes the hit.
                 m.shell -= 1;
@@ -169,7 +182,7 @@ impl World {
         self.sound(if killed.is_empty() { "hitEnemy" } else { "monsterKilled" });
         killed.sort_unstable();
         for i in killed.into_iter().rev() {
-            if self.monsters[i].species == crate::monster_kinds::Species::Mummy {
+            if self.monsters[i].species == crate::monster_kinds::Species::Mummy && !crusader {
                 // Mummies collapse; only a bomb finishes them.
                 let m = &mut self.monsters[i];
                 m.collapsed_ms = crate::monster_kinds::MUMMY_DOWN_MS;
@@ -177,6 +190,18 @@ impl World {
                 continue;
             }
             let m = self.monsters.remove(i);
+            if has("Vampiric") && rng.chance(crate::forge::VAMPIRIC_CHANCE) {
+                let heal = (m.info.health as f32 * 0.1).ceil().max(1.0) as i32;
+                self.farmer.health = (self.farmer.health + heal).min(self.farmer.max_health);
+                self.sound("healSound");
+            }
+            if has("SlimeGatherer") && crate::forge::monster_class(&m.info.name) == crate::forge::MonsterClass::Slime {
+                if let Some((id, _)) = m.info.drops.first().cloned() {
+                    if let Some(item) = self.items.create(&id, rng.range(1, 3)) {
+                        self.spawn_drop(item, m.center());
+                    }
+                }
+            }
             self.monster_killed(m, false);
         }
         targets.len()
@@ -229,6 +254,9 @@ impl World {
         };
         self.special = Some(mv);
         self.special_cooldown_ms = special_cooldown(kind);
+        if self.held_weapon_has("Artful") {
+            self.special_cooldown_ms /= 2;
+        }
         self.sound(cue);
         true
     }

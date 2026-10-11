@@ -213,7 +213,7 @@ impl World {
         let id = ["0", "Dev_Sword"].iter().find(|id| self.items.weapons.contains_key(**id)).map(|s| s.to_string());
         if let Some(id) = id {
             self.farmer.mail_received.push("port_starter_weapon".into());
-            let item = Item::Weapon { id };
+            let item = Item::Weapon { id, mods: None };
             let name = self.items.display_name(&item);
             self.give_item(item);
             self.emit(crate::world::WorldEvent::Message(format!("You found a {name} by the entrance. The mines are dangerous; keep it handy.")));

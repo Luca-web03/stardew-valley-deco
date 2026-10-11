@@ -133,6 +133,8 @@ pub enum Menu {
     /// Sewing machine: inventory slots chosen as fabric (left) and the
     /// second item (right).
     Tailoring { left: Option<usize>, right: Option<usize> },
+    /// The forge: item, ingredient (inventory slots).
+    Forge { left: Option<usize>, right: Option<usize> },
     /// Casino reels: current bet and the last spin.
     Reels { bet: i32, last: Option<valley_sim::casino::Spin> },
     /// High-Low: bet, the round in play and the last revealed card (card, won).

@@ -140,8 +140,10 @@ impl World {
     /// After a fish is hooked: use up one bait and one tackle use.
     pub(crate) fn consume_gear(&mut self) {
         let slot = self.farmer.current_slot;
+        // A preserving rod keeps its bait half the time (approx.).
+        let keep_bait = self.rod_has("Preserving") && engine::Rng::new(engine::Rng::seed_from(&[self.seed as i64, self.game_ms as i64, 4111])).chance(0.5);
         let Some(Item::Tool(rod)) = self.farmer.inventory.slots.get_mut(slot).and_then(|s| s.as_mut()) else { return };
-        if let Some(Some(bait)) = rod.attachments.get_mut(0) {
+        if let Some(Some(bait)) = rod.attachments.get_mut(0).filter(|_| !keep_bait) {
             let n = bait.stack() - 1;
             if n <= 0 {
                 rod.attachments[0] = None;

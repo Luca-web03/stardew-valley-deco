@@ -32,7 +32,7 @@ fn armed(weapon: &str) -> World {
     w.warp_farmer("Farm", me, Some(Dir::Right));
     w.farmer.set_tile(me);
     w.farmer.facing = Dir::Right;
-    w.farmer.inventory.slots[5] = Some(Item::Weapon { id: weapon.into() });
+    w.farmer.inventory.slots[5] = Some(Item::weapon(weapon));
     w.farmer.current_slot = 5;
     w.drain_events();
     w

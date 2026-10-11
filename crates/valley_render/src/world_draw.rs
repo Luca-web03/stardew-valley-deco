@@ -1029,8 +1029,10 @@ pub fn item_sprite(rc: &mut RenderCtx, w: &World, item: &Item) -> (engine::TexId
             let cols = (tw / 16).max(1) as i32;
             (tex, IRect::new((idx % cols) * 16, (idx / cols) * 16, 16, 16))
         }
-        Item::Weapon { id } => {
-            let (tex_name, idx) = match w.items.weapons.get(id) {
+        Item::Weapon { id, mods } => {
+            // A transmogrified weapon wears the other weapon's sprite.
+            let look = mods.as_ref().and_then(|m| m.appearance.as_ref()).filter(|a| w.items.weapons.contains_key(*a)).unwrap_or(id);
+            let (tex_name, idx) = match w.items.weapons.get(look) {
                 Some(d) => (if d.texture.is_empty() { "TileSheets/weapons".to_string() } else { d.texture.replace('\\', "/") }, d.sprite_index),
                 None => ("TileSheets/weapons".to_string(), 0),
             };

@@ -136,8 +136,19 @@ impl World {
     /// Attributes from rings and boots.
     pub fn equipment_attrs(&self) -> BuffAttrs {
         let mut a = BuffAttrs::default();
-        for r in self.farmer.rings.iter().flatten() {
-            let Some(o) = r.object_id().and_then(|id| self.items.object(id)) else { continue };
+        // A combined ring counts as each of its rings.
+        let ids: Vec<String> = self
+            .farmer
+            .rings
+            .iter()
+            .flatten()
+            .flat_map(|r| match r.extra().map(|e| e.combined.clone()).filter(|c| !c.is_empty()) {
+                Some(parts) => parts,
+                None => r.object_id().map(|i| vec![i.to_string()]).unwrap_or_default(),
+            })
+            .collect();
+        for id in ids {
+            let Some(o) = self.items.object(&id) else { continue };
             let cf = o.data.custom_fields.clone().unwrap_or_default();
             let g = |k: &str| cf.get(k).and_then(|v| v.parse::<i32>().ok()).unwrap_or(0);
             a.add(&BuffAttrs {

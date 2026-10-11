@@ -88,6 +88,8 @@ pub enum WorldEvent {
     TvMenu(Vec<crate::minecarts::Channel>),
     /// Open the sewing machine.
     OpenTailoring,
+    /// The forge menu (`forge`).
+    OpenForge,
     /// Mastery pedestal: unspent points and skills that can be mastered.
     MasteryMenu { points: i32, skills: Vec<crate::farmer::Skill> },
     /// Casino games.
@@ -1555,7 +1557,7 @@ impl World {
             "Port.JojaForm" => self.joja_form_action(),
             "Port.Unlock" => self.unlock_action(&toks),
             "Port.Volcano" => self.enter_volcano_from_here(),
-            "Port.Forge" => self.forge_action(),
+            "Port.Forge" | "Forge" => self.open_forge(),
             "Port.Divorce" | "DivorceBook" => {
                 if self.farmer.spouse.is_none() {
                     self.emit(WorldEvent::Message("Marriage and divorce records. You have nothing to file.".into()));
