@@ -2996,6 +2996,18 @@ impl ValleyGame {
                 w.emit(valley_sim::world::WorldEvent::OpenForge);
                 "opening the forge".into()
             }
+            Some("place") if t.len() >= 4 => {
+                // place <qualified id> <x> <y> [rotation]
+                let (x, y) = (num(2).unwrap_or(0), num(3).unwrap_or(0));
+                match w.debug_place(t[1], TilePos::new(x, y), num(4).unwrap_or(0)) {
+                    Ok(()) => format!("placed {} at {x},{y}", t[1]),
+                    Err(e) => e,
+                }
+            }
+            Some("sit") if t.len() >= 3 => {
+                let at = TilePos::new(num(1).unwrap_or(0), num(2).unwrap_or(0));
+                if w.debug_sit(at) { "seated".into() } else { "no seat there".into() }
+            }
             Some("skin") => {
                 // skin <building id> [skin id]: change a building's look.
                 let Some(id) = num(1) else {

@@ -225,4 +225,34 @@ impl World {
             }
         }
     }
+
+    /// Debug: put furniture or a big craftable straight onto a tile of the
+    /// current location (no checks, nothing taken from the inventory).
+    pub fn debug_place(&mut self, qualified: &str, t: TilePos, rotation: i32) -> Result<(), String> {
+        match self.items.create(qualified, 1) {
+            Some(Item::Furniture { id }) => {
+                let info = self.items.furniture.get(&id).cloned().ok_or("unknown furniture")?;
+                let rotation = rotation.rem_euclid(info.rotations.max(1));
+                let footprint = info.footprint_at(rotation);
+                self.location_mut().state.furniture.push(PlacedFurniture { id, tile: t, footprint, walkable: info.walkable(), rotation, held: None, on: false, contents: Vec::new() });
+                Ok(())
+            }
+            Some(Item::Big { id, .. }) => {
+                let kind = if self.items.machines.contains_key(&format!("(BC){id}")) {
+                    crate::objects::ObjKind::Machine { output: None, minutes_left: 0, ready: false }
+                } else {
+                    crate::objects::ObjKind::Placed
+                };
+                self.location_mut().state.objects.insert(t, crate::objects::PlacedObject::new(&id, true, kind));
+                Ok(())
+            }
+            _ => Err(format!("can't place {qualified}")),
+        }
+    }
+
+    /// Debug: sit on the seat at `t`.
+    pub fn debug_sit(&mut self, t: TilePos) -> bool {
+        self.try_sit(t)
+    }
 }
+

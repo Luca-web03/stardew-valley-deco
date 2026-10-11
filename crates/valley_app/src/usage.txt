@@ -24,6 +24,8 @@ Options:
                         cmd:COMMAND     run a console command (_ = space,
                                         __ = underscore),
                                         e.g. cmd:mine_3 cmd:give_388_50
+                                        (also place_<id>_<x>_<y>_[rot],
+                                        sit_<x>_<y>, skin_<building>_<skin>)
   --screenshot <png>  Save a screenshot after the script finishes.
 
 Co-op:

@@ -1090,7 +1090,8 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
     let home = !loc.outdoors && valley_sim::decor::is_decoratable(loc, &w.current);
     if (loc.outdoors || home) && time >= dusk {
         let mins = valley_sim::time::Clock::minutes_between(dusk, time) as f32;
-        let total = valley_sim::time::Clock::minutes_between(dusk, 2400) as f32;
+        // Indoors it's dim within a couple of hours of dusk.
+        let total = if home { 120.0 } else { valley_sim::time::Clock::minutes_between(dusk, 2400) as f32 };
         darkness = (mins / total).clamp(0.0, 1.0) * if home { 0.45 } else { 0.75 };
     }
     if loc.outdoors && w.weather.is_raining() {
@@ -1100,7 +1101,7 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
         out.fill(full, Color::rgba(10, 10, 60, (darkness * 255.0) as u8), DEPTH_OVERLAY);
     }
     // Light pools at night: map "Light" property ("x y type ...") and lamp tiles.
-    if darkness > 0.2 {
+    if darkness > 0.12 {
         let white = rc.assets.white(rc.textures);
         let mut lights: Vec<(i32, i32)> = Vec::new();
         if let Some(l) = loc.map.prop("Light") {
@@ -1124,11 +1125,25 @@ fn draw_lighting(rc: &mut RenderCtx, out: &mut DrawList, w: &World, loc: &GameLo
                 }
             }
         }
+        // A soft round glow (generated radial falloff).
+        let glow = rc.assets.generated(rc.textures, "__engine/light_glow", || {
+            let n = 64u32;
+            let mut img = engine::Image::new(n, n);
+            for y in 0..n {
+                for x in 0..n {
+                    let (dx, dy) = (x as f32 + 0.5 - n as f32 / 2.0, y as f32 + 0.5 - n as f32 / 2.0);
+                    let d = (dx * dx + dy * dy).sqrt() / (n as f32 / 2.0);
+                    let a = ((1.0 - d).clamp(0.0, 1.0).powf(1.6) * 255.0) as u8;
+                    img.set(x as i32, y as i32, Color::rgba(255, 255, 255, a));
+                }
+            }
+            img
+        });
+        let _ = white;
         for (x, y) in lights {
             let c = cam.to_screen(Vec2::new(x as f32 * TILE_F + TILE_F / 2.0, y as f32 * TILE_F + TILE_F / 2.0));
-            for (r, a) in [(200.0f32, 30u8), (140.0, 35), (80.0, 45)] {
-                out.draw_tinted(white, IRect::new(0, 0, 1, 1), Vec2::new(c.x - r / 2.0, c.y - r / 2.0), r, Color::rgba(255, 220, 140, a), DEPTH_OVERLAY + 0.0005);
-            }
+            let r = 240.0f32;
+            out.draw_tinted(glow, IRect::new(0, 0, 64, 64), Vec2::new(c.x - r / 2.0, c.y - r / 2.0), r / 64.0, Color::rgba(255, 214, 130, 110), DEPTH_OVERLAY + 0.0005);
         }
     }
     if loc.outdoors && w.weather == valley_sim::time::Weather::Snow {
