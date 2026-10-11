@@ -153,11 +153,14 @@ pub struct NewGame {
     pub seed: u64,
     /// Farm map choice (see `farm_types::FARM_TYPES`).
     pub farm_type: String,
+    /// Starting pet (None: the first available) and its name.
+    pub pet: Option<crate::pets::PetChoice>,
+    pub pet_name: String,
 }
 
 impl Default for NewGame {
     fn default() -> Self {
-        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345, farm_type: "Standard".into() }
+        Self { appearance: Default::default(), farmer_name: "Farmer".into(), farm_name: "Sunny".into(), favorite_thing: "Rust".into(), male: true, seed: 12345, farm_type: "Standard".into(), pet: None, pet_name: String::new() }
     }
 }
 
@@ -232,6 +235,8 @@ pub struct World {
     pub festival_original_maps: BTreeMap<String, valley_content::Map>,
     /// Casino rounds played (seeds the games).
     pub casino_plays: u64,
+    /// `Data/Pets` types.
+    pub pets_data: BTreeMap<String, crate::pets::PetTypeData>,
     /// `Data/WorldMap` regions.
     pub world_map: BTreeMap<String, crate::world_map::MapRegion>,
     /// `Data/Achievements` (empty: the engine's own list).
@@ -430,6 +435,7 @@ impl World {
             rainy_dialogue: HashMap::new(),
             achievement_data: Vec::new(),
             world_map: BTreeMap::new(),
+            pets_data: BTreeMap::new(),
             mine_maps: (1..=40).map_while(|i| cm.load_map(&format!("Maps/Mines/{i}"))).collect(),
             mine_items: crate::mines::MineItems::default(),
             mine_stones_left: 0,
@@ -534,11 +540,13 @@ impl World {
         (w.concessions, w.concession_tastes) = crate::movies::load_concessions(cm);
         w.rainy_dialogue = cm.load_string_dict("Characters/Dialogue/rainy");
         w.world_map = crate::world_map::load(cm);
+        w.pets_data = crate::pets::load_pets(cm);
         w.achievement_data = crate::achievements::parse(&cm.load_string_dict("Data/Achievements").into_iter().collect());
         w.place_farm_clumps();
         w.populate_new_farm();
         w.farm_type_start();
-        w.adopt_pet("Biscuit");
+        let pet = opts.pet.clone();
+        w.adopt_pet(if opts.pet_name.is_empty() { "Biscuit" } else { &opts.pet_name }, pet.as_ref());
         let mut grass_rng = Rng::new(Rng::seed_from(&[w.seed as i64, 88]));
         w.seed_grass(&mut grass_rng);
         w.farmer.mailbox.push("welcome".into());

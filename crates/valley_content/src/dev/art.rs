@@ -2271,3 +2271,30 @@ pub fn world_map() -> Image {
     c.auto_outline(OUTLINE);
     img
 }
+
+/// Copy an image, mapping each opaque pixel's colour through `f`.
+pub fn recolor(src: &Image, f: impl Fn(Color) -> Color) -> Image {
+    let mut out = Image::new(src.width, src.height);
+    for y in 0..src.height as i32 {
+        for x in 0..src.width as i32 {
+            let c = src.get(x as u32, y as u32);
+            if c.a > 0 {
+                out.set(x, y, f(c));
+            }
+        }
+    }
+    out
+}
+
+/// A grey-and-white second dog breed.
+pub fn dog2() -> Image {
+    recolor(&dog(), |c| {
+        let l = ((c.r as u32 + c.g as u32 + c.b as u32) / 3) as u8;
+        Color::rgba(l.saturating_add(20), l.saturating_add(20), l.saturating_add(28), c.a)
+    })
+}
+
+/// A ginger cat (the dog's sheet, recoloured and with a slimmer build).
+pub fn cat() -> Image {
+    recolor(&dog(), |c| Color::rgba(c.r.saturating_add(40), (c.g as u32 * 9 / 10) as u8, (c.b as u32 * 6 / 10) as u8, c.a))
+}

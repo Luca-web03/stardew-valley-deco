@@ -34,7 +34,7 @@ enum Field {
 enum Screen {
     Title { hovered: Option<usize> },
     LoadList { selected: usize },
-    Create { name: String, farm: String, favorite: String, male: bool, field: Field, look: valley_sim::farmer::Appearance, farm_type: usize },
+    Create { name: String, farm: String, favorite: String, male: bool, field: Field, look: valley_sim::farmer::Appearance, farm_type: usize, pet: usize },
     Playing,
 }
 
@@ -100,6 +100,7 @@ pub struct ValleyGame {
     pub net: Option<net::NetHost>,
     /// Farm map choices offered on the new-game screen.
     farm_choices: Vec<valley_sim::farm_types::FarmChoice>,
+    pet_choices: Vec<valley_sim::pets::PetChoice>,
     /// Remaining ticks of a lightning flash.
     flash: u32,
     pub options: Options,
@@ -133,6 +134,7 @@ impl ValleyGame {
         Self {
             net: None,
             farm_choices: Vec::new(),
+            pet_choices: Vec::new(),
             flash: 0,
             options,
             console: None,
@@ -257,7 +259,8 @@ impl ValleyGame {
         match choice {
             Some(0) => {
                 self.farm_choices = valley_sim::farm_types::available(&mut self.cm);
-                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name, look: Default::default(), farm_type: 0 };
+                self.pet_choices = valley_sim::pets::pet_choices(&mut self.cm);
+                self.screen = Screen::Create { name: String::new(), farm: String::new(), favorite: String::new(), male: true, field: Field::Name, look: Default::default(), farm_type: 0, pet: 0 };
             }
             Some(1) => self.screen = Screen::LoadList { selected: 0 },
             Some(2) => ctx.quit_requested = true,
@@ -304,7 +307,7 @@ impl ValleyGame {
     }
 
     fn update_create(&mut self, ctx: &mut EngineCtx) {
-        let Screen::Create { name, farm, favorite, male, field, look, farm_type } = &mut self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet } = &mut self.screen else { return };
         if ctx.input.pressed(Key::Escape) {
             self.screen = Screen::Title { hovered: None };
             return;
@@ -343,6 +346,8 @@ impl ValleyGame {
                 *male = !*male;
             } else if farm_type_rect(sw, sh).contains(m) && !self.farm_choices.is_empty() {
                 *farm_type = (*farm_type + 1) % self.farm_choices.len();
+            } else if pet_rect(sw, sh).contains(m) && !self.pet_choices.is_empty() {
+                *pet = (*pet + 1) % self.pet_choices.len();
             }
             use valley_sim::farmer::{HAIR_COLORS, PANTS_COLORS, SHIRT_COLORS, SKIN_TONES};
             let cycle = |cur: [u8; 3], list: &[[u8; 3]], d: i32| -> [u8; 3] {
@@ -376,6 +381,8 @@ impl ValleyGame {
                 male: *male,
                 seed,
                 farm_type: self.farm_choices.get(*farm_type).map(|c| c.id.clone()).unwrap_or_else(|| "Standard".into()),
+                pet: self.pet_choices.get(*pet).cloned(),
+                pet_name: String::new(),
             };
             self.start_new_game(opts);
             self.save();
@@ -1477,7 +1484,7 @@ impl ValleyGame {
     fn draw_create(&mut self, ctx: &mut EngineCtx, out: &mut DrawList) {
         let (sw, sh) = (ctx.screen_w as f32, ctx.screen_h as f32);
         out.clear(Color::rgb(60, 90, 60));
-        let Screen::Create { name, farm, favorite, male, field, look, farm_type } = &self.screen else { return };
+        let Screen::Create { name, farm, favorite, male, field, look, farm_type, pet } = &self.screen else { return };
         let look = look.clone();
         let mut rc = RenderCtx { cm: &mut self.cm, textures: &mut ctx.textures, assets: &mut self.assets };
         let farmer_tex = valley_render::world_draw::farmer_texture(&mut rc, &look);
@@ -1512,8 +1519,11 @@ impl ValleyGame {
         ui.button(rects[4], "OK", !name.trim().is_empty());
         if let Some(choice) = self.farm_choices.get(*farm_type) {
             let fr = farm_type_rect(sw, sh);
-            ui.button(fr, &format!("Farm: {}  >", choice.name), false);
+            ui.button(fr, &format!("Farm: {} >", choice.name), false);
             ui.text_centered(&choice.description, cx, fr.y + fr.h + 6.0, 1.5, ui::TEXT);
+        }
+        if let Some(p) = self.pet_choices.get(*pet) {
+            ui.button(pet_rect(sw, sh), &format!("Pet: {} >", p.label), false);
         }
         ui.text_centered("Tab: next field   Enter: start   Esc: back", cx, sh / 2.0 + 236.0, 2.0, ui::TEXT);
     }
@@ -1694,9 +1704,13 @@ fn create_rects(sw: f32, sh: f32) -> [FRect; 5] {
     ]
 }
 
-/// The farm map choice button on the new-game screen.
+/// The farm map and pet choice buttons on the new-game screen.
 fn farm_type_rect(sw: f32, sh: f32) -> FRect {
-    FRect::new(create_cx(sw) - 280.0, sh / 2.0 + 166.0, 560.0, 40.0)
+    FRect::new(create_cx(sw) - 280.0, sh / 2.0 + 166.0, 330.0, 40.0)
+}
+
+fn pet_rect(sw: f32, sh: f32) -> FRect {
+    FRect::new(create_cx(sw) + 60.0, sh / 2.0 + 166.0, 220.0, 40.0)
 }
 
 /// (left, right) arrow buttons for skin, hair, shirt, pants, hair style.

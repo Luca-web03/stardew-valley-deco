@@ -84,7 +84,7 @@ Other conventions:
 | Big craftables (16x32 grid) | `valley_render::world_draw::big_sprite` |
 | Farm fallbacks when map properties are missing (shipping bin, farmhouse door, bed) | `valley_sim::world::World::setup_compat` |
 | Well-known item ids used for debris, ores, hay, bouquet, pendant, fertilizer, sprinklers | `valley_sim::{world, mines, romance, machines}` |
-| Pet sheet (32x32 frames, rows down/right/up/left; `Animals/dog`, else the placeholder `Animals/Dev_Dog`), bowl from the `PetBowlTile` map property | `valley_sim::pets` |
+| Pets: `Data/Pets` types (`DisplayName`, `BarkSound`, `ContentSound`) and `Breeds` (`Id`, `Texture`, `CanBeChosenAtStart`), chosen on the new-game screen; sheets are 32x32 frames, rows down/right/up/left (fallback `Animals/dog`, else the placeholder); bowl from the `PetBowlTile` map property | `valley_sim::pets` |
 | Trash cans: `Action Garbage <id>` tiles, loot from `Data/GarbageCans` (`GarbageCans`, `BeforeAll`, `AfterAll`, `BaseChance`) | `valley_sim::pets::search_garbage` |
 | Achievements: `Data/Achievements` names with conditions for the original ids 0-31 and 34 from the public list (earnings, friends, recipes, house, crafting, fish, museum, requests, crops, family, skills, shipping); without that data, an engine-defined list | `valley_sim::achievements` |
 | Weapon special moves by `Type` (0/3 sword block, 1 dagger flurry, 2 club slam), slingshots are `Type` 4 | `valley_sim::arsenal` |

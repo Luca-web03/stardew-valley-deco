@@ -45,6 +45,8 @@ pub fn build() -> MemSource {
     m.insert("Animals/Dev_Hen.png", art::hen().encode_png());
     m.insert("Animals/Dev_Goat.png", art::goat().encode_png());
     m.insert("Animals/Dev_Dog.png", art::dog().encode_png());
+    m.insert("Animals/Dev_Dog2.png", art::dog2().encode_png());
+    m.insert("Animals/Dev_Cat.png", art::cat().encode_png());
     m.insert("Animals/Dev_Horse.png", art::horse().encode_png());
     m.insert("Buildings/Dev_Stable.png", art::shed(4, 2, Color::rgb(150, 110, 70), Color::rgb(90, 110, 70)).encode_png());
     m.insert("LooseSprites/Dev_Cart.png", art::cart().encode_png());
@@ -603,6 +605,12 @@ fn data_files() -> Vec<(&'static str, serde_json::Value)> {
                       "WorldPositions": [{ "LocationName": "Dev_Isle" }] }
                 ]
             }
+        })),
+        ("Data/Pets", json!({
+            "Dog": { "DisplayName": "Dog", "BarkSound": "dog_bark", "ContentSound": "dog_pant",
+                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Dog" }, { "Id": "1", "Texture": "Animals\\Dev_Dog2" }] },
+            "Cat": { "DisplayName": "Cat", "BarkSound": "cat", "ContentSound": "purr",
+                     "Breeds": [{ "Id": "0", "Texture": "Animals\\Dev_Cat" }] }
         })),
         ("Data/Concessions", json!([
             { "Id": "Dev_KettleCorn", "Name": "Kettle Corn", "DisplayName": "Kettle Corn", "Price": 40, "ItemTags": ["Salty", "Sweet", "Popcorn"] },

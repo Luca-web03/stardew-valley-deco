@@ -100,3 +100,15 @@ fn the_world_map_places_players() {
     assert_eq!(w.map_tooltip("Valley", 60.0, 60.0).as_deref(), Some("Your farm"));
     assert_eq!(w.map_region_here().as_deref(), Some("Valley"));
 }
+
+#[test]
+fn pets_come_from_data_pets() {
+    let mut cm = ContentManager::dev_only();
+    let choices = valley_sim::pets::pet_choices(&mut cm);
+    let labels: Vec<&str> = choices.iter().map(|c| c.label.as_str()).collect();
+    assert_eq!(labels, vec!["Cat 1", "Dog 1", "Dog 2"]);
+    let cat = choices[0].clone();
+    let w = World::new(&mut cm, NewGame { pet: Some(cat), pet_name: "Mittens".into(), ..Default::default() });
+    let p = w.pet.as_ref().unwrap();
+    assert_eq!((p.name.as_str(), p.pet_type.as_str(), p.texture.as_str()), ("Mittens", "Cat", "Animals/Dev_Cat"));
+}

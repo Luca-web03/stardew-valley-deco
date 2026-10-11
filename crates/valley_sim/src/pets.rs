@@ -11,9 +11,76 @@ use crate::farm::FarmAnimal;
 use crate::world::{World, WorldEvent};
 use crate::{Dir, TilePos, TILE_F};
 
+/// `Data/Pets` (public format subset): pet types with breeds.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct PetTypeData {
+    pub display_name: String,
+    pub bark_sound: Option<String>,
+    pub content_sound: Option<String>,
+    pub breeds: Vec<PetBreed>,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct PetBreed {
+    pub id: String,
+    pub texture: String,
+    pub can_be_chosen_at_start: bool,
+}
+
+impl Default for PetBreed {
+    fn default() -> Self {
+        Self { id: String::new(), texture: String::new(), can_be_chosen_at_start: true }
+    }
+}
+
+/// A pet choice for the new-game screen: (type, breed, label, texture).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PetChoice {
+    pub pet_type: String,
+    pub breed: String,
+    pub label: String,
+    pub texture: String,
+}
+
+pub fn load_pets(cm: &mut valley_content::ContentManager) -> std::collections::BTreeMap<String, PetTypeData> {
+    cm.load_dict("Data/Pets")
+}
+
+/// Breeds offered at the start (Data/Pets), else the built-in dog.
+pub fn pet_choices(cm: &mut valley_content::ContentManager) -> Vec<PetChoice> {
+    let data = load_pets(cm);
+    let mut v = Vec::new();
+    for (ty, d) in &data {
+        let name = cm.expand(&d.display_name);
+        let name = if name.is_empty() || name.starts_with('[') { ty.clone() } else { name };
+        for (i, b) in d.breeds.iter().enumerate().filter(|(_, b)| b.can_be_chosen_at_start) {
+            let tex = b.texture.replace('\\', "/");
+            if cm.exists(&tex) {
+                v.push(PetChoice { pet_type: ty.clone(), breed: b.id.clone(), label: format!("{name} {}", i + 1), texture: tex });
+            }
+        }
+    }
+    if v.is_empty() {
+        for t in ["Animals/dog", "Animals/Dev_Dog"] {
+            if cm.exists(t) {
+                v.push(PetChoice { pet_type: "Dog".into(), breed: "0".into(), label: "Dog".into(), texture: t.into() });
+                break;
+            }
+        }
+    }
+    v
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Pet {
     pub name: String,
+    /// `Data/Pets` type and breed ids.
+    #[serde(default)]
+    pub pet_type: String,
+    #[serde(default)]
+    pub breed: String,
     /// Texture asset of the pet sheet (32x32 frames, rows down/right/up/left).
     pub texture: String,
     pub location: String,
@@ -86,11 +153,16 @@ pub struct GarbageData {
 
 impl World {
     /// Give the farm its pet (called for new games).
-    pub(crate) fn adopt_pet(&mut self, name: &str) {
-        let texture = ["Animals/dog", "Animals/Dev_Dog"].iter().find(|t| self.pet_textures.contains(&t.to_string())).map(|s| s.to_string()).unwrap_or_else(|| "Animals/Dev_Dog".into());
+    pub(crate) fn adopt_pet(&mut self, name: &str, choice: Option<&PetChoice>) {
+        let texture = match choice {
+            Some(c) => c.texture.clone(),
+            None => ["Animals/dog", "Animals/Dev_Dog"].iter().find(|t| self.pet_textures.contains(&t.to_string())).map(|s| s.to_string()).unwrap_or_else(|| "Animals/Dev_Dog".into()),
+        };
         let start = self.locations.get("Farm").and_then(|f| f.map_prop_tile("FarmHouseEntry")).unwrap_or(TilePos::new(10, 10));
         self.pet = Some(Pet {
             name: name.to_string(),
+            pet_type: choice.map(|c| c.pet_type.clone()).unwrap_or_else(|| "Dog".into()),
+            breed: choice.map(|c| c.breed.clone()).unwrap_or_else(|| "0".into()),
             texture,
             location: "Farm".into(),
             pos: Vec2::new((start.x + 2) as f32 * TILE_F, (start.y + 1) as f32 * TILE_F - 16.0),
@@ -122,7 +194,8 @@ impl World {
         p.wait_ms = 2000;
         p.target = None;
         let name = p.name.clone();
-        self.sound("dog_bark");
+        let cue = self.pet.as_ref().and_then(|p| self.pets_data.get(&p.pet_type)).and_then(|d| d.content_sound.clone().or(d.bark_sound.clone())).unwrap_or_else(|| "dog_bark".into());
+        self.sound(&cue);
         self.hud(format!("{name} is happy to see you!"));
         true
     }
