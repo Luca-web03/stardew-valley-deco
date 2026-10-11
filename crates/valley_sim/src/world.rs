@@ -274,6 +274,8 @@ pub struct World {
     pub last_touch: Option<TilePos>,
     /// Spa regeneration timer.
     pub spa_ms: u32,
+    /// `Data/LocationContexts`.
+    pub location_contexts: BTreeMap<String, crate::location_contexts::LocationContextData>,
     /// `Data/TriggerActions`.
     pub trigger_actions: Vec<crate::trigger_actions::TriggerActionData>,
     /// Telephone numbers (`phone`).
@@ -449,6 +451,7 @@ impl World {
             spa_ms: 0,
             phone_contacts: BTreeMap::new(),
             trigger_actions: Vec::new(),
+            location_contexts: BTreeMap::new(),
             floors: crate::fences::load_floors(cm),
             crows: Vec::new(),
             enemy_shots: Vec::new(),
@@ -578,6 +581,7 @@ impl World {
             if c.is_empty() { crate::phone::default_contacts() } else { c }
         };
         w.trigger_actions = crate::trigger_actions::load(cm);
+        w.location_contexts = crate::location_contexts::load(cm);
         w.place_start_objects();
         w.place_farm_clumps();
         w.populate_new_farm();
@@ -966,7 +970,10 @@ impl World {
         self.weather = self.weather_tomorrow;
         let mut rng = self.day_rng(1);
         self.daily_luck = rng.range(-100, 101) as f64 / 1000.0;
-        self.weather_tomorrow = roll_weather(&mut rng, self.clock.season, self.clock.day);
+        self.weather_tomorrow = match self.data_weather_tomorrow(&mut rng.clone()) {
+            Some(w) => w,
+            None => roll_weather(&mut rng, self.clock.season, self.clock.day),
+        };
         {
             // Tomorrow's date decides green rain (the clock already moved).
             let mut tomorrow = self.clock.clone();

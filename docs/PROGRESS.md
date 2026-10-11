@@ -18,7 +18,8 @@ were not available; such values are isolated constants that can be tuned.
 - [x] Content mods: folder overlays with entry-level JSON merging
 
 ## Gameplay
-- [x] Time, calendar, weather (approx. chances), storms with lightning,
+- [x] Time, calendar, weather (Data/LocationContexts weather rules, else
+      approx. chances), storms with lightning,
       night darkening and light pools, rain / snow / wind visuals
 - [x] Farmer movement/collision, warps, doors, bed, passing out, footsteps,
       appearance customization, clothing (hats, shirts, pants)

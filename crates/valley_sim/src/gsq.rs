@@ -175,7 +175,10 @@ fn check_one(q: &str, ctx: &mut QueryCtx, qw: QueryWorld) -> bool {
         "YEAR" => in_range(ctx.clock.year as i64, args, 0),
         "TIME" => in_range(ctx.clock.time as i64, args, 0),
         "DAYS_PLAYED" => in_range(ctx.clock.days_played() as i64, args, 0),
-        "IS_GREEN_RAIN_DAY" => ctx.weather == Weather::GreenRain,
+        "IS_GREEN_RAIN_DAY" => match w {
+            Some(w) => ctx.clock.season == Season::Summer && ctx.clock.day == w.green_rain_day(ctx.clock.year),
+            None => ctx.weather == Weather::GreenRain,
+        },
         "IS_FESTIVAL_DAY" => {
             let offset = num(args, 1, 0) as i32;
             w.is_some_and(|w| w.festival_on(ctx.clock.days_played() + offset))

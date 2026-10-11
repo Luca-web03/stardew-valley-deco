@@ -300,7 +300,7 @@ impl World {
         let mut tomorrow = self.clock.clone();
         tomorrow.next_day();
         let festival = self.festivals.contains_key(&format!("{}{}", tomorrow.season.key(), tomorrow.day));
-        if festival {
+        if festival || (weather.is_raining() && !self.rain_totem_allowed()) {
             self.emit(WorldEvent::Message("The sky stays still. Tomorrow's weather can't be changed.".into()));
             return true;
         }

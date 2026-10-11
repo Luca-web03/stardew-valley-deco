@@ -50,6 +50,7 @@ pub mod input;
 pub mod inventory;
 pub mod item;
 pub mod location;
+pub mod location_contexts;
 pub mod mail;
 pub mod npc;
 pub mod objects;
