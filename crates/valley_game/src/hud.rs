@@ -43,11 +43,26 @@ pub fn draw_item_in_slot(rc: &mut RenderCtx, ui: &mut Ui, w: &World, item: &Item
 }
 
 pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, toasts: &[(String, u32)]) {
-    // Date / time / money panel.
-    let r = FRect::new(sw - 300.0, 12.0, 288.0, 150.0);
-    ui.panel(r);
+    let lay = rc.assets.layouts(rc.cm).hud;
+    let cursors = rc.assets.try_tex(rc.cm, rc.textures, &lay.texture);
+    let rect = |a: [i32; 4]| engine::IRect::new(a[0], a[1], a[2], a[3]);
+    // Date / time / money panel (the game's day/time box when available).
+    let mut r = FRect::new(sw - 300.0, 12.0, 288.0, 150.0);
+    // Text starts right of the dial on the game's box.
+    let mut tx = r.x + 24.0;
+    match cursors {
+        Some(tex) => {
+            let src = rect(lay.clock_box);
+            let (bw, bh) = (src.w as f32 * lay.scale, src.h as f32 * lay.scale);
+            let at = FRect::new(sw - bw - 12.0, 12.0, bw, bh);
+            ui.out.sprite(engine::Sprite::new(tex, src, at, ui.depth));
+            r = FRect::new(at.x, at.y, at.w, at.h.max(150.0));
+            tx = at.x + at.w * 0.38;
+        }
+        None => ui.panel(r),
+    }
     let date = format!("{}. {}", w.clock.weekday(), w.clock.day);
-    ui.text(&date, Vec2::new(r.x + 24.0, r.y + 20.0), 3.0, ui::TEXT);
+    ui.text(&date, Vec2::new(tx, r.y + 20.0), 3.0, ui::TEXT);
     let weather = match w.weather {
         Weather::Sun => "Sun",
         Weather::Rain => "Rain",
@@ -56,11 +71,16 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
         Weather::Wind => "Wind",
         Weather::GreenRain => "Green Rain",
     };
-    ui.text(&format!("{} {}", w.clock.season.name(), weather), Vec2::new(r.x + 24.0, r.y + 52.0), 2.0, ui::TEXT);
-    ui.text(&w.time_string(), Vec2::new(r.x + 24.0, r.y + 76.0), 3.0, ui::TEXT);
+    ui.text(&format!("{} {}", w.clock.season.name(), weather), Vec2::new(tx, r.y + 52.0), 2.0, ui::TEXT);
+    ui.text(&w.time_string(), Vec2::new(tx, r.y + 76.0), 3.0, ui::TEXT);
     let money = format!("{:>8}g", w.farmer.money);
-    ui.out.fill(FRect::new(r.x + 16.0, r.y + 108.0, r.w - 32.0, 28.0), Color::rgb(90, 50, 30), ui.depth + 0.0001);
-    ui.text(&money, Vec2::new(r.x + 28.0, r.y + 114.0), 2.0, Color::rgb(250, 220, 90));
+    // The money counter sits inside the flat panel, or under the game's box.
+    let my = if cursors.is_some() { r.y + r.h + 4.0 } else { r.y + 108.0 };
+    ui.out.fill(FRect::new(r.x + 16.0, my, r.w - 32.0, 28.0), Color::rgb(90, 50, 30), ui.depth + 0.0001);
+    ui.text(&money, Vec2::new(r.x + 28.0, my + 6.0), 2.0, Color::rgb(250, 220, 90));
+    if cursors.is_some() {
+        r.h += 36.0;
+    }
 
     // Active buffs under the clock.
     let mut by = r.y + r.h + 8.0;
@@ -76,14 +96,36 @@ pub fn draw_hud(rc: &mut RenderCtx, ui: &mut Ui, w: &World, sw: f32, sh: f32, to
     let max = w.farmer.max_stamina as f32;
     let frac = (w.farmer.stamina / max).clamp(0.0, 1.0);
     let bar_h = 220.0;
-    let er = FRect::new(sw - 52.0, sh - bar_h - 24.0, 36.0, bar_h);
     let col = Color::rgb(230, 60, 40).lerp(Color::rgb(80, 210, 60), frac);
-    ui.vbar(er, frac, col);
-    ui.text_shadow("E", Vec2::new(er.x + 10.0, er.y - 24.0), 2.0, ui::TEXT_LIGHT);
-    if w.farmer.health < w.farmer.max_health {
-        let hr = FRect::new(sw - 96.0, sh - bar_h - 24.0, 36.0, bar_h);
-        ui.vbar(hr, w.farmer.health as f32 / w.farmer.max_health as f32, Color::rgb(220, 40, 40));
-        ui.text_shadow("H", Vec2::new(hr.x + 10.0, hr.y - 24.0), 2.0, ui::TEXT_LIGHT);
+    let health = (w.farmer.health < w.farmer.max_health).then(|| w.farmer.health as f32 / w.farmer.max_health as f32);
+    match cursors {
+        Some(tex) => {
+            // Frames from the cursor sheet, filled from the bottom.
+            let bar = |ui: &mut Ui, frame: [i32; 4], right: f32, frac: f32, col: Color| {
+                let src = rect(frame);
+                let (fw, fh) = (src.w as f32 * lay.scale, src.h as f32 * lay.scale);
+                let at = FRect::new(sw - right - fw, sh - fh - 16.0, fw, fh);
+                ui.out.sprite(engine::Sprite::new(tex, src, at, ui.depth));
+                let [l, t, r, b] = lay.bar_inset.map(|v| v as f32 * lay.scale);
+                let inner = FRect::new(at.x + l, at.y + t, fw - l - r, fh - t - b);
+                let h = inner.h * frac.clamp(0.0, 1.0);
+                ui.out.fill(FRect::new(inner.x, inner.y + inner.h - h, inner.w, h), col, ui.depth + 0.0001);
+            };
+            bar(ui, lay.energy_frame, 12.0, frac, col);
+            if let Some(hf) = health {
+                bar(ui, lay.health_frame, 12.0 + lay.energy_frame[2] as f32 * lay.scale + 8.0, hf, Color::rgb(220, 40, 40));
+            }
+        }
+        None => {
+            let er = FRect::new(sw - 52.0, sh - bar_h - 24.0, 36.0, bar_h);
+            ui.vbar(er, frac, col);
+            ui.text_shadow("E", Vec2::new(er.x + 10.0, er.y - 24.0), 2.0, ui::TEXT_LIGHT);
+            if let Some(hf) = health {
+                let hr = FRect::new(sw - 96.0, sh - bar_h - 24.0, 36.0, bar_h);
+                ui.vbar(hr, hf, Color::rgb(220, 40, 40));
+                ui.text_shadow("H", Vec2::new(hr.x + 10.0, hr.y - 24.0), 2.0, ui::TEXT_LIGHT);
+            }
+        }
     }
 
     // Toolbar.

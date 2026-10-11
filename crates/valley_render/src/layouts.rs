@@ -254,6 +254,35 @@ pub struct Layouts {
     pub trees: TreeLayout,
     pub farmer: FarmerLayout,
     pub ui: UiLayout,
+    pub hud: HudLayout,
+}
+
+/// HUD sprites from the game's cursor sheet when present (assumed
+/// defaults): the day/time box and the energy/health bar frames, drawn at
+/// `scale`; `bar_inset` (left, top, right, bottom, in sheet pixels) is the
+/// fill area inside a bar frame.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct HudLayout {
+    pub texture: String,
+    pub clock_box: [i32; 4],
+    pub energy_frame: [i32; 4],
+    pub health_frame: [i32; 4],
+    pub bar_inset: [i32; 4],
+    pub scale: f32,
+}
+
+impl Default for HudLayout {
+    fn default() -> Self {
+        Self {
+            texture: "LooseSprites/Cursors".into(),
+            clock_box: [333, 431, 71, 43],
+            energy_frame: [256, 408, 14, 42],
+            health_frame: [268, 408, 14, 42],
+            bar_inset: [3, 13, 3, 2],
+            scale: 4.0,
+        }
+    }
 }
 
 /// Menu frames: a 9-slice box (corners a third of the rect) and the

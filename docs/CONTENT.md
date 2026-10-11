@@ -59,9 +59,16 @@ their defaults:
   "farmer":    { "texture": "Characters/Farmer/my_simple_sheet" },
   "hats":      { "texture": "Characters/Farmer/hats", "cell_w": 20, "cell_h": 20, "facing_rows": [0, 1, 3, 2], "offset": [-2, -5] },
   "clothing_icons": { "texture": "TileSheets/my_clothing_icons" },
-  "ui":        { "texture": "Maps/MenuTiles", "box": [0, 256, 60, 60], "slot_tile": 10, "tile_size": 64, "scale": 1.0 }
+  "ui":        { "texture": "Maps/MenuTiles", "box": [0, 256, 60, 60], "slot_tile": 10, "tile_size": 64, "scale": 1.0 },
+  "hud":       { "texture": "LooseSprites/Cursors", "clock_box": [333, 431, 71, 43], "energy_frame": [256, 408, 14, 42],
+                 "health_frame": [268, 408, 14, 42], "bar_inset": [3, 13, 3, 2], "scale": 4.0 }
 }
 ```
+
+* `hud`: with that texture the day/time box and the energy/health bar
+  frames come from it (`bar_inset`: left, top, right, bottom of the fill
+  area in sheet pixels); the money counter sits under the box. Rects are
+  assumptions to adjust against the real sheet.
 
 * `ui`: menu frames are a 9-slice of `box` (corners a third of its width,
   drawn at `scale`; buttons at half) and inventory slots are tile
